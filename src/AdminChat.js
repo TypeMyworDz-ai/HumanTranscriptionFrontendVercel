@@ -2,11 +2,15 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-import Toast from './Toast';
+// FIXED: Adjusted import path for AuthContext from './contexts/AuthContext' to '../contexts/AuthContext' 
+// assuming AdminChat is inside src/ and contexts is also inside src/
+import { useAuth } from '../contexts/AuthContext'; 
+// FIXED: Adjusted import path for Toast from './Toast' to '../Toast'
+import Toast from '../Toast';
+// FIXED: Adjusted import path for CSS from './AdminChat.css' to './AdminChat.css' (assuming same directory for CSS)
 import './AdminChat.css';
-// FIXED: Removed direct 'io' import, use ChatService for socket management
-import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from './ChatService'; 
+// FIXED: Adjusted import path for ChatService from './ChatService' to '../ChatService'
+import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from '../ChatService'; 
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -113,7 +117,7 @@ const AdminChat = () => {
 
                 // Ensure message is relevant to this chat
                 const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) || 
-                                   (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
+                                     (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
 
                 if (!isRelevant) return prevMessages; // Ignore irrelevant messages
 
@@ -162,11 +166,12 @@ const AdminChat = () => {
             if (response.ok && data.messages) {
                 const formattedMessages = data.messages.map(msg => ({
                     ...msg,
+                    // The websocket handler uses the actual names, but for the initial fetch, we ensure fallbacks/correct local names
                     sender_name: (msg.sender_id === userRef.current.id) ? userRef.current.full_name : targetUserRef.current?.full_name || 'User',
                     text: msg.content, // Use 'content' as per backend
                     timestamp: new Date(msg.timestamp).toLocaleString() // Format for display
                 }));
-                setMessages(formattedMessages);
+                setMessages(data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))); // Sort by timestamp
             } else {
                 showToast(data.error || 'Failed to fetch chat messages.', 'error');
             }
@@ -189,21 +194,22 @@ const AdminChat = () => {
         
         try {
             // FIXED: Use sendMessage from ChatService (which now does HTTP POST)
+            // The ChatService internally handles the API URL and token.
             await sendMessage({
                 senderId: user.id,
                 receiverId: userId,
                 negotiationId: null, // This is a direct chat, not negotiation specific
                 message: newMessage, // Frontend uses 'message', backend expects 'messageText'
                 timestamp: new Date().toISOString()
-            });
-
-            // On successful send, update local state immediately (message will be emitted back via WebSocket)
+            }, token); // Pass token to ChatService
+            
+            // On successful send, clear input. Message addition to state is handled by WebSocket event.
             setNewMessage('');
-            // No need to manually add to messages state here, as the WebSocket will emit it back
-            // and handleNewChatMessage will add it.
         } catch (error) {
             console.error('Error sending message:', error);
-            showToast(error.message || 'Network error sending message.', 'error');
+            // Check if error is from response (ChatService should throw this)
+            const errorMessage = error.message.includes('401') ? 'Authentication required.' : 'Error sending message.';
+            showToast(error.message || errorMessage, 'error');
         } 
     };
 
