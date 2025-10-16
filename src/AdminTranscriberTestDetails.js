@@ -1,10 +1,13 @@
-// frontend/client/src/AdminTranscriberTestDetails.js
+// frontend/client/src/AdminTranscriberTestDetails.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
-import './AdminManagement.css'; // Assuming common admin styling
+import './AdminManagement.css';
+
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // Helper function to convert simple markdown to HTML (bold and italics)
 const formatTranscriptionText = (text) => {
@@ -34,12 +37,13 @@ const AdminTranscriberTestDetails = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
-            logout(); // Should be caught by ProtectedRoute, but defensive
+            logout();
             return;
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/admin/transcriber-tests/${submissionId}`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/transcriber-tests/${submissionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -47,7 +51,6 @@ const AdminTranscriberTestDetails = () => {
                 setSubmissionDetails(data.submission);
             } else {
                 showToast(data.error || 'Failed to fetch submission details.', 'error');
-                // Optionally redirect back to the list if details can't be fetched
                 navigate('/admin/transcriber-tests');
             }
         } catch (error) {
@@ -60,9 +63,8 @@ const AdminTranscriberTestDetails = () => {
     }, [submissionId, logout, navigate, showToast]);
 
     useEffect(() => {
-        // Ensure user is admin before fetching details, though ProtectedRoute should handle this
         if (!user || user.user_type !== 'admin') {
-            navigate('/login'); // Redirect if not admin
+            navigate('/login');
             return;
         }
         fetchSubmissionDetails();

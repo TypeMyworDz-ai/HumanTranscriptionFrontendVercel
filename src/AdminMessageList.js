@@ -1,21 +1,22 @@
-// frontend/client/src/AdminMessageList.js
+// frontend/client/src/AdminMessageList.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
-import './AdminManagement.css'; // Re-using general admin styles
-import './AdminMessageList.css'; // NEW: Import dedicated CSS for this component
-import io from 'socket.io-client'; 
+import './AdminManagement.css';
+import './AdminMessageList.css';
+// FIXED: Removed direct 'io' import, use ChatService for socket management
+import { connectSocket, disconnectSocket } from './ChatService'; 
 
-const SOCKET_SERVER_URL = 'http://localhost:5000'; 
-const socket = io(SOCKET_SERVER_URL, { autoConnect: false }); 
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const AdminMessageList = () => {
     const { user, isAuthReady, logout } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [chatList, setChatList] = useState([]); // List of users admin has chatted with
+    const [chatList, setChatList] = useState([]);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
@@ -31,7 +32,8 @@ const AdminMessageList = () => {
 
         console.log('AdminMessageList: Fetching admin chat list.');
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/admin/chat/list`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/chat/list`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -65,27 +67,24 @@ const AdminMessageList = () => {
         fetchAdminChatList();
 
         // --- Socket.IO Connection Setup for Real-Time Updates ---
-        console.log(`AdminMessageList: Attempting to connect socket for user ID: ${user.id}`);
+        console.log(`AdminMessageList: Attempting to connect socket via ChatService for user ID: ${user.id}`);
+        // FIXED: Connect via ChatService and get the global socket instance
+        const socket = connectSocket(user.id);
         
-        if (!socket.connected) {
-            console.log('AdminMessageList: Socket not connected, attempting to connect to:', SOCKET_SERVER_URL);
-            socket.connect();
-        }
-
         const handleSocketConnect = () => {
             console.log('AdminMessageList: Socket connected, joining admin room.');
             socket.emit('joinUserRoom', user.id); 
         };
 
-        if (socket.connected) {
-            handleSocketConnect(); 
-        } else {
+        // FIXED: Only attach 'connect' listener if not already connected
+        if (!socket.connected) {
             socket.on('connect', handleSocketConnect); 
+        } else {
+            handleSocketConnect(); // If already connected, run immediately
         }
 
         const handleNewChatMessage = (msg) => {
             console.log('AdminMessageList: New chat message received!', msg);
-            // If a new message comes in, refresh the chat list to update latest message and unread count
             fetchAdminChatList(); 
             showToast(`New message from ${msg.sender_name || 'User'}!`, 'info');
         };
@@ -93,20 +92,20 @@ const AdminMessageList = () => {
         const handleUnreadMessageCountUpdate = (data) => {
             if (data.userId === user.id) {
                 console.log('Real-time: Unread message count update received!', data);
-                // Refresh the list to get the accurate new count
                 fetchAdminChatList(); 
             }
         };
 
+        // FIXED: Attach listeners to the global socket instance from ChatService
         socket.on('newChatMessage', handleNewChatMessage);
         socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-        socket.on('connect', handleSocketConnect);
-
+        
         return () => {
             console.log('AdminMessageList: Cleaning up socket listeners on unmount.');
             socket.off('newChatMessage', handleNewChatMessage);
             socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-            socket.off('connect', handleSocketConnect);
+            socket.off('connect', handleSocketConnect); // Detach the connect listener
+            disconnectSocket(); // Disconnect via ChatService
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthReady, user, navigate, logout, showToast, fetchAdminChatList]);
@@ -114,7 +113,7 @@ const AdminMessageList = () => {
 
     if (loading) {
         return (
-            <div className="admin-message-list-container"> {/* Use new container class */}
+            <div className="admin-message-list-container">
                 <div className="loading-spinner">Loading messages...</div>
             </div>
         );
@@ -125,8 +124,8 @@ const AdminMessageList = () => {
     }
 
     return (
-        <div className="admin-message-list-container"> {/* Use new container class */}
-            <header className="admin-management-header"> {/* Re-use general admin header */}
+        <div className="admin-message-list-container">
+            <header className="admin-management-header">
                 <div className="header-content">
                     <h1>My Messages</h1>
                     <div className="user-info">
@@ -135,12 +134,12 @@ const AdminMessageList = () => {
                     </div>
                 </div>
             </header>
-            <main className="admin-message-list-main"> {/* Use new main class */}
+            <main className="admin-message-list-main">
                 <div className="back-link-container">
                     <Link to="/admin-dashboard" className="back-link">← Back to Admin Dashboard</Link>
                 </div>
 
-                <div className="admin-message-list-section"> {/* Use new section class */}
+                <div className="admin-message-list-section">
                     <h2>Conversations</h2>
                     <p>Select a user to view chat history and send messages.</p>
 

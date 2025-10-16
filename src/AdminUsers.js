@@ -1,14 +1,17 @@
-// frontend/client/src/AdminUsers.js
+// frontend/client/src/AdminUsers.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
-import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate for potential chat navigation
+import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
-import './AdminManagement.css'; // Assuming common admin styling
+import './AdminManagement.css';
+
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const AdminUsers = () => {
     const { user, logout } = useAuth();
-    const navigate = useNavigate(); // Initialize useNavigate for chat
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -17,17 +20,17 @@ const AdminUsers = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    const fetchUsers = useCallback(async (currentSearchTerm) => { // Accept searchTerm as argument
+    const fetchUsers = useCallback(async (currentSearchTerm) => {
         setLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
-            logout(); // Should be caught by ProtectedRoute, but defensive
+            logout();
             return;
         }
 
         try {
-            // Include search term in the API request
-            const response = await fetch(`http://localhost:5000/api/admin/users?search=${encodeURIComponent(currentSearchTerm)}`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/users?search=${encodeURIComponent(currentSearchTerm)}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -43,19 +46,17 @@ const AdminUsers = () => {
         } finally {
             setLoading(false);
         }
-    }, [logout, showToast]); // Dependencies for useCallback
+    }, [logout, showToast]);
 
     useEffect(() => {
-        // Debounce the fetchUsers call
         const handler = setTimeout(() => {
-            fetchUsers(searchTerm); // Pass current searchTerm
-        }, 500); // 500ms delay
+            fetchUsers(searchTerm);
+        }, 500);
 
-        // Cleanup function to clear the timeout if searchTerm changes before the delay
         return () => {
             clearTimeout(handler);
         };
-    }, [searchTerm, fetchUsers]); // Re-run effect when searchTerm or fetchUsers changes
+    }, [searchTerm, fetchUsers]);
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
@@ -63,7 +64,7 @@ const AdminUsers = () => {
 
     const handleChatWithUser = (userId, userName) => {
         console.log(`Admin wants to chat with user: ${userName} (ID: ${userId})`);
-        navigate(`/admin/chat/${userId}`); // Navigate to the new chat route
+        navigate(`/admin/chat/${userId}`);
         showToast(`Opening chat with ${userName}...`, 'info');
     };
 

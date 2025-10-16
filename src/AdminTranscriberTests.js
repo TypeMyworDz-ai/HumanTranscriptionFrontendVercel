@@ -1,15 +1,17 @@
-// frontend/client/src/AdminTranscriberTests.js
+// frontend/client/src/AdminTranscriberTests.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from './contexts/AuthContext'; // Corrected import
-import { Link } from 'react-router-dom'; // Removed useNavigate import
+import { useAuth } from './contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
 import './AdminManagement.css';
 
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
 const AdminTranscriberTests = () => {
     const { user, logout } = useAuth();
-    // Removed: const navigate = useNavigate(); // This was unused and caused the warning
     const [loading, setLoading] = useState(true);
     const [submissions, setSubmissions] = useState([]);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -26,7 +28,8 @@ const AdminTranscriberTests = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://localhost:5000/api/admin/transcriber-tests', {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/transcriber-tests`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -48,7 +51,8 @@ const AdminTranscriberTests = () => {
         setModalLoading(true);
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5000/api/admin/transcriber-tests/${selectedSubmission.id}/approve`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/transcriber-tests/${selectedSubmission.id}/approve`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ transcriberId: selectedSubmission.user_id })
@@ -75,7 +79,8 @@ const AdminTranscriberTests = () => {
         setModalLoading(true);
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5000/api/admin/transcriber-tests/${selectedSubmission.id}/reject`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/transcriber-tests/${selectedSubmission.id}/reject`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ transcriberId: selectedSubmission.user_id, reason: rejectionReason })
@@ -100,8 +105,6 @@ const AdminTranscriberTests = () => {
 
 
     useEffect(() => {
-        // No navigation needed here, as ProtectedRoute handles initial access
-        // and fetchSubmissions is stable.
         fetchSubmissions();
     }, [fetchSubmissions]);
 
@@ -121,7 +124,9 @@ const AdminTranscriberTests = () => {
                     <h1>Manage Transcriber Tests</h1>
                     <div className="user-info">
                         <span>Welcome, {user?.full_name || 'Admin'}!</span>
-                        <button onClick={logout} className="logout-btn">Logout</button>
+                        <button onClick={logout} className="logout-btn">
+                            Logout
+                        </button>
                     </div>
                 </div>
             </header>
@@ -148,7 +153,6 @@ const AdminTranscriberTests = () => {
                                     <p>Grammar Score: {submission.grammar_score.toFixed(2)}%</p>
                                     <p>Submitted: {new Date(submission.created_at).toLocaleString()}</p>
                                     <div className="submission-actions">
-                                        {/* FIX: Wrapped "View Details" button in a Link component */}
                                         <Link to={`/admin/transcriber-tests/${submission.id}`} className="view-details-btn">
                                             View Details
                                         </Link>

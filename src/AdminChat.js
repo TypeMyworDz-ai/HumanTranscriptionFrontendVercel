@@ -1,14 +1,15 @@
-// frontend/client/src/AdminChat.js
+// frontend/client/src/AdminChat.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
-import './AdminChat.css'; // Referencing the dedicated AdminChat.css
-import io from 'socket.io-client';
+import './AdminChat.css';
+// FIXED: Removed direct 'io' import, use ChatService for socket management
+import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from './ChatService'; 
 
-const SOCKET_SERVER_URL = 'http://localhost:5000';
-const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const AdminChat = () => {
     const { userId } = useParams();
@@ -17,7 +18,6 @@ const AdminChat = () => {
     const [targetUser, setTargetUser] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    // Removed: selectedFile, uploadingFile, fileInputRef, handleFileSelect, handleRemoveFile
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -53,7 +53,8 @@ const AdminChat = () => {
             if (!token) { logout(); return; }
 
             try {
-                const response = await fetch(`${SOCKET_SERVER_URL}/api/admin/users/${userId}`, {
+                // FIXED: Use BACKEND_API_URL constant
+                const response = await fetch(`${BACKEND_API_URL}/api/admin/users/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await response.json();
@@ -84,21 +85,23 @@ const AdminChat = () => {
             return;
         }
 
-        if (!socket.connected) {
-            socket.connect();
-        }
-
+        // FIXED: Use ChatService for Socket.IO connection
+        console.log(`AdminChat: Attempting to connect socket via ChatService for user ID: ${user.id}`);
+        const socket = connectSocket(user.id);
+        
         const handleSocketConnect = () => {
             if (!isMounted) return;
-            socket.emit('joinUserRoom', user.id);
+            // FIXED: Use standardized 'joinUserRoom'
+            socket.emit('joinUserRoom', user.id); 
             socket.emit('joinUserRoom', userId);
             fetchChatMessages();
         };
 
-        if (socket.connected) {
-            handleSocketConnect();
-        } else {
+        // FIXED: Only attach 'connect' listener if not already connected
+        if (!socket.connected) {
             socket.on('connect', handleSocketConnect);
+        } else {
+            handleSocketConnect(); // If already connected, run immediately
         }
 
         const handleNewChatMessage = (msg) => {
@@ -108,39 +111,40 @@ const AdminChat = () => {
                 const currentLoggedInUser = userRef.current;
                 const currentTargetUser = targetUserRef.current;
 
-                const senderName = (msg.sender_id === currentLoggedInUser.id)
-                    ? currentLoggedInUser.full_name
-                    : (currentTargetUser?.full_name || 'User');
+                // Ensure message is relevant to this chat
+                const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) || 
+                                   (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
 
-                if ((msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) || 
-                    (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId)) {
-                    if (prevMessages.some(m => m.id === msg.id)) {
-                        return prevMessages;
-                    }
-                    if (msg.sender_id !== currentLoggedInUser.id) {
-                        playNotificationSound();
-                    }
+                if (!isRelevant) return prevMessages; // Ignore irrelevant messages
 
-                    return [...prevMessages, {
-                        id: msg.id,
-                        sender_id: msg.sender_id,
-                        receiver_id: msg.receiver_id,
-                        content: msg.content,
-                        text: msg.content,
-                        timestamp: new Date(msg.timestamp).toLocaleString(),
-                        sender_name: senderName,
-                    }];
+                if (prevMessages.some(m => m.id === msg.id)) {
+                    return prevMessages; // Avoid duplicate messages
                 }
-                return prevMessages;
+                if (msg.sender_id !== currentLoggedInUser.id) {
+                    playNotificationSound();
+                }
+
+                // Ensure consistent message structure with fetched messages
+                return [...prevMessages, {
+                    id: msg.id,
+                    sender_id: msg.sender_id,
+                    receiver_id: msg.receiver_id,
+                    content: msg.content, // Use 'content' as per backend
+                    timestamp: msg.timestamp, // Keep as ISO string
+                    sender_name: msg.sender_name, // Should be provided by backend
+                }];
             });
         };
 
+        // FIXED: Attach listeners to the global socket instance from ChatService
         socket.on('newChatMessage', handleNewChatMessage);
 
         return () => {
             if (isMounted) {
+                console.log('AdminChat: Cleaning up socket listeners on unmount.');
                 socket.off('newChatMessage', handleNewChatMessage);
-                socket.off('connect', handleSocketConnect);
+                socket.off('connect', handleSocketConnect); // Detach the connect listener
+                disconnectSocket(); // Disconnect via ChatService
             }
         };
     }, [isAuthReady, user?.id, user?.full_name, user?.user_type, userId, navigate, showToast, targetUser, playNotificationSound]);
@@ -150,16 +154,17 @@ const AdminChat = () => {
         if (!token) { logout(); return; }
         
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/admin/chat/messages/${userId}`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/chat/messages/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
             if (response.ok && data.messages) {
                 const formattedMessages = data.messages.map(msg => ({
                     ...msg,
-                    sender_name: msg.sender_id === userRef.current.id ? userRef.current.full_name : targetUserRef.current?.full_name || 'User',
-                    text: msg.content,
-                    timestamp: new Date(msg.timestamp).toLocaleString()
+                    sender_name: (msg.sender_id === userRef.current.id) ? userRef.current.full_name : targetUserRef.current?.full_name || 'User',
+                    text: msg.content, // Use 'content' as per backend
+                    timestamp: new Date(msg.timestamp).toLocaleString() // Format for display
                 }));
                 setMessages(formattedMessages);
             } else {
@@ -178,32 +183,27 @@ const AdminChat = () => {
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (newMessage.trim() === '') return; // Simplified condition
+        if (newMessage.trim() === '') return;
 
         const token = localStorage.getItem('token');
         
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/admin/chat/send-message`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    receiverId: userId,
-                    messageText: newMessage,
-                })
+            // FIXED: Use sendMessage from ChatService (which now does HTTP POST)
+            await sendMessage({
+                senderId: user.id,
+                receiverId: userId,
+                negotiationId: null, // This is a direct chat, not negotiation specific
+                message: newMessage, // Frontend uses 'message', backend expects 'messageText'
+                timestamp: new Date().toISOString()
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                setNewMessage('');
-            } else {
-                showToast(data.error || 'Failed to send message.', 'error');
-            }
+            // On successful send, update local state immediately (message will be emitted back via WebSocket)
+            setNewMessage('');
+            // No need to manually add to messages state here, as the WebSocket will emit it back
+            // and handleNewChatMessage will add it.
         } catch (error) {
             console.error('Error sending message:', error);
-            showToast('Network error sending message.', 'error');
+            showToast(error.message || 'Network error sending message.', 'error');
         } 
     };
 
@@ -251,9 +251,9 @@ const AdminChat = () => {
                                     <div key={msg.id} className={`chat-message ${msg.sender_id === user.id ? 'admin-message' : 'user-message'}`}>
                                         <div className="message-header">
                                             <strong>{msg.sender_id === user.id ? 'Admin' : targetUser.full_name}</strong>
-                                            <span>{msg.timestamp}</span>
+                                            <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        {msg.text && <p>{msg.text}</p>}
+                                        {msg.content && <p>{msg.content}</p>}
                                     </div>
                                 ))
                             )}
