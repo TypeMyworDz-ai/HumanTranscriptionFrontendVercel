@@ -6,7 +6,7 @@ import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
 import './AdminManagement.css';
 import './AdminMessageList.css';
-// FIXED: Removed direct 'io' import, use ChatService for socket management
+// FIXED: Import connectSocket, disconnectSocket from ChatService
 import { connectSocket, disconnectSocket } from './ChatService'; 
 
 // Define the backend URL constant for API calls within this component
@@ -22,7 +22,6 @@ const AdminMessageList = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    // Function to fetch the list of users the admin has chatted with
     const fetchAdminChatList = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token || !user?.id) {
