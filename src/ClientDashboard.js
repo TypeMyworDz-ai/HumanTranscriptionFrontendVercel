@@ -1,4 +1,4 @@
-// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and Client Profile Link
+// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and CORRECTED Client Profile Link
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -235,7 +235,7 @@ const ClientDashboard = () => {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
-// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and Client Profile Link (Continue from Part 1)
+// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and CORRECTED Client Profile Link (Continue from Part 1)
 
 
   // Display a loading indicator if client-specific data is still being fetched.
