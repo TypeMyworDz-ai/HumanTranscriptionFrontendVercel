@@ -1,17 +1,15 @@
-// frontend/client/src/AdminDashboard.js
+// frontend/client/src/AdminDashboard.js - COMPLETE AND UPDATED for Vercel deployment
 
-import React, { useState, useEffect, useCallback } from 'react'; // FIX: Removed useRef from destructuring here
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import Toast from './Toast';
-import io from 'socket.io-client';
+// FIXED: Removed direct 'io' import, use ChatService for socket management
+import { connectSocket, disconnectSocket, getSocketInstance } from './ChatService'; 
 
-// Define the socket server URL explicitly
-const SOCKET_SERVER_URL = 'http://localhost:5000';
-// Initialize Socket.IO client outside the component with autoConnect: false
-const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
-
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const AdminDashboard = () => {
     const { user, isAuthReady, authLoading, logout } = useAuth();
@@ -33,10 +31,8 @@ const AdminDashboard = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    // FIX: Explicitly use React.useRef to resolve 'useRef is not defined' runtime error
     const audioRef = React.useRef(null);
 
-    // Function to play notification sound
     const playNotificationSound = useCallback(() => {
         if (audioRef.current) {
             audioRef.current.play().catch(e => console.error("Error playing sound:", e));
@@ -50,7 +46,8 @@ const AdminDashboard = () => {
         if (!token || !user?.id) return;
 
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/user/chat/unread-count`, {
+            // FIXED: Use BACKEND_API_URL constant
+            const response = await fetch(`${BACKEND_API_URL}/api/user/chat/unread-count`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -83,10 +80,11 @@ const AdminDashboard = () => {
                 disputesResponse,
                 usersResponse
             ] = await Promise.all([
-                fetch(`${SOCKET_SERVER_URL}/api/admin/stats/pending-tests`, { headers }),
-                fetch(`${SOCKET_SERVER_URL}/api/admin/stats/active-jobs`, { headers }),
-                fetch(`${SOCKET_SERVER_URL}/api/admin/stats/disputes`, { headers }),
-                fetch(`${SOCKET_SERVER_URL}/api/admin/stats/total-users`, { headers })
+                // FIXED: Use BACKEND_API_URL constant for all fetch calls
+                fetch(`${BACKEND_API_URL}/api/admin/stats/pending-tests`, { headers }),
+                fetch(`${BACKEND_API_URL}/api/admin/stats/active-jobs`, { headers }),
+                fetch(`${BACKEND_API_URL}/api/admin/stats/disputes`, { headers }),
+                fetch(`${BACKEND_API_URL}/api/admin/stats/total-users`, { headers })
             ]);
 
             const [testsData, jobsData, disputesData, usersData] = await Promise.all([
@@ -116,7 +114,6 @@ const AdminDashboard = () => {
     useEffect(() => {
         console.log('AdminDashboard: Main useEffect. isAuthReady:', isAuthReady, 'user:', user, 'authLoading:', authLoading);
 
-        // Gate all logic until authentication is ready and user is defined
         if (!isAuthReady || authLoading || !user || !user.id) {
             if (isAuthReady && !user) {
                  console.log("AdminDashboard: Auth ready but no user. Redirecting to login.");
@@ -125,14 +122,13 @@ const AdminDashboard = () => {
             return;
         }
 
-        // CRITICAL: If the authenticated user is NOT an admin, redirect them.
         if (user.user_type !== 'admin') {
             console.warn(`AdminDashboard: Unauthorized access attempt by user_type: ${user.user_type}. Redirecting.`);
             navigate('/');
             return;
         }
 
-        setLoading(true); // Start loading for all data fetches
+        setLoading(true);
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -141,60 +137,58 @@ const AdminDashboard = () => {
             return;
         }
 
-        // Fetch all necessary data concurrently
         Promise.all([
             fetchAdminStats(),
             fetchUnreadMessageCount()
         ]).finally(() => {
-            setLoading(false); // Set loading to false only after all promises settle
+            setLoading(false);
         });
 
 
-        // --- Socket.IO Connection Setup for Real-Time Updates ---
-        console.log(`AdminDashboard: Attempting to connect socket for user ID: ${user.id}`);
-
-        if (!socket.connected) {
-            console.log('AdminDashboard: Socket not connected, attempting to connect to:', SOCKET_SERVER_URL);
-            socket.connect();
-        }
+        // FIXED: Use ChatService for Socket.IO connection
+        console.log(`AdminDashboard: Attempting to connect socket via ChatService for user ID: ${user.id}`);
+        const socket = connectSocket(user.id);
 
         const handleSocketConnect = () => {
             console.log('AdminDashboard: Socket connected, joining admin room.');
             socket.emit('joinUserRoom', user.id);
         };
 
-        if (socket.connected) {
-            handleSocketConnect();
-        } else {
+        // FIXED: Only attach 'connect' listener if not already connected
+        if (!socket.connected) {
             socket.on('connect', handleSocketConnect);
+        } else {
+            handleSocketConnect(); // If already connected, run immediately
         }
+        
 
         const handleNegotiationUpdate = (data) => {
-            console.log('Real-time: Negotiation update received!', data);
+            console.log('AdminDashboard Real-time: Negotiation update received!', data);
             showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
-            fetchAdminStats(); // Refresh stats
+            fetchAdminStats();
         };
 
         const handleUnreadMessageCountUpdate = (data) => {
             if (data.userId === user.id) {
-                console.log('Real-time: Unread message count update received!', data);
-                fetchUnreadMessageCount(); // Re-fetch the unread message count to ensure it's accurate after any update (read/unread)
+                console.log('AdminDashboard Real-time: Unread message count update received!', data);
+                fetchUnreadMessageCount();
                 showToast('You have a new message!', 'info');
-                if (data.change > 0) { // Play sound only if count increased
+                if (data.change > 0) {
                     playNotificationSound();
                 }
             }
         };
 
         const handleNewChatMessage = (data) => {
-            console.log('Real-time: New chat message received!', data);
-            if (data.sender_id !== user.id) { // Only show toast if message is from another user
+            console.log('AdminDashboard Real-time: New chat message received!', data);
+            if (data.sender_id !== user.id) {
                 showToast(`New message from ${data.sender_name || 'User'}!`, 'info');
-                fetchUnreadMessageCount(); // Refresh count just in case
-                playNotificationSound(); // Play sound for new messages
+                fetchUnreadMessageCount();
+                playNotificationSound();
             }
         };
 
+        // FIXED: Attach listeners to the global socket instance from ChatService
         socket.on('negotiation_accepted', handleNegotiationUpdate);
         socket.on('negotiation_rejected', handleNegotiationUpdate);
         socket.on('negotiation_countered', handleNegotiationUpdate);
@@ -203,14 +197,16 @@ const AdminDashboard = () => {
         socket.on('newChatMessage', handleNewChatMessage);
 
         return () => {
-            console.log(`AdminDashboard: Cleaning up socket listeners for user ID: ${user.id}`);
+            console.log(`AdminDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
+            // FIXED: Detach listeners from the global socket instance
             socket.off('negotiation_accepted', handleNegotiationUpdate);
             socket.off('negotiation_rejected', handleNegotiationUpdate);
             socket.off('negotiation_countered', handleNegotiationUpdate);
             socket.off('negotiation_cancelled', handleNegotiationUpdate);
             socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
             socket.off('newChatMessage', handleNewChatMessage);
-            socket.off('connect', handleSocketConnect);
+            socket.off('connect', handleSocketConnect); // Detach the connect listener
+            disconnectSocket(); // Disconnect via ChatService
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchAdminStats, fetchUnreadMessageCount, playNotificationSound]);
