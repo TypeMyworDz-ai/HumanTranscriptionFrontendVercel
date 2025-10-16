@@ -4,10 +4,10 @@ import io from 'socket.io-client';
 
 // IMPORTANT: This URL will now come from a Vercel environment variable
 // During local development, it will fall back to localhost
-const SOCKET_SERVER_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // Define the Socket.IO client instance globally but do not autoConnect
-const globalSocketInstance = io(SOCKET_SERVER_URL, { autoConnect: false });
+const globalSocketInstance = io(BACKEND_API_URL, { autoConnect: false });
 
 // Use an object to store the userId associated with the global socket instance
 let activeSocketState = {
@@ -37,7 +37,7 @@ export const connectSocket = (userId) => {
   activeSocketState.userId = userId;
 
   // Set up event listeners only once to prevent duplicates
-  if (!globalSocketInstance._hasListenersSetup) { 
+  if (!globalSocketInstance._hasListenersSetup) {
     globalSocketInstance.on('connect', () => {
       console.log('ChatService: Connected to WebSocket server');
       if (activeSocketState.userId) {
@@ -81,9 +81,10 @@ export const connectSocket = (userId) => {
 };
 
 /**
- * Sends a message to the server via HTTP POST to the negotiation-specific endpoint.
+ * Sends a message to the server via HTTP POST.
+ * Dynamically chooses between negotiation-specific or direct message endpoints.
  * @param {object} messageData - The message object.
- *   Expected format: { senderId: string, receiverId: string, message: string, negotiationId: string, timestamp: string }
+ *   Expected format: { senderId: string (optional for direct), receiverId: string, messageText: string, negotiationId: string (optional) }
  */
 export const sendMessage = async (messageData) => {
   const token = localStorage.getItem('token');
@@ -92,21 +93,38 @@ export const sendMessage = async (messageData) => {
     throw new Error('Authentication token missing.');
   }
 
+  let endpoint = '';
+  let payload = {};
+
+  // FIXED: Conditional endpoint and payload based on negotiationId
+  if (messageData.negotiationId) {
+    endpoint = `${BACKEND_API_URL}/api/messages/negotiation/send`;
+    payload = {
+      senderId: messageData.senderId,
+      receiverId: messageData.receiverId,
+      negotiationId: messageData.negotiationId,
+      messageText: messageData.messageText, // Use messageText as expected by backend
+      timestamp: messageData.timestamp
+    };
+  } else {
+    // For direct user-to-user messages (e.g., Admin to User)
+    endpoint = `${BACKEND_API_URL}/api/user/chat/send-message`;
+    payload = {
+      receiverId: messageData.receiverId,
+      messageText: messageData.messageText, // Use messageText as expected by backend
+      timestamp: messageData.timestamp // Keep timestamp for consistency
+    };
+    // senderId is typically inferred from the token for direct messages
+  }
+
   try {
-    // FIXED: Use SOCKET_SERVER_URL constant for API endpoint
-    const response = await fetch(`${SOCKET_SERVER_URL}/api/messages/negotiation/send`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        senderId: messageData.senderId,
-        receiverId: messageData.receiverId,
-        negotiationId: messageData.negotiationId,
-        messageText: messageData.message, // Backend expects 'messageText'
-        timestamp: messageData.timestamp
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();

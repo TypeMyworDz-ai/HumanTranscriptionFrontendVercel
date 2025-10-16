@@ -6,7 +6,7 @@ import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
 import './AdminChat.css';
 // FIXED: Removed direct 'io' import, use ChatService for socket management
-import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from './ChatService'; 
+import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from './ChatService';
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -48,7 +48,7 @@ const AdminChat = () => {
         let isMounted = true;
         const fetchDetails = async () => {
             if (!isAuthReady || !user || !user.id || user.user_type !== 'admin') return;
-            
+
             const token = localStorage.getItem('token');
             if (!token) { logout(); return; }
 
@@ -88,11 +88,11 @@ const AdminChat = () => {
         // FIXED: Use ChatService for Socket.IO connection
         console.log(`AdminChat: Attempting to connect socket via ChatService for user ID: ${user.id}`);
         const socket = connectSocket(user.id);
-        
+
         const handleSocketConnect = () => {
             if (!isMounted) return;
             // FIXED: Use standardized 'joinUserRoom'
-            socket.emit('joinUserRoom', user.id); 
+            socket.emit('joinUserRoom', user.id);
             socket.emit('joinUserRoom', userId);
             fetchChatMessages();
         };
@@ -106,13 +106,13 @@ const AdminChat = () => {
 
         const handleNewChatMessage = (msg) => {
             if (!isMounted) return;
-            
+
             setMessages((prevMessages) => {
                 const currentLoggedInUser = userRef.current;
                 const currentTargetUser = targetUserRef.current;
 
                 // Ensure message is relevant to this chat
-                const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) || 
+                const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) ||
                                    (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
 
                 if (!isRelevant) return prevMessages; // Ignore irrelevant messages
@@ -152,7 +152,7 @@ const AdminChat = () => {
     const fetchChatMessages = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) { logout(); return; }
-        
+
         try {
             // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/admin/chat/messages/${userId}`, {
@@ -185,15 +185,15 @@ const AdminChat = () => {
     const handleSendMessage = async () => {
         if (newMessage.trim() === '') return;
 
-        const token = localStorage.getItem('token');
+        //const token = localStorage.getItem('token'); // Token is handled by ChatService.sendMessage
         
         try {
             // FIXED: Use sendMessage from ChatService (which now does HTTP POST)
             await sendMessage({
-                senderId: user.id,
+                senderId: user.id, // Explicitly pass senderId for clarity, though backend might infer
                 receiverId: userId,
                 negotiationId: null, // This is a direct chat, not negotiation specific
-                message: newMessage, // Frontend uses 'message', backend expects 'messageText'
+                messageText: newMessage, // Frontend uses 'message', backend expects 'messageText'
                 timestamp: new Date().toISOString()
             });
 
@@ -204,7 +204,7 @@ const AdminChat = () => {
         } catch (error) {
             console.error('Error sending message:', error);
             showToast(error.message || 'Network error sending message.', 'error');
-        } 
+        }
     };
 
     if (loading) {
@@ -267,10 +267,10 @@ const AdminChat = () => {
                                     onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
                                     placeholder="Type your message..."
                                     rows="3"
-                                />
+                                ></textarea>
                                 <div className="message-actions">
-                                    <button 
-                                        onClick={handleSendMessage} 
+                                    <button
+                                        onClick={handleSendMessage}
                                         className="send-message-btn"
                                     >
                                         Send
