@@ -1,10 +1,13 @@
-// frontend/client/src/Login.js
+// frontend/client/src/Login.js - COMPLETE AND UPDATED for Vercel deployment
 
 import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import './Register.css';
 import { useAuth } from './contexts/AuthContext';
+
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -44,7 +47,8 @@ const Login = () => {
 
   const handleTranscriberRedirect = useCallback(async (token, userToRedirect) => {
     try {
-      const response = await fetch('http://localhost:5000/api/transcriber/status', {
+      // FIXED: Use BACKEND_API_URL constant
+      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/status`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -57,7 +61,7 @@ const Login = () => {
         const { user_status, user_level, has_submitted_test, test_submission } = statusData;
         console.log('Detected user_status:', user_status);
         console.log('Detected user_level:', user_level);
-        console.log('Has submitted test:', has_submitted_test);
+        console.log('Has submitted test: ', has_submitted_test);
         console.log('Test submission object:', test_submission);
         console.log('Test submission status:', test_submission?.status);
 
@@ -106,7 +110,8 @@ const Login = () => {
     hideToast();
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      // FIXED: Use BACKEND_API_URL constant
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +129,6 @@ const Login = () => {
         showToast('Login successful! Redirecting...', 'success');
 
         setTimeout(async () => {
-          // CRITICAL FIX: Use data.user directly, which is the latest from the API response
           console.log('Login.js: setTimeout executing. User from API response:', data.user);
           if (data.user.user_type === 'client') {
             navigate('/client-dashboard');
