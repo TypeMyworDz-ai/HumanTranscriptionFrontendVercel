@@ -124,12 +124,13 @@
 }
 
 .status-toggle-btn {
-    /* ... existing styles ... */
     padding: 18px 35px; /* Increased padding */
     border-radius: 30px;
     font-size: 1.2rem; /* Larger button text */
     font-weight: 600;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    border: 1px solid transparent; /* Ensure border exists for consistency */
+    transition: all 0.3s ease-in-out; /* Smooth transitions for all properties */
 }
 
 .status-toggle-btn:hover:not(:disabled) {
@@ -137,7 +138,59 @@
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35); /* Stronger shadow */
 }
 
-/* (The specific color rules for online/offline/available/busy remain good) */
+/* Distinctive colors for status buttons */
+.status-toggle-btn.online { /* For "Go Offline" when currently online */
+    background: #28a745; /* Green */
+    border-color: #28a745;
+    color: white;
+}
+
+.status-toggle-btn.online:hover:not(:disabled) {
+    background: #218838;
+    border-color: #218838;
+}
+
+.status-toggle-btn.offline { /* For "Go Online" when currently offline */
+    background: #dc3545; /* Red */
+    border-color: #dc3545;
+    color: white;
+}
+
+.status-toggle-btn.offline:hover:not(:disabled) {
+    background: #c82333;
+    border-color: #c82333;
+}
+
+.status-toggle-btn.available { /* For "Set Busy" when currently available */
+    background: #007bff; /* Blue */
+    border-color: #007bff;
+    color: white;
+}
+
+.status-toggle-btn.available:hover:not(:disabled) {
+    background: #0069d9;
+    border-color: #0069d9;
+}
+
+.status-toggle-btn.busy { /* For "Set Available" when currently busy */
+    background: #fd7e14; /* Orange */
+    border-color: #fd7e14;
+    color: white;
+}
+
+.status-toggle-btn.busy:hover:not(:disabled) {
+    background: #e66b00;
+    border-color: #e66b00;
+}
+
+.status-toggle-btn:disabled {
+    background: #cccccc;
+    border-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
 
 /* --- Dashboard Cards (Highly Enhanced for Distribution) --- */
 .dashboard-sections-grid {
@@ -278,7 +331,7 @@
     .dashboard-overview h2 {
         font-size: 2.4rem;
     }
-    
+
     .dashboard-overview p {
         font-size: 1.1rem;
     }
