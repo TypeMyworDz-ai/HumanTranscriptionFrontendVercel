@@ -1,4 +1,4 @@
-// src/PaymentCallback.js
+// src/PaymentCallback.js - FIXED: 'user' is not defined error
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
@@ -11,7 +11,8 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const PaymentCallback = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { isAuthenticated, authLoading, logout } = useAuth();
+    // FIXED: Destructure 'user' from useAuth() hook
+    const { user, isAuthenticated, authLoading, logout } = useAuth();
 
     const [paymentStatus, setPaymentStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
     const [message, setMessage] = useState('Verifying your payment...');
@@ -98,11 +99,15 @@ const PaymentCallback = () => {
                 <div className="header-content">
                     <h1>Payment Status</h1>
                     <div className="user-profile-actions">
+                        {/* FIXED: Check if 'user' object exists before accessing its properties */}
                         {isAuthenticated && user && (
                             <>
-                                <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
+                                <span className="welcome-text-badge">Welcome, {user.full_name || 'User'}!</span>
                                 <button onClick={logout} className="logout-btn">Logout</button>
                             </>
+                        )}
+                        {!isAuthenticated && !authLoading && ( // Show login if not authenticated and not loading
+                            <Link to="/login" className="back-to-dashboard-btn">Login</Link>
                         )}
                     </div>
                 </div>
