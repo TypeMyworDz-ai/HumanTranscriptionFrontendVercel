@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // FIXED: Import getSocketInstance and sendMessage from ChatService
-import { getSocketInstance, sendMessage } from './ChatService'; 
+import { getSocketInstance, sendMessage } from './ChatService';
+
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const NegotiationCard = ({
   negotiation,
@@ -72,7 +75,8 @@ const NegotiationCard = ({
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/messages/${negotiationId}`, {
+        // FIXED: Use BACKEND_API_URL constant for the API call
+        const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -180,7 +184,8 @@ const NegotiationCard = ({
             <span className="label">Attached File:</span>
             <span className="value">
               <a
-                href={`http://localhost:5000/uploads/negotiation_files/${negotiation.negotiation_files}`}
+                // FIXED: Use BACKEND_API_URL constant for the file link
+                href={`${BACKEND_API_URL}/uploads/negotiation_files/${negotiation.negotiation_files}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="file-link"
