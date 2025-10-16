@@ -4,17 +4,19 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
-import './ClientDashboard.css'; 
-import io from 'socket.io-client'; 
+import './ClientDashboard.css';
+import io from 'socket.io-client';
 
-// Define the socket server URL explicitly
-const SOCKET_SERVER_URL = 'http://localhost:5000'; 
+// Define the backend URL constant for API calls and Socket.IO connection
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
 // Initialize Socket.IO client outside the component with autoConnect: false
-const socket = io(SOCKET_SERVER_URL, { autoConnect: false }); 
+// FIXED: Use BACKEND_API_URL for socket connection
+const socket = io(BACKEND_API_URL, { autoConnect: false });
 
 
 const UserChat = () => {
-    const { chatId } = useParams(); 
+    const { chatId } = useParams();
     const { user, isAuthReady, logout } = useAuth();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
@@ -23,7 +25,7 @@ const UserChat = () => {
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
     const [chatPartner, setChatPartner] = useState(null);
 
-    const messagesEndRef = useRef(null); 
+    const messagesEndRef = useRef(null);
     const userRef = useRef(user); // Ref to hold latest user object
     const chatPartnerRef = useRef(chatPartner); // Ref to hold latest chatPartner object
 
@@ -40,7 +42,7 @@ const UserChat = () => {
         console.log('UserChat: Auth check useEffect. isAuthReady:', isAuthReady, 'user:', user);
 
         if (!isAuthReady || !user || !user.id || !user.user_type) {
-            if (isAuthReady && !user) { 
+            if (isAuthReady && !user) {
                  console.log("UserChat: Auth ready but no user. Redirecting to login.");
                  navigate('/login');
             }
@@ -55,13 +57,14 @@ const UserChat = () => {
         let isMounted = true; // Cleanup flag
         const fetchDetails = async () => {
             if (!isAuthReady || !user || !user.id || !user.user_type) return; // Gate
-            
+
             const token = localStorage.getItem('token');
             if (!token) { logout(); return; }
 
             console.log('UserChat: Fetching chat partner details for chatId:', chatId);
             try {
-                const response = await fetch(`${SOCKET_SERVER_URL}/api/users/${chatId}`, { 
+                // FIXED: Use BACKEND_API_URL for API call
+                const response = await fetch(`${BACKEND_API_URL}/api/users/${chatId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await response.json();
@@ -70,14 +73,14 @@ const UserChat = () => {
                         setChatPartner(data.user);
                     } else {
                         showToast(data.error || 'Chat partner not found.', 'error');
-                        navigate(user.user_type === 'client' ? '/client-dashboard' : '/transcriber-dashboard'); 
+                        navigate(user.user_type === 'client' ? '/client-dashboard' : '/transcriber-dashboard');
                     }
                 }
             } catch (error) {
                 if (isMounted) {
                     console.error('Error fetching chat partner details:', error);
                     showToast('Network error fetching chat partner details.', 'error');
-                    navigate(user.user_type === 'client' ? '/client-dashboard' : '/transcriber-dashboard'); 
+                    navigate(user.user_type === 'client' ? '/client-dashboard' : '/transcriber-dashboard');
                 }
             }
         };
@@ -100,7 +103,7 @@ const UserChat = () => {
 
         // Connect socket only if not already connected
         if (!socket.connected) {
-            console.log('UserChat: Socket not connected, attempting to connect to:', SOCKET_SERVER_URL);
+            console.log('UserChat: Socket not connected, attempting to connect to:', BACKEND_API_URL); // FIXED: Log BACKEND_API_URL
             socket.connect();
         }
 
@@ -110,7 +113,7 @@ const UserChat = () => {
             socket.emit('joinUserRoom', user.id);
             // Once connected and room joined, we can proceed to fetch messages
             // This prevents fetching messages until the socket is ready for real-time updates
-            fetchChatHistory(); 
+            fetchChatHistory();
         };
 
         if (socket.connected) {
@@ -167,10 +170,11 @@ const UserChat = () => {
     const fetchChatHistory = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) { logout(); return; }
-        
+
         console.log('UserChat: Fetching historical chat messages.');
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/user/chat/messages/${chatId}`, { 
+            // FIXED: Use BACKEND_API_URL for API call
+            const response = await fetch(`${BACKEND_API_URL}/api/user/chat/messages/${chatId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
@@ -178,7 +182,7 @@ const UserChat = () => {
             if (response.ok && data.messages) {
                 const formattedMessages = data.messages.map(msg => ({
                     ...msg,
-                    sender_name: msg.sender_id === userRef.current.id ? userRef.current.full_name : chatPartnerRef.current?.full_name || 'Admin', 
+                    sender_name: msg.sender_id === userRef.current.id ? userRef.current.full_name : chatPartnerRef.current?.full_name || 'Admin',
                     text: msg.content,
                     timestamp: new Date(msg.timestamp).toLocaleString()
                 }));
@@ -207,18 +211,19 @@ const UserChat = () => {
         console.log(`User ${user.full_name} sending message to ${chatPartner?.full_name}: ${newMessage}`);
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`${SOCKET_SERVER_URL}/api/user/chat/send-message`, {
+            // FIXED: Use BACKEND_API_URL for API call
+            const response = await fetch(`${BACKEND_API_URL}/api/user/chat/send-message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
-                    receiverId: chatId, 
+                    receiverId: chatId,
                     messageText: newMessage,
                 })
             });
 
             const data = await response.json();
             if (response.ok) {
-                setNewMessage(''); 
+                setNewMessage('');
             } else {
                 showToast(data.error || 'Failed to send message.', 'error');
             }
