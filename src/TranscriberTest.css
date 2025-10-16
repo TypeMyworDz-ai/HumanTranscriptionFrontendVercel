@@ -1,0 +1,260 @@
+.test-container {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 20px;
+}
+
+.test-header {
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.test-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+.test-header p {
+  margin: 0;
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.test-content {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.instructions-section h2,
+.grammar-section h2,
+.transcription-section h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.instructions-content h3 {
+  color: #555;
+  margin: 20px 0 10px 0;
+  font-size: 1.3rem;
+}
+
+.instructions-content ol,
+.instructions-content ul {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+
+.instructions-content li {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.start-test-btn,
+.next-btn,
+.submit-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  margin-top: 20px;
+}
+
+.start-test-btn:hover,
+.next-btn:hover,
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.back-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-right: 15px;
+  transition: background-color 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+.questions-container {
+  margin: 20px 0;
+}
+
+.question-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.question-card h3 {
+  color: #495057;
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+}
+
+.question-card p {
+  color: #333;
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+}
+
+.option-label:hover {
+  background: #e9ecef;
+}
+
+.option-label input[type="radio"] {
+  margin-right: 12px;
+  transform: scale(1.2);
+}
+
+.option-label span {
+  color: #333;
+  font-size: 14px;
+}
+
+.audio-section {
+  margin: 20px 0;
+}
+
+.audio-placeholder {
+  background: #e3f2fd;
+  border: 2px dashed #2196f3;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.audio-placeholder p {
+  margin: 5px 0;
+  color: #1976d2;
+}
+
+.transcription-input {
+  margin-top: 20px;
+}
+
+.transcription-input label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.transcription-input textarea {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.transcription-input textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.test-actions {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.message {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+@media (max-width: 768px) {
+  .test-container {
+    padding: 15px;
+  }
+  
+  .test-content {
+    padding: 20px;
+  }
+  
+  .test-header h1 {
+    font-size: 2rem;
+  }
+  
+  .test-actions {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .back-btn {
+    margin-right: 0;
+    width: 100%;
+  }
+  
+  .submit-btn {
+    width: 100%;
+  }
+}

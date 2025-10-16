@@ -1,0 +1,314 @@
+/* src/TranscriberDashboard.css */
+
+/* --- Global Body/Container Styles (Enhanced) --- */
+.transcriber-dashboard-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+    font-family: 'Inter', sans-serif;
+    color: #333;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Header Styles (Refined) --- */
+.transcriber-dashboard-header {
+    background: linear-gradient(90deg, #3a2b5a 0%, #5f4a8e 100%);
+    color: white;
+    padding: 20px 0;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); /* Stronger shadow for header lift */
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 30px; /* Increased side padding */
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: flex-end;
+    min-height: 75px; /* Slightly taller header */
+    gap: 25px; /* Increased gap */
+}
+
+.transcriber-dashboard-header h1 {
+    margin: 0;
+    font-size: 2.5rem; /* Slightly larger title */
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+.user-profile-actions {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.welcome-text-badge {
+    justify-self: center;
+    background: #ffc107;
+    color: #3a2b5a;
+    padding: 12px 30px; /* Increased padding */
+    border-radius: 30px;
+    font-size: 1.2rem; /* Slightly larger text */
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Enhanced shadow */
+    transition: transform 0.3s ease;
+}
+
+.welcome-text-badge:hover {
+    transform: translateY(-3px) scale(1.05); /* More prominent lift on hover */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.logout-btn {
+    background: #ff6b6b;
+    border: 1px solid #ff6b6b;
+    color: white;
+    padding: 12px 25px; /* Increased padding */
+    border-radius: 30px; /* More rounded */
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.logout-btn:hover {
+    background: #ee5a52;
+    border-color: #ee5a52;
+    transform: translateY(-2px); /* More noticeable lift */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Main Dashboard Content (Enhanced Aesthetics) --- */
+.transcriber-dashboard-main {
+    flex-grow: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 70px 30px; /* Increased top/bottom padding */
+    width: 100%;
+}
+
+.dashboard-overview {
+    text-align: center;
+    margin-bottom: 70px; /* Increased bottom margin */
+}
+
+.dashboard-overview h2 {
+    color: #3a2b5a;
+    margin-bottom: 15px;
+    font-size: 3.2rem; /* Larger, more dominant title */
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.dashboard-overview p {
+    color: #555;
+    margin-bottom: 30px;
+    font-size: 1.3rem; /* Larger descriptive text */
+    max-width: 800px; /* Wider constraint */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* --- Status Toggles (Enhanced) --- */
+.status-toggles {
+    display: flex;
+    justify-content: center;
+    gap: 30px; /* Increased gap */
+    margin-bottom: 80px; /* More space before cards */
+    flex-wrap: wrap;
+}
+
+.status-toggle-btn {
+    /* ... existing styles ... */
+    padding: 18px 35px; /* Increased padding */
+    border-radius: 30px;
+    font-size: 1.2rem; /* Larger button text */
+    font-weight: 600;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+.status-toggle-btn:hover:not(:disabled) {
+    transform: translateY(-4px); /* Stronger lift */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35); /* Stronger shadow */
+}
+
+/* (The specific color rules for online/offline/available/busy remain good) */
+
+/* --- Dashboard Cards (Highly Enhanced for Distribution) --- */
+.dashboard-sections-grid {
+    display: grid;
+    /* Adjusted grid to ensure wider cards and better full-width distribution */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px; /* Increased gap for a more spacious layout */
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 25px; /* Increased rounding */
+    padding: 45px; /* Increased padding for spacious feel */
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15); /* Deeper initial shadow */
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.4s ease, box-shadow 0.4s ease, background 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e0eafc; /* Subtle, light border */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-12px); /* Stronger lift on hover */
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3); /* Much deeper shadow on hover */
+    background: linear-gradient(135deg, #f7f9ff 0%, #ffffff 100%); /* Subtle white gradient on hover */
+}
+
+.dashboard-card h3 {
+    color: #3a2b5a;
+    font-size: 2.1rem; /* Significantly larger title */
+    margin: 0 0 10px 0;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.dashboard-card p {
+    color: #777;
+    font-size: 1.1rem; /* Slightly larger text */
+    margin-bottom: 30px; /* More space before the link */
+}
+
+.card-icon {
+    /* Significantly Enhanced Icon Styling */
+    font-size: 5.5rem; /* Major increase in icon size */
+    margin-bottom: 30px; /* Increased space below the icon */
+    transition: transform 0.3s ease;
+    line-height: 1;
+}
+
+.dashboard-card:hover .card-icon {
+    transform: scale(1.15); /* More noticeable scale */
+}
+
+.card-link {
+    /* Link button appearance refined */
+    padding: 12px 30px;
+    font-size: 1.05rem;
+    margin-top: 15px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+.card-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Add this to your dashboard CSS files */
+.unread-badge {
+    background-color: #ff4500; /* Bright red for unread count */
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 50%; /* Make it circular */
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px; /* Ensure it's circular even for single digits */
+    height: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+
+/* --- Media Queries (Adjusted for new sizes) --- */
+@media (max-width: 992px) {
+    .transcriber-dashboard-header h1 {
+        font-size: 2.2rem;
+    }
+    .welcome-text-badge {
+        font-size: 1.1rem;
+        padding: 10px 25px;
+    }
+    .transcriber-dashboard-main {
+        padding: 50px 25px;
+    }
+    .dashboard-overview h2 {
+        font-size: 2.8rem;
+    }
+    .status-toggles {
+        gap: 25px;
+        margin-bottom: 60px;
+    }
+    .dashboard-sections-grid {
+        gap: 30px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Keep this minmax */
+    }
+    .dashboard-card {
+        padding: 40px;
+    }
+    .dashboard-card h3 {
+        font-size: 1.8rem;
+    }
+    .card-icon {
+        font-size: 4.5rem; /* Scaled icon size */
+        margin-bottom: 25px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        text-align: center;
+        padding: 0 20px;
+    }
+
+    .transcriber-dashboard-main {
+        padding: 40px 15px;
+    }
+
+    .dashboard-overview h2 {
+        font-size: 2.4rem;
+    }
+    
+    .dashboard-overview p {
+        font-size: 1.1rem;
+    }
+
+    .status-toggles {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .status-toggle-btn {
+        width: 100%;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+    }
+
+    .dashboard-sections-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+
+    .dashboard-card {
+        padding: 35px;
+    }
+
+    .dashboard-card h3 {
+        font-size: 1.6rem;
+    }
+
+    .card-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+    }
+}

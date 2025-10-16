@@ -1,0 +1,158 @@
+/* frontend/client/src/AdminMessageList.css */
+
+.admin-message-list-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e0eafc 100%);
+    font-family: 'Inter', sans-serif;
+    color: #333;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-message-list-main {
+    flex-grow: 1;
+    max-width: 1000px; /* Slightly narrower than general admin management for focus */
+    margin: 0 auto;
+    padding: 40px 30px;
+    width: 100%;
+}
+
+.admin-message-list-section h2 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+.admin-message-list-section p {
+    color: #555;
+    margin-bottom: 40px;
+    font-size: 1.05rem;
+    text-align: center;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.chat-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.chat-list-item {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 5px solid #667eea; /* Highlight for chat items */
+}
+
+.chat-list-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.chat-list-details {
+    flex-grow: 1;
+    display: flex; /* Use flex to align content and time on one line */
+    flex-direction: column;
+}
+
+.chat-list-details h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.3rem;
+    color: #2c3e50;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* To push time to the right */
+}
+
+.chat-list-details h3 span.partner-type {
+    font-size: 0.85rem;
+    font-weight: normal;
+    color: #777;
+    margin-left: 10px;
+    text-transform: capitalize;
+}
+
+.chat-list-details .last-message {
+    color: #777;
+    font-size: 0.95rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%; /* Ensure it fits */
+}
+
+.chat-list-details .last-message-time {
+    font-size: 0.8rem;
+    color: #999;
+    margin-left: auto; /* Push to the right */
+    white-space: nowrap;
+    align-self: flex-start; /* Align with the start of the h3 content */
+}
+
+/* Unread badge for chat list items */
+.chat-list-item .unread-badge {
+    margin-left: 20px; /* Space from message details */
+    flex-shrink: 0; /* Prevent it from shrinking */
+}
+
+.no-data-message {
+    text-align: center;
+    font-style: italic;
+    color: #777;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .admin-message-list-main {
+        padding: 30px 20px;
+    }
+    .admin-message-list-section h2 {
+        font-size: 1.8rem;
+    }
+    .admin-message-list-section p {
+        font-size: 0.95rem;
+    }
+    .chat-list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        padding: 15px;
+    }
+    .chat-list-details h3 {
+        width: 100%; /* Take full width on small screens */
+    }
+    .chat-list-details h3 span.partner-type {
+        margin-left: 0;
+    }
+    .chat-list-details .last-message-time {
+        margin-left: unset; /* Remove auto margin */
+        align-self: flex-start;
+        width: 100%;
+        text-align: right;
+        font-size: 0.75rem;
+    }
+    .chat-list-item .unread-badge {
+        margin-left: 0;
+        align-self: flex-end;
+    }
+}

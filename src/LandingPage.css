@@ -1,0 +1,432 @@
+/* --------------------
+  Global & Background
+-------------------- */
+.landing-page {
+  min-height: 100vh;
+  /* Updated, deeper, and more sophisticated gradient */
+  background: linear-gradient(135deg, #4d3a8e 0%, #2f204a 100%); 
+  color: white;
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+}
+
+/* --------------------
+  Top Navigation Bar (UPDATED)
+-------------------- */
+.top-bar-wrapper {
+  /* Changed to a semi-transparent, slightly lighter purple, or even white/light grey for strong contrast */
+  /* Option 1: Lighter Purple with Transparency (Good if logo is dark) */
+  background: rgba(144, 116, 222, 0.2); 
+  /* Option 2: Solid Lighter Background (Strongest contrast for dark logo/text) */
+  /* background: #f0f0f0;  */ /* Uncomment this line and comment the line above for a very light top bar */
+  
+  padding-bottom: 20px; 
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); 
+  border-bottom: none; 
+  position: relative;
+  z-index: 100;
+}
+
+.top-nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 30px; 
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; 
+  height: 100%;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transform: translateY(10px); 
+  margin-left: 0;
+}
+
+.header-logo {
+  height: 45px; 
+  width: auto;
+  margin-right: 12px;
+  /* Added filter for potential dark logos on light background */
+  /* filter: invert(0%) sepia(100%) saturate(7460%) hue-rotate(30deg) brightness(90%) contrast(100%); */ /* Uncomment if logo is white and needs to be gold */
+  /* filter: invert(0%); */ /* Uncomment if logo is dark and needs to remain dark on a light bar */
+}
+
+.logo-text {
+  font-size: 2rem; 
+  font-weight: 700; 
+  color: #ffc107; /* Kept the gold, but it will pop more with the new top bar */
+  line-height: 1;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.6); /* Slightly stronger shadow for visibility */
+  /* If using a very light top bar, consider a darker text color: */
+  /* color: #333; */
+}
+
+.login-btn {
+  /* Updated for better integration with a potentially lighter top bar, or just better contrast */
+  background: #2f204a; /* Darker purple from the background gradient */
+  border: 1px solid #7e57c2;
+  color: white;
+  padding: 10px 25px; 
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  transform: translateY(10px);
+  margin-right: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.login-btn:hover {
+  background: #3a2b5a;
+  border-color: #9575cd;
+  transform: translateY(8px) scale(1.02);
+}
+
+/* --------------------
+  Header Section
+-------------------- */
+.landing-header {
+  text-align: center;
+  padding: 80px 20px 60px; 
+}
+
+.landing-header h1 {
+  font-size: 3.5rem; 
+  margin-bottom: 15px;
+  font-weight: 800; 
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.landing-header p {
+  font-size: 1.4rem; 
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+/* --------------------
+  Action Section
+-------------------- */
+.action-section {
+  padding: 40px 20px 80px;
+  text-align: center;
+}
+
+.action-section h2 {
+  font-size: 2.8rem; 
+  margin-bottom: 50px;
+  font-weight: 600;
+}
+
+.action-cards {
+  display: flex;
+  justify-content: center;
+  gap: 50px; 
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.action-card {
+  background: rgba(255, 255, 255, 0.05); 
+  backdrop-filter: blur(15px); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 25px; 
+  padding: 50px 30px; 
+  flex: 1;
+  max-width: 400px;
+  min-width: 250px;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.worker-card {
+  background: linear-gradient(145deg, rgba(255, 107, 107, 0.1), rgba(255, 107, 107, 0.05));
+}
+
+.client-card {
+  background: linear-gradient(145deg, rgba(78, 205, 196, 0.1), rgba(78, 205, 196, 0.05));
+}
+
+.action-card:hover {
+  transform: translateY(-15px); 
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.1);
+}
+
+.action-card h3 {
+  font-size: 2.5rem; 
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.action-card p {
+  font-size: 1.2rem;
+  margin-bottom: 35px;
+  opacity: 0.85;
+  font-weight: 300;
+}
+
+.register-btn {
+  padding: 18px 35px; 
+  font-size: 1.2rem;
+  border-radius: 60px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.work-btn {
+  background: #ff6b6b; 
+  color: white;
+}
+
+.work-btn:hover {
+  background: #ee5a52;
+  box-shadow: 0 6px 15px rgba(255, 107, 107, 0.6);
+  transform: scale(1.05);
+}
+
+.hire-btn {
+  background: #4ecdc4; 
+  color: white;
+}
+
+.hire-btn:hover {
+  background: #45b7aa;
+  box-shadow: 0 6px 15px rgba(78, 205, 196, 0.6);
+  transform: scale(1.05);
+}
+
+/* --------------------
+  Company Info Section
+-------------------- */
+.company-info {
+  padding: 100px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between; 
+  align-items: flex-start; 
+  flex-wrap: wrap;
+  gap: 80px; 
+}
+
+.info-text {
+  flex: 1 1 550px; 
+  min-width: 300px;
+  max-width: 650px;
+  text-align: left;
+  display: flex;
+  flex-direction: column; 
+}
+
+.info-text .section-title {
+  width: 100%;
+  font-size: 3rem; 
+  margin-bottom: 30px;
+  font-weight: 700;
+  color: #ffc107; 
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  text-align: left; 
+}
+
+.info-text .intro-paragraph {
+  font-size: 1.2rem;
+  line-height: 1.7;
+  margin-bottom: 35px;
+  opacity: 0.95;
+  font-weight: 300;
+  border-left: 4px solid #4ecdc4; 
+  padding-left: 20px;
+  text-align: left; 
+}
+
+.benefits-and-intro {
+    display: flex;
+    flex-direction: column;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px 30px; 
+  margin-top: 20px; 
+}
+
+@media (min-width: 769px) {
+    .benefits-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.benefits-list li {
+  font-size: 1.1rem;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  border: none;
+}
+
+.info-text li .checkmark {
+  margin-right: 15px; 
+  flex-shrink: 0;
+  font-size: 1.2em; 
+  color: #4ecdc4;
+  transform: translateY(2px); 
+}
+
+.benefit-details {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.benefit-details strong {
+    font-weight: 600;
+    line-height: 1.4;
+    font-size: 1.15em;
+}
+
+.benefit-details span {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+
+.info-visual {
+  flex-shrink: 0;
+  min-width: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-self: flex-start; 
+}
+
+.visual-placeholder {
+  text-align: center;
+  padding: 50px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%; 
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 250px;
+  height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.5s ease;
+}
+
+.visual-placeholder:hover {
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.visual-icon {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 15px;
+  color: #ffc107; 
+}
+
+.visual-placeholder p {
+  font-size: 1.3rem;
+  font-weight: 600;
+  opacity: 1;
+}
+
+/* --------------------
+  Footer Links
+-------------------- */
+.footer-links {
+  background: rgba(0, 0, 0, 0.5); 
+  padding: 30px 20px;
+}
+
+.links-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.links-container a {
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.3s ease, color 0.3s ease;
+  padding: 5px 10px;
+}
+
+.links-container a:hover {
+  opacity: 1;
+  color: #ffc107; 
+  text-decoration: none;
+}
+
+/* --------------------
+  Media Queries (Responsiveness)
+-------------------- */
+@media (max-width: 992px) {
+  .info-content {
+    gap: 50px;
+  }
+
+  .info-text .section-title {
+    font-size: 2.5rem;
+  }
+}
+
+
+@media (max-width: 768px) {
+  /* Mobile adjustments */
+  .info-content {
+    flex-direction: column;
+    gap: 50px;
+  }
+  
+  .info-text {
+      align-items: center;
+      text-align: center;
+  }
+  
+  .info-text .section-title {
+    text-align: center; 
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+  }
+  
+  .info-text .intro-paragraph {
+    padding-left: 0;
+    border-left: none;
+    border-top: 3px solid #4ecdc4;
+    padding-top: 20px;
+    text-align: center;
+  }
+
+  .benefits-list {
+    grid-template-columns: 1fr;
+    gap: 20px 0;
+  }
+  
+  .benefits-list li {
+      justify-content: center;
+  }
+  
+  .info-visual {
+    align-self: center; 
+  }
+}

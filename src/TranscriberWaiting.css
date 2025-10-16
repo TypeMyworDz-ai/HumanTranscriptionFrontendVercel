@@ -1,0 +1,184 @@
+.waiting-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.waiting-header {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.waiting-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.logout-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.waiting-main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.status-card {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  border-radius: 16px;
+  padding: 50px 40px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.status-icon {
+  margin-bottom: 30px;
+}
+
+.hourglass {
+  font-size: 4rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.status-card h2 {
+  color: #28a745;
+  margin: 0 0 20px 0;
+  font-size: 2.2rem;
+  font-weight: bold;
+}
+
+.status-message {
+  font-size: 1.2rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+.info-section,
+.timeline-section,
+.contact-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 25px;
+  margin: 25px 0;
+  text-align: left;
+}
+
+.info-section h3,
+.timeline-section h3,
+.contact-section h3 {
+  color: #495057;
+  margin: 0 0 15px 0;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.info-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info-section li {
+  margin: 10px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.timeline-section p {
+  margin: 0;
+  color: #666;
+  line-height: 1.8;
+  font-size: 1.1rem;
+}
+
+.contact-section p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+.contact-section strong {
+  color: #667eea;
+}
+
+.action-buttons {
+  margin-top: 40px;
+}
+
+.home-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.home-btn:hover {
+  transform: translateY(-2px);
+  text-decoration: none;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .waiting-main {
+    padding: 30px 15px;
+  }
+  
+  .status-card {
+    padding: 30px 20px;
+  }
+  
+  .status-card h2 {
+    font-size: 1.8rem;
+  }
+  
+  .hourglass {
+    font-size: 3rem;
+  }
+  
+  .info-section,
+  .timeline-section,
+  .contact-section {
+    padding: 20px;
+  }
+}

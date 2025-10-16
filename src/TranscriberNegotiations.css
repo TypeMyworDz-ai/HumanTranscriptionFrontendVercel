@@ -1,0 +1,426 @@
+.transcriber-negotiations-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+.transcriber-negotiations-header {
+  background: linear-gradient(90deg, #3a2b5a 0%, #5f4a8e 100%);
+  color: white;
+  padding: 20px 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transcriber-negotiations-header h1 {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.user-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.welcome-text-badge {
+  background: #ffc107;
+  color: #3a2b5a;
+  padding: 10px 25px;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.welcome-text-badge:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.logout-btn {
+  background: #ff6b6b; /* Red logout button */
+  border: 1px solid #ff6b6b;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.logout-btn:hover {
+  background: #ee5a52;
+  border-color: #ee5a52;
+  transform: translateY(-1px);
+}
+
+.transcriber-negotiations-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 50px 25px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 30px;
+}
+
+.header-text h2 {
+  color: #3a2b5a;
+  font-size: 2rem;
+  margin: 0 0 10px 0;
+}
+
+.header-text p {
+  color: #555;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.back-to-dashboard-btn {
+  background: linear-gradient(135deg, #7e57c2 0%, #4d3a8e 100%);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.back-to-dashboard-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+  color: white;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.negotiations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.no-negotiations {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.empty-state {
+  background: white;
+  border-radius: 12px;
+  padding: 60px 40px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.empty-state h3 {
+  color: #666;
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+}
+
+.empty-state p {
+  color: #999;
+  margin: 0 0 30px 0;
+  line-height: 1.6;
+}
+
+.negotiation-card {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.negotiation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.negotiation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.client-info {
+  display: flex;
+  align-items: center;
+}
+
+.client-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ecdc4 0%, #45b7aa 100%); /* Client color */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-right: 15px;
+}
+
+.client-details h3 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.client-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.client-rating-stars {
+  color: #ffc107;
+  font-size: 1rem;
+}
+
+.client-rating-stars .rating-number {
+  margin-left: 5px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.rating-label {
+  color: #777;
+}
+
+.negotiation-status-badge {
+  background: #ffc107; /* Pending color */
+  color: #333;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.negotiation-details {
+  margin-bottom: 20px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: 600;
+  color: #555;
+  flex-shrink: 0;
+  width: 180px;
+}
+
+.value {
+  color: #333;
+  text-align: right;
+  flex-grow: 1;
+}
+
+.value.price {
+  font-weight: bold;
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.file-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.file-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.negotiation-actions {
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right */
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #7e57c2 0%, #4d3a8e 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.accept-btn {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.accept-btn:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ca67d 100%);
+}
+
+.counter-btn {
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+  color: #333;
+}
+
+.counter-btn:hover {
+  background: linear-gradient(135deg, #e0a800 0%, #c99300 100%);
+}
+
+.reject-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.reject-btn:hover {
+  background: linear-gradient(135deg, #c82333 0%, #b21f2d 100%);
+}
+
+/* Styles for Modal forms within TranscriberNegotiations */
+.modal-body .form-group {
+  margin-bottom: 20px;
+}
+
+.modal-body label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-body input[type="text"],
+.modal-body input[type="number"],
+.modal-body textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modal-body input[type="text"]:focus,
+.modal-body input[type="number"]:focus,
+.modal-body textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* --- Media Queries --- */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .user-profile-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .transcriber-negotiations-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .transcriber-negotiations-main {
+    padding: 30px 15px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .negotiation-card {
+    padding: 20px;
+  }
+
+  .negotiation-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .label {
+    width: auto;
+    text-align: left;
+  }
+
+  .value {
+    text-align: left;
+  }
+
+  .negotiation-actions {
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+}

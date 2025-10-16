@@ -1,0 +1,166 @@
+/* frontend/client/src/AdminChat.css */
+
+/* ... (previous styles) ... */
+
+.message-input-area {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #e0eafc;
+    background-color: #f8f9fa;
+    align-items: flex-end; /* Align items to the bottom */
+}
+
+.input-controls {
+    display: flex;
+    align-items: flex-end; /* Align items to the bottom */
+    flex-grow: 1; /* Allow input controls to take available space */
+    gap: 10px; /* Space between textarea and buttons */
+}
+
+.message-input-area textarea {
+    flex-grow: 1; /* Make textarea take up available horizontal space */
+    padding: 12px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    resize: none; /* Prevent manual resizing */
+    font-size: 1rem;
+    /* Removed margin-right as gap handles spacing */
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width */
+    height: auto; /* Allow height to adjust based on content */
+    min-height: 40px; /* Minimum height */
+    max-height: 120px; /* Maximum height before scrolling */
+}
+
+.message-input-area textarea:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.1rem rgba(102, 126, 234, 0.25);
+    outline: none;
+}
+
+.message-actions {
+    display: flex;
+    align-items: flex-end; /* Align buttons to the bottom */
+    /* margin-left is handled by gap in input-controls */
+}
+
+.attach-file-btn {
+    background-color: #9b59b6; /* Muted purple */
+    color: white;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 8px; /* Slightly more rounded */
+    cursor: pointer;
+    font-size: 1.2em; /* Larger icon */
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.attach-file-btn:hover {
+    background-color: #8e44ad; /* Darker purple on hover */
+    transform: translateY(-1px);
+}
+
+.attach-file-btn:disabled {
+    background-color: #bdc3c7; /* Gray when disabled */
+    cursor: not-allowed;
+    transform: none;
+}
+
+.send-message-btn {
+    background-color: #667eea;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+    white-space: nowrap; /* Prevent text wrapping */
+    height: 40px; /* Ensure button height matches textarea */
+    box-sizing: border-box;
+}
+
+.send-message-btn:hover {
+    background-color: #5a67d8;
+}
+
+.selected-file-preview {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    background-color: #eaf2f8; /* Light blue background */
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    color: #2c3e50; /* Dark text */
+}
+
+.selected-file-preview span {
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    word-break: break-all; /* Break long file names */
+}
+
+.remove-file-btn {
+    background-color: #f44336; /* Red color */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    font-size: 0.7em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background-color 0.3s ease;
+}
+
+.remove-file-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* Responsive Adjustments for Input Area */
+@media (max-width: 768px) {
+    .message-input-area {
+        padding: 10px;
+    }
+    .input-controls {
+        gap: 5px;
+    }
+    .message-input-area textarea {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+        min-height: 35px;
+    }
+    .attach-file-btn, .send-message-btn {
+        padding: 8px 12px;
+        height: 35px;
+        width: 35px;
+        font-size: 1em;
+    }
+    .remove-file-btn {
+        width: 18px;
+        height: 18px;
+        font-size: 0.6em;
+    }
+}
+
+@media (max-width: 480px) {
+    .message-input-area textarea {
+        font-size: 0.85rem;
+    }
+    .attach-file-btn, .send-message-btn {
+        font-size: 0.9em;
+        height: 32px;
+        width: 32px;
+    }
+}
