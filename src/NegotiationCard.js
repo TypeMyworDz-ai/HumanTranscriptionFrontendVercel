@@ -1,7 +1,8 @@
-// src/NegotiationCard.js - COMPLETE AND CORRECTED (Final Version) - with Payment Button and proper syntax
+// src/NegotiationCard.js - COMPLETE AND CORRECTED (Final Version) - with Payment Button and Rating Feature
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocketInstance, sendMessage } from './ChatService';
+import Modal from './Modal'; // NEW: Import Modal component
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -33,6 +34,12 @@ const NegotiationCard = ({
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
   const chatWindowRef = useRef(null);
+
+  // NEW: State for Transcriber Rating Modal
+  const [showRateTranscriberModal, setShowRateTranscriberModal] = useState(false);
+  const [ratingScore, setRatingScore] = useState(5); // Default to 5 stars
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingModalLoading, setRatingModalLoading] = useState(false);
 
   const handleReceiveMessageForCard = useCallback((data) => {
     if (data.negotiation_id === negotiationId) {
@@ -100,7 +107,7 @@ const NegotiationCard = ({
         senderId: currentUserId,
         receiverId: otherPartyId,
         negotiationId: negotiationId,
-        messageText: cardNewMessage, // Ensure this matches backend expected parameter
+        messageText: cardNewMessage,
         timestamp: new Date().toISOString()
       };
 
@@ -108,7 +115,7 @@ const NegotiationCard = ({
         await sendMessage(messageData);
         setCardMessages(prevMessages => [...prevMessages, {
             ...messageData,
-            content: messageData.messageText, // Use 'content' for display, matching fetched messages
+            content: messageData.messageText,
             is_read: false,
             id: Date.now().toString()
         }]);
@@ -122,6 +129,67 @@ const NegotiationCard = ({
       else showToast('Cannot send message: missing required info (user, negotiation, or recipient).', 'error');
     }
   };
+
+  // NEW: Rating Modal Handlers
+  const openRateTranscriberModal = useCallback(() => {
+      setShowRateTranscriberModal(true);
+      setRatingScore(5); // Reset to default
+      setRatingComment(''); // Clear comment
+  }, []);
+
+  const closeRateTranscriberModal = useCallback(() => {
+      setShowRateTranscriberModal(false);
+      setRatingModalLoading(false);
+  }, []);
+
+  const handleRatingChange = useCallback((e) => {
+      setRatingScore(parseInt(e.target.value, 10));
+  }, []);
+
+  const handleCommentChange = useCallback((e) => {
+      setRatingComment(e.target.value);
+  }, []);
+
+  const submitTranscriberRating = useCallback(async () => {
+      setRatingModalLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+          showToast('Authentication token missing. Please log in again.', 'error');
+          onLogout(); // Assuming onLogout is passed to log out
+          return;
+      }
+
+      try {
+          const response = await fetch(`${BACKEND_API_URL}/api/ratings/transcriber`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                  negotiationId: negotiationId,
+                  score: ratingScore,
+                  comment: ratingComment
+              })
+          });
+          const data = await response.json();
+
+          if (response.ok) {
+              showToast(data.message || 'Transcriber rated successfully!', 'success');
+              closeRateTranscriberModal();
+              // You might want to refresh the parent component's data here
+              // e.g., if ClientNegotiations needs to update to show rating given
+          } else {
+              showToast(data.error || 'Failed to submit rating.', 'error');
+          }
+      } catch (error) {
+          console.error('Error submitting transcriber rating:', error);
+          showToast('Network error while submitting rating.', 'error');
+      } finally {
+          setRatingModalLoading(false);
+      }
+  }, [negotiationId, ratingScore, ratingComment, showToast, onLogout, closeRateTranscriberModal]);
+
 
   return (
     <div className="negotiation-card">
@@ -188,7 +256,7 @@ const NegotiationCard = ({
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>
-          <span className="value">{negotiation.deadline_hours} hours</span> {/* Corrected here */}
+          <span className="value">{negotiation.deadline_hours} hours</span>
         </div>
         <div className="detail-row">
           <span className="label">Requested:</span>
@@ -327,6 +395,13 @@ const NegotiationCard = ({
               </div>
             )}
 
+            {negotiation.status === 'completed' && ( // NEW: Rate Transcriber button for completed jobs
+              <div className="completed-actions">
+                  <span className="success-text">🎉 Job Completed!</span>
+                  <button onClick={openRateTranscriberModal} className="action-btn rate-transcriber-btn">Rate Transcriber</button>
+              </div>
+            )}
+
             {negotiation.status === 'rejected' && (
               <div className="rejected-actions">
                 <span className="error-text">❌ Negotiation was rejected.</span>
@@ -338,7 +413,7 @@ const NegotiationCard = ({
                 <span className="error-text">❌ Negotiation was cancelled.</span>
               </div>
             )}
-            {(negotiation.status === 'completed' || negotiation.status === 'rejected' || negotiation.status === 'cancelled') && (
+            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled') && ( // Only allow delete for rejected/cancelled
                 <div className="closed-actions">
                     {onDelete && <button
                         onClick={() => onDelete(negotiation.id)}
@@ -391,6 +466,47 @@ const NegotiationCard = ({
           </>
         )}
       </div>
+
+      {/* NEW: Rate Transcriber Modal */}
+      {showRateTranscriberModal && (
+          <Modal
+              show={showRateTranscriberModal}
+              title={`Rate ${otherPartyName}`}
+              onClose={closeRateTranscriberModal}
+              onSubmit={submitTranscriberRating}
+              submitText="Submit Rating"
+              loading={ratingModalLoading}
+          >
+              <p>How would you rate the transcriber's performance for this job?</p>
+              <div className="form-group">
+                  <label htmlFor="ratingScore">Score (1-5 Stars):</label>
+                  <select
+                      id="ratingScore"
+                      name="ratingScore"
+                      value={ratingScore}
+                      onChange={handleRatingChange}
+                      required
+                  >
+                      <option value="5">5 Stars - Excellent</option>
+                      <option value="4">4 Stars - Very Good</option>
+                      <option value="3">3 Stars - Good</option>
+                      <option value="2">2 Stars - Fair</option>
+                      <option value="1">1 Star - Poor</option>
+                  </select>
+              </div>
+              <div className="form-group">
+                  <label htmlFor="ratingComment">Comments (Optional):</label>
+                  <textarea
+                      id="ratingComment"
+                      name="ratingComment"
+                      value={ratingComment}
+                      onChange={handleCommentChange}
+                      placeholder="Share your feedback..."
+                      rows="3"
+                  ></textarea>
+              </div>
+          </Modal>
+      )}
     </div>
   );
 };

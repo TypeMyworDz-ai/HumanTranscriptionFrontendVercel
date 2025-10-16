@@ -1,4 +1,4 @@
-// src/TranscriberPool.js - Part 1 - UPDATED for Vercel deployment
+// src/TranscriberPool.js - Part 1 - UPDATED for Vercel deployment and prominent transcriber ratings
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -54,7 +54,6 @@ const TranscriberPool = () => {
 
     setLoading(true);
     try {
-      // FIXED: Use BACKEND_API_URL constant for the API call
       const response = await fetch(`${BACKEND_API_URL}/api/transcribers/available`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -63,7 +62,6 @@ const TranscriberPool = () => {
 
       const data = await response.json();
       if (response.ok) {
-        // FIXED: Filter out transcribers with missing essential data - now checking users.full_name
         const validTranscribers = data.transcribers.filter(transcriber =>
           transcriber &&
           transcriber.users &&
@@ -185,7 +183,6 @@ const TranscriberPool = () => {
       formData.append('deadline_hours', parseInt(negotiationData.deadlineHours));
       formData.append('negotiationFile', negotiationData.negotiationFile);
 
-      // FIXED: Use BACKEND_API_URL constant for the API call
       const response = await fetch(`${BACKEND_API_URL}/api/negotiations/create`, {
         method: 'POST',
         headers: {
@@ -221,7 +218,7 @@ const TranscriberPool = () => {
     };
     return colors[badge] || '#6c757d';
   }, []);
-// src/TranscriberPool.js - Part 2 (Continue from Part 1)
+// src/TranscriberPool.js - Part 2 - UPDATED for Vercel deployment and prominent transcriber ratings (Continue from Part 1)
 
   // Conditional rendering based on AuthContext state and local loading
   if (authLoading) {
@@ -271,11 +268,15 @@ const TranscriberPool = () => {
             transcribers.map(transcriber => (
               <div key={transcriber.id} className="transcriber-card">
                 <div className="transcriber-header">
-                  <div className="transcriber-avatar">
-                    {(transcriber.users?.full_name || 'Unknown').charAt(0).toUpperCase()}
-                  </div>
+                  <Link to={`/transcriber-profile/${transcriber.id}`} className="transcriber-profile-link"> {/* NEW: Link to Transcriber Profile */}
+                    <div className="transcriber-avatar">
+                      {(transcriber.users?.full_name || 'Unknown').charAt(0).toUpperCase()}
+                    </div>
+                  </Link>
                   <div className="transcriber-info">
-                    <h3>{transcriber.users?.full_name || 'Unknown Transcriber'}</h3>
+                    <Link to={`/transcriber-profile/${transcriber.id}`} className="transcriber-profile-link"> {/* NEW: Link to Transcriber Profile */}
+                      <h3>{transcriber.users?.full_name || 'Unknown Transcriber'}</h3>
+                    </Link>
                     <div className="online-status">
                       <span className="status-dot online"></span>
                       Online & Available

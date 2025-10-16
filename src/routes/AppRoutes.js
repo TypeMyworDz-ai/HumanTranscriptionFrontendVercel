@@ -1,4 +1,4 @@
-// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History and Client Jobs Routes
+// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, and Profile Routes
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
@@ -34,8 +34,11 @@ import ResetPassword from '../ResetPassword.js';
 import TranscriberPaymentHistory from '../TranscriberPaymentHistory';
 import PaymentCallback from '../PaymentCallback';
 // NEW: Import Client-specific components
-import ClientPaymentHistory from '../ClientPaymentHistory'; // NEW: Client Payment History
-import ClientJobs from '../ClientJobs'; // NEW: Client Jobs
+import ClientPaymentHistory from '../ClientPaymentHistory';
+import ClientJobs from '../ClientJobs';
+// NEW: Import Profile-related components
+import ClientProfile from '../ClientProfile'; // NEW: Client Profile
+import TranscriberProfile from '../TranscriberProfile'; // NEW: Transcriber Profile
 
 
 const AppRoutes = () => {
@@ -60,8 +63,9 @@ const AppRoutes = () => {
                 <Route path="/client-negotiations" element={<ClientNegotiations />} />
                 <Route path="/transcriber-pool" element={<TranscriberPool />} />
                 <Route path="/client/chat/:chatId" element={<UserChat />} />
-                <Route path="/client-payments" element={<ClientPaymentHistory />} /> {/* NEW: Client Payment History Route */}
-                <Route path="/client-jobs" element={<ClientJobs />} /> {/* NEW: Client Jobs Route */}
+                <Route path="/client-payments" element={<ClientPaymentHistory />} />
+                <Route path="/client-jobs" element={<ClientJobs />} />
+                <Route path="/client-profile/:clientId" element={<ClientProfile />} /> {/* NEW: Client Profile Route */}
 
 
                 {/* Transcriber Routes */}
@@ -71,6 +75,7 @@ const AppRoutes = () => {
                 <Route path="/transcriber-waiting" element={<TranscriberWaiting />} />
                 <Route path="/transcriber/chat/:chatId" element={<UserChat />} />
                 <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
+                <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} /> {/* NEW: Transcriber Profile Route */}
 
 
                 {/* Admin Routes */}

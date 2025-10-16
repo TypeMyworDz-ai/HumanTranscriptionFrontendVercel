@@ -1,4 +1,4 @@
-// src/TranscriberDashboard.js - Part 1 - UPDATED for simplified online/availability logic and Payment History card
+// src/TranscriberDashboard.js - Part 1 - UPDATED for simplified online/availability logic, Payment History card, and Transcriber Profile Link
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -386,7 +386,8 @@ const TranscriberDashboard = () => {
               <p>View your finished projects and earnings.</p>
             </Link>
 
-            <Link to="/transcriber-profile" className="dashboard-card">
+            {/* NEW: Link to Transcriber Profile */}
+            <Link to={`/transcriber-profile/${user.id}`} className="dashboard-card">
               <div className="card-icon">⭐</div>
               <h3>Profile & Ratings</h3>
               <p>Update your profile and check client feedback.</p>
@@ -395,7 +396,7 @@ const TranscriberDashboard = () => {
             {/* NEW: Payment History Card */}
             <Link to="/transcriber-payments" className="dashboard-card">
               <div className="card-icon">💰</div>
-              <h3>Payment History (KES {totalEarnings.toLocaleString()})</h3> {/* Display total earnings */}
+              <h3>Payment History (KES {totalEarnings.toLocaleString()})</h3>
               <p>Review your past transactions and earnings.</p>
             </Link>
           </div>

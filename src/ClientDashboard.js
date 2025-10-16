@@ -1,4 +1,4 @@
-// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, and My Jobs link
+// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and Client Profile Link
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -235,7 +235,7 @@ const ClientDashboard = () => {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
-// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, and My Jobs link (Continue from Part 1)
+// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and Client Profile Link (Continue from Part 1)
 
 
   // Display a loading indicator if client-specific data is still being fetched.
@@ -264,7 +264,10 @@ const ClientDashboard = () => {
           <h1>Client Dashboard</h1>
           <div className="user-info">
             {/* Safely access user.full_name with optional chaining */}
-            <span>Welcome, {user?.full_name || 'Client'}!</span>
+            {/* NEW: Wrap welcome text in a Link to ClientProfile */}
+            <Link to={`/client-profile/${user.id}`} className="welcome-text-link">
+              <span className="welcome-text-badge">Welcome, {user?.full_name || 'Client'}!</span>
+            </Link>
             <button onClick={logout} className="logout-btn">
               Logout
             </button>
