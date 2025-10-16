@@ -1,8 +1,9 @@
-// frontend/client/src/Login.js - COMPLETE AND UPDATED for Vercel deployment
+// frontend/client/src/Login.js - COMPLETE AND UPDATED with Forgot Password functionality
 
 import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
+import Modal from './Modal'; // Import the Modal component
 import './Register.css';
 import { useAuth } from './contexts/AuthContext';
 
@@ -22,6 +23,11 @@ const Login = () => {
   });
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // NEW: State for Forgot Password Modal
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleChange = useCallback((e) => {
     setFormData((prev) => ({
@@ -47,7 +53,6 @@ const Login = () => {
 
   const handleTranscriberRedirect = useCallback(async (token, userToRedirect) => {
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/transcriber/status`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -110,7 +115,6 @@ const Login = () => {
     hideToast();
 
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -154,6 +158,37 @@ const Login = () => {
     }
   }, [formData, hideToast, login, navigate, showToast, handleTranscriberRedirect]);
 
+  // NEW: Handle Forgot Password Request
+  const handleForgotPasswordRequest = useCallback(async (e) => {
+    e.preventDefault();
+    setResetLoading(true);
+    hideToast();
+
+    try {
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        showToast(data.message || 'Password reset link sent to your email!', 'success');
+        setShowForgotPasswordModal(false);
+        setResetEmail('');
+      } else {
+        showToast(data.error || 'Failed to send password reset link.', 'error');
+      }
+    } catch (error) {
+      console.error('Error requesting password reset:', error);
+      showToast('Network error. Please try again.', 'error');
+    } finally {
+      setResetLoading(false);
+    }
+  }, [resetEmail, hideToast, showToast]);
+
   return (
     <div className="register-container">
       <Link to="/" className="back-link">← Back to Home</Link>
@@ -188,6 +223,17 @@ const Login = () => {
         </button>
       </form>
 
+      {/* NEW: Forgot Password Link */}
+      <div style={{ textAlign: 'center', marginTop: '10px' }}>
+        <button 
+          onClick={() => setShowForgotPasswordModal(true)} 
+          className="forgot-password-link"
+          style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
+        >
+          Forgot Password?
+        </button>
+      </div>
+
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <p>Don't have an account?</p>
         <Link to="/client-register" style={{ marginRight: '10px' }}>Register as Client</Link>
@@ -202,6 +248,31 @@ const Login = () => {
         onClose={hideToast}
         duration={toast.type === 'success' ? 2000 : 4000}
       />
+
+      {/* NEW: Forgot Password Modal */}
+      {showForgotPasswordModal && (
+        <Modal
+          show={showForgotPasswordModal}
+          title="Forgot Password"
+          onClose={() => setShowForgotPasswordModal(false)}
+          onSubmit={handleForgotPasswordRequest}
+          submitText={resetLoading ? 'Sending...' : 'Send Reset Link'}
+          loading={resetLoading}
+        >
+          <p>Enter your email address to receive a password reset link.</p>
+          <div className="form-group">
+            <label htmlFor="resetEmail">Email:</label>
+            <input
+              id="resetEmail"
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              required
+              placeholder="your-email@example.com"
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
