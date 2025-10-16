@@ -2,14 +2,11 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-// FIXED: Adjusted import path for AuthContext from './contexts/AuthContext' to '../contexts/AuthContext' 
-// assuming AdminChat is inside src/ and contexts is also inside src/
+// FIXED: Reverting to '../' for dependencies that might be located in the parent folder (src) 
+// relative to a component subfolder (e.g., src/components/AdminChat.js).
 import { useAuth } from '../contexts/AuthContext'; 
-// FIXED: Adjusted import path for Toast from './Toast' to '../Toast'
 import Toast from '../Toast';
-// FIXED: Adjusted import path for CSS from './AdminChat.css' to './AdminChat.css' (assuming same directory for CSS)
 import './AdminChat.css';
-// FIXED: Adjusted import path for ChatService from './ChatService' to '../ChatService'
 import { connectSocket, disconnectSocket, sendMessage, getSocketInstance } from '../ChatService'; 
 
 // Define the backend URL constant for API calls within this component
