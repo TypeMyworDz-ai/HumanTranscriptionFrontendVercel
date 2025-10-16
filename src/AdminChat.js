@@ -185,22 +185,19 @@ const AdminChat = () => {
     const handleSendMessage = async () => {
         if (newMessage.trim() === '') return;
 
-        //const token = localStorage.getItem('token'); // Token is handled by ChatService.sendMessage
-        
         try {
-            // FIXED: Use sendMessage from ChatService (which now does HTTP POST)
+            // FIXED: Use sendMessage from ChatService, passing senderUserType
             await sendMessage({
-                senderId: user.id, // Explicitly pass senderId for clarity, though backend might infer
+                senderId: user.id,
                 receiverId: userId,
                 negotiationId: null, // This is a direct chat, not negotiation specific
-                messageText: newMessage, // Frontend uses 'message', backend expects 'messageText'
-                timestamp: new Date().toISOString()
+                messageText: newMessage,
+                timestamp: new Date().toISOString(),
+                senderUserType: user.user_type // NEW: Pass the sender's user type
             });
 
-            // On successful send, update local state immediately (message will be emitted back via WebSocket)
             setNewMessage('');
-            // No need to manually add to messages state here, as the WebSocket will emit it back
-            // and handleNewChatMessage will add it.
+            // The message will be emitted back via WebSocket and handled by handleNewChatMessage
         } catch (error) {
             console.error('Error sending message:', error);
             showToast(error.message || 'Network error sending message.', 'error');

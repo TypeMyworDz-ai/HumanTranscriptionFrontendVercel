@@ -1,4 +1,4 @@
-// src/TranscriberPool.js - Part 1
+// src/TranscriberPool.js - Part 1 - UPDATED for Vercel deployment
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -6,6 +6,9 @@ import Toast from './Toast';
 import './TranscriberPool.css';
 
 import { useAuth } from './contexts/AuthContext';
+
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const TranscriberPool = () => {
   const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -51,7 +54,8 @@ const TranscriberPool = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/transcribers/available', {
+      // FIXED: Use BACKEND_API_URL constant for the API call
+      const response = await fetch(`${BACKEND_API_URL}/api/transcribers/available`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,10 +64,10 @@ const TranscriberPool = () => {
       const data = await response.json();
       if (response.ok) {
         // FIXED: Filter out transcribers with missing essential data - now checking users.full_name
-        const validTranscribers = data.transcribers.filter(transcriber => 
-          transcriber && 
+        const validTranscribers = data.transcribers.filter(transcriber =>
+          transcriber &&
           transcriber.users &&
-          transcriber.users.full_name && 
+          transcriber.users.full_name &&
           typeof transcriber.users.full_name === 'string' &&
           transcriber.id
         );
@@ -181,7 +185,8 @@ const TranscriberPool = () => {
       formData.append('deadline_hours', parseInt(negotiationData.deadlineHours));
       formData.append('negotiationFile', negotiationData.negotiationFile);
 
-      const response = await fetch('http://localhost:5000/api/negotiations/create', {
+      // FIXED: Use BACKEND_API_URL constant for the API call
+      const response = await fetch(`${BACKEND_API_URL}/api/negotiations/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -82,9 +82,9 @@ export const connectSocket = (userId) => {
 
 /**
  * Sends a message to the server via HTTP POST.
- * Dynamically chooses between negotiation-specific or direct message endpoints.
+ * Dynamically chooses between negotiation-specific, user direct, or admin direct message endpoints.
  * @param {object} messageData - The message object.
- *   Expected format: { senderId: string (optional for direct), receiverId: string, messageText: string, negotiationId: string (optional) }
+ *   Expected format: { senderId: string, receiverId: string, messageText: string, negotiationId: string (optional), senderUserType: string (optional) }
  */
 export const sendMessage = async (messageData) => {
   const token = localStorage.getItem('token');
@@ -96,23 +96,33 @@ export const sendMessage = async (messageData) => {
   let endpoint = '';
   let payload = {};
 
-  // FIXED: Conditional endpoint and payload based on negotiationId
   if (messageData.negotiationId) {
+    // Use the negotiation-specific endpoint if negotiationId is provided
     endpoint = `${BACKEND_API_URL}/api/messages/negotiation/send`;
     payload = {
       senderId: messageData.senderId,
       receiverId: messageData.receiverId,
       negotiationId: messageData.negotiationId,
-      messageText: messageData.messageText, // Use messageText as expected by backend
+      messageText: messageData.messageText,
       timestamp: messageData.timestamp
     };
-  } else {
-    // For direct user-to-user messages (e.g., Admin to User)
+  } else if (messageData.senderUserType === 'admin') { // FIXED: Check for admin user type for direct messages
+    // Use the dedicated admin direct message endpoint
+    endpoint = `${BACKEND_API_URL}/api/admin/chat/send-message`; // ASSUMED ADMIN DIRECT MESSAGE ROUTE
+    payload = {
+      receiverId: messageData.receiverId,
+      messageText: messageData.messageText,
+      timestamp: messageData.timestamp
+    };
+    // senderId is typically inferred from the token for admin messages
+  }
+  else {
+    // Use the general user direct message endpoint if no negotiationId and not an admin
     endpoint = `${BACKEND_API_URL}/api/user/chat/send-message`;
     payload = {
       receiverId: messageData.receiverId,
-      messageText: messageData.messageText, // Use messageText as expected by backend
-      timestamp: messageData.timestamp // Keep timestamp for consistency
+      messageText: messageData.messageText,
+      timestamp: messageData.timestamp
     };
     // senderId is typically inferred from the token for direct messages
   }
@@ -132,7 +142,7 @@ export const sendMessage = async (messageData) => {
       console.error('ChatService: Failed to send message via HTTP:', data.error || 'Unknown error');
       throw new Error(data.error || 'Failed to send message.');
     }
-    console.log('ChatService: Message sent successfully via HTTP POST:', data);
+    console.log('ChatService: Message sent successfully via HTTP POST: ', data);
     return data;
   } catch (error) {
     console.error('ChatService: Network error sending message via HTTP POST:', error);
