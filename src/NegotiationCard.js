@@ -1,31 +1,27 @@
-// src/NegotiationCard.js - Part 1 - COMPLETE AND CORRECTED (Final Version)
+// src/NegotiationCard.js - COMPLETE AND CORRECTED (Final Version) - with Payment Button and proper syntax
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-// FIXED: Import getSocketInstance and sendMessage from ChatService
 import { getSocketInstance, sendMessage } from './ChatService';
 
-// Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const NegotiationCard = ({
   negotiation,
   onDelete,
-  onPayment,
+  onPayment, // This prop is used for the "Proceed to Payment" button
   onLogout,
   getStatusColor,
   getStatusText,
   showToast,
   currentUserId,
   currentUserType,
-  // Client-specific modal handlers (passed from ClientNegotiations)
   openAcceptCounterModal,
   openRejectCounterModal,
   openCounterBackModal,
-  // Transcriber-specific modal handlers (passed from TranscriberNegotiations)
   openAcceptModal,
   openCounterModal,
   openRejectModal,
-  openCompleteJobModal // Added for transcriber job completion
+  openCompleteJobModal
 }) => {
   const negotiationId = negotiation.id;
 
@@ -36,20 +32,16 @@ const NegotiationCard = ({
 
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
-  const chatWindowRef = useRef(null); // Ref for auto-scrolling chat
+  const chatWindowRef = useRef(null);
 
-  // Handler for receiving messages for this specific negotiation
   const handleReceiveMessageForCard = useCallback((data) => {
-    // FIXED: Ensure the message is for *this* negotiation card
-    if (data.negotiation_id === negotiationId) { // Check negotiation_id from backend payload
+    if (data.negotiation_id === negotiationId) {
       setCardMessages(prevMessages => [...prevMessages, data]);
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
     }
   }, [negotiationId]);
 
-  // Effect to set up listener for this card's messages
   useEffect(() => {
-    // FIXED: Get the global socket instance from ChatService
     const socket = getSocketInstance();
 
     if (socket) {
@@ -63,9 +55,8 @@ const NegotiationCard = ({
         console.log(`NegotiationCard: Detached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
-  }, [negotiationId, handleReceiveMessageForCard]); // Dependencies are correct
+  }, [negotiationId, handleReceiveMessageForCard]);
 
-  // Fetch message history when the card loads
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -75,7 +66,6 @@ const NegotiationCard = ({
           return;
         }
 
-        // FIXED: Use BACKEND_API_URL constant for the API call
         const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -98,32 +88,30 @@ const NegotiationCard = ({
     fetchMessages();
   }, [negotiationId, showToast]);
 
-  // Auto-scroll chat window to bottom
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [cardMessages]);
 
-  // Handler to send a message from this card's input
-  const handleSendMessageForCard = async () => { // Made async
+  const handleSendMessageForCard = async () => {
     if (cardNewMessage.trim() && currentUserId && negotiationId && otherPartyId) {
       const messageData = {
         senderId: currentUserId,
         receiverId: otherPartyId,
         negotiationId: negotiationId,
-        message: cardNewMessage,
+        messageText: cardNewMessage, // Ensure this matches backend expected parameter
         timestamp: new Date().toISOString()
       };
-      
+
       try {
-        await sendMessage(messageData); // Await the HTTP POST
-        // On successful send, update local state immediately
-        setCardMessages(prevMessages => [...prevMessages, { 
-            ...messageData, 
-            is_read: false, // Assume unread by receiver
-            id: Date.now().toString() // Temporary ID for local display
-        }]); 
+        await sendMessage(messageData);
+        setCardMessages(prevMessages => [...prevMessages, {
+            ...messageData,
+            content: messageData.messageText, // Use 'content' for display, matching fetched messages
+            is_read: false,
+            id: Date.now().toString()
+        }]);
         setCardNewMessage('');
       } catch (error) {
         showToast(error.message || 'Failed to send message.', 'error');
@@ -184,7 +172,6 @@ const NegotiationCard = ({
             <span className="label">Attached File:</span>
             <span className="value">
               <a
-                // FIXED: Use BACKEND_API_URL constant for the file link
                 href={`${BACKEND_API_URL}/uploads/negotiation_files/${negotiation.negotiation_files}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -201,7 +188,7 @@ const NegotiationCard = ({
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>
-          <span className="value">{negotiation.deadline_hours} hours</span>
+          <span className="value">{negotiation.deadline_hours} hours</span> {/* Corrected here */}
         </div>
         <div className="detail-row">
           <span className="label">Requested:</span>
@@ -221,7 +208,6 @@ const NegotiationCard = ({
           <p>{negotiation.client_response}</p>
         </div>
       )}
-
 
       {/* --- CHAT INTEGRATION FOR THIS CARD --- */}
       <div className="chat-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
@@ -322,7 +308,7 @@ const NegotiationCard = ({
 
             {negotiation.status === 'accepted' && (
               <div className="agreed-actions">
-                <span className="success-text">✅ Accepted! Ready to proceed.</span>
+                <span className="success-text">✅ Accepted! Proceed to Payment.</span>
                 {onPayment && <button
                   onClick={() => onPayment(negotiation)}
                   className="payment-btn"
@@ -334,7 +320,7 @@ const NegotiationCard = ({
 
             {negotiation.status === 'hired' && (
               <div className="hired-actions">
-                <span className="info-text">🎉 Transcriber hired! Upload your files.</span>
+                <span className="info-text">🎉 Job Active! Transcriber hired.</span>
                 <button className="upload-btn">
                   Upload Audio Files
                 </button>

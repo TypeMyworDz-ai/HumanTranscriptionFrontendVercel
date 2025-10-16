@@ -1,4 +1,4 @@
-// src/TranscriberDashboard.js - Part 1 - UPDATED for Vercel deployment
+// src/TranscriberDashboard.js - Part 1 - UPDATED for simplified online/availability logic and Payment History card
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -6,20 +6,21 @@ import Toast from './Toast';
 import './TranscriberDashboard.css';
 
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket, disconnectSocket } from './ChatService'; 
+import { connectSocket, disconnectSocket } from './ChatService';
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const TranscriberDashboard = () => {
-  const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth(); 
+  const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [isOnline, setIsOnline] = useState(false);
+  // Removed isOnline state, as it will be inferred by login status
   const [isAvailable, setIsAvailable] = useState(true);
-  const [currentJobId, setCurrentJobId] = useState(null); 
+  const [currentJobId, setCurrentJobId] = useState(null);
   const [negotiations, setNegotiations] = useState([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [totalEarnings, setTotalEarnings] = useState(0); // NEW: State for total earnings
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -55,13 +56,12 @@ const TranscriberDashboard = () => {
     if (!token || !user?.id) return;
 
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (response.ok && data.user) {
-        setIsOnline(data.user.is_online || false);
+        // isOnline will be implicitly true if logged in and on dashboard
         setIsAvailable(data.user.is_available || true);
         setCurrentJobId(data.user.current_job_id || null);
       } else {
@@ -77,7 +77,6 @@ const TranscriberDashboard = () => {
     if (!token || !user?.id) return;
 
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/user/chat/unread-count`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -92,10 +91,10 @@ const TranscriberDashboard = () => {
     }
   }, [user]);
 
-  const fetchNegotiationsData = useCallback(async () => { 
+  const fetchNegotiationsData = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      if (isAuthenticated) { 
+      if (isAuthenticated) {
         console.warn("TranscriberDashboard: Token missing for API call despite authenticated state. Forcing logout.");
         logout();
       }
@@ -105,7 +104,6 @@ const TranscriberDashboard = () => {
 
     setLoading(true);
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -124,14 +122,34 @@ const TranscriberDashboard = () => {
     } finally {
       // setLoading(false); // This will be set by the main useEffect after all data is fetched
     }
-  }, [isAuthenticated, logout, showToast]); 
+  }, [isAuthenticated, logout, showToast]);
+
+  // NEW: Fetch Transcriber Payment History
+  const fetchTranscriberPaymentHistory = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id) return;
+
+    try {
+      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/payments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok && data.summary) {
+        setTotalEarnings(data.summary.totalEarnings || 0);
+      } else {
+        console.error('Failed to fetch transcriber payment history:', data.error);
+      }
+    } catch (error) {
+      console.error('Network error fetching transcriber payment history:', error);
+    }
+  }, [user]);
 
   // --- Main Data Management and Socket Setup useEffect ---
   useEffect(() => {
     console.log('TranscriberDashboard: Main useEffect. isAuthReady:', isAuthReady, 'user:', user, 'authLoading:', authLoading);
 
     if (!isAuthReady || authLoading || !user || !user.id) {
-        if (isAuthReady && !user) { 
+        if (isAuthReady && !user) {
              console.log("TranscriberDashboard: Auth ready but no user. Redirecting to login.");
              navigate('/login');
         }
@@ -144,7 +162,7 @@ const TranscriberDashboard = () => {
 
     const hasActiveTranscriberStatus = userStatus === 'active_transcriber' || userLevel === 'proofreader';
 
-    if (!isTranscriber || !hasActiveTranscriberStatus) { 
+    if (!isTranscriber || !hasActiveTranscriberStatus) {
         console.warn(`TranscriberDashboard: Unauthorized access attempt by user_type: ${user.user_type}, status: ${userStatus}, level: ${userLevel}. Redirecting.`);
         navigate('/');
         return;
@@ -162,7 +180,8 @@ const TranscriberDashboard = () => {
     Promise.all([
         fetchNegotiationsData(),
         fetchUnreadMessageCount(),
-        fetchTranscriberStatus()
+        fetchTranscriberStatus(),
+        fetchTranscriberPaymentHistory() // NEW: Fetch payment history
     ]).finally(() => {
         setLoading(false);
     });
@@ -173,8 +192,9 @@ const TranscriberDashboard = () => {
     const handleNegotiationUpdate = (data) => {
       console.log('TranscriberDashboard Real-time: Negotiation update received!', data);
       showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
-      fetchNegotiationsData(); 
+      fetchNegotiationsData();
       fetchTranscriberStatus();
+      fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on negotiation update
     };
 
     const handleUnreadMessageCountUpdate = (data) => {
@@ -190,9 +210,9 @@ const TranscriberDashboard = () => {
 
     const handleNewChatMessage = (data) => {
         console.log('TranscriberDashboard Real-time: New chat message received!', data);
-        if (data.sender_id !== user.id) { 
+        if (data.sender_id !== user.id) {
             showToast(`New message from ${data.sender_name || 'Admin'}!`, 'info');
-            fetchUnreadMessageCount(); 
+            fetchUnreadMessageCount();
             playNotificationSound();
         }
     };
@@ -202,7 +222,17 @@ const TranscriberDashboard = () => {
         showToast(data.message || `Job ${data.negotiationId} was completed!`, 'success');
         fetchNegotiationsData();
         fetchTranscriberStatus();
+        fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on job completion
     };
+
+    const handleJobHired = (data) => { // NEW: Handle job_hired event
+        console.log('TranscriberDashboard Real-time: Job hired!', data);
+        showToast(data.message || `Job ${data.negotiationId} has been hired!`, 'success');
+        fetchNegotiationsData();
+        fetchTranscriberStatus();
+        fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on job hired
+    };
+
 
     socket.on('new_negotiation_request', handleNegotiationUpdate);
     socket.on('negotiation_accepted', handleNegotiationUpdate);
@@ -212,6 +242,7 @@ const TranscriberDashboard = () => {
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
     socket.on('newChatMessage', handleNewChatMessage);
     socket.on('job_completed', handleJobCompleted);
+    socket.on('job_hired', handleJobHired); // NEW: Listen for job_hired event
 
 
     return () => {
@@ -224,67 +255,21 @@ const TranscriberDashboard = () => {
       socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
       socket.off('newChatMessage', handleNewChatMessage);
       socket.off('job_completed', handleJobCompleted);
+      socket.off('job_hired', handleJobHired); // NEW: Detach job_hired listener
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, playNotificationSound]);
-// src/TranscriberDashboard.js - Part 2 - UPDATED for Vercel deployment (Continue from Part 1)
+  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, playNotificationSound]);
+// src/TranscriberDashboard.js - Part 2 - UPDATED for simplified online/availability logic and Payment History card (Continue from Part 1)
 
-  const handleLogout = useCallback(async () => { 
-    const token = localStorage.getItem('token');
-    if (user?.id && token) {
-        try {
-            // FIXED: Use BACKEND_API_URL constant
-            await fetch(`${BACKEND_API_URL}/api/users/${user.id}/online-status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ is_online: false })
-            });
-        } catch (error) {
-            console.error('Error setting transcriber offline on logout:', error);
-        }
-    }
-    logout(); 
-    disconnectSocket(); 
-  }, [user, logout]);
+  const handleLogout = useCallback(async () => {
+    // No need to explicitly set is_online to false here,
+    // as the backend will handle this on socket disconnect/session end.
+    logout();
+    disconnectSocket();
+  }, [logout]); // Removed user from dependencies as is_online update is handled by backend on disconnect
 
-  const toggleOnlineStatus = useCallback(async () => {
-    const newOnlineStatus = !isOnline;
-    const token = localStorage.getItem('token');
-    if (!user?.id || !token) {
-      showToast('User not logged in.', 'error');
-      return;
-    }
-
-    try {
-      // FIXED: Use BACKEND_API_URL constant
-      const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}/online-status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_online: newOnlineStatus })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setIsOnline(newOnlineStatus);
-        showToast(`You are now ${newOnlineStatus ? 'online' : 'offline'}`, 'info');
-        if (!newOnlineStatus) {
-            setIsAvailable(false);
-            setCurrentJobId(null);
-        }
-      } else {
-        showToast(data.error || 'Failed to update online status', 'error');
-      }
-    } catch (error) {
-      console.error('Error toggling online status:', error);
-      showToast('Network error. Please try again.', 'error');
-    }
-  }, [isOnline, user, showToast]);
+  // Removed toggleOnlineStatus function
 
   const toggleAvailability = useCallback(async () => {
     const newAvailability = !isAvailable;
@@ -293,13 +278,13 @@ const TranscriberDashboard = () => {
       showToast('User not logged in.', 'error');
       return;
     }
+    // If trying to set available but has a current job
     if (newAvailability && currentJobId) {
         showToast('You must complete your current job before becoming available for new ones.', 'error');
         return;
     }
 
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}/availability-status`, {
         method: 'PUT',
         headers: {
@@ -319,7 +304,7 @@ const TranscriberDashboard = () => {
       console.error('Error toggling availability status:', error);
       showToast('Network error. Please try again.', 'error');
     }
-  }, [isAvailable, user, showToast, currentJobId]);
+  }, [isAvailable, user, showToast, currentJobId]); // currentJobId is a dependency
 
   if (!isAuthenticated || !user) {
     return <div>Not authenticated. Redirecting...</div>;
@@ -365,16 +350,12 @@ const TranscriberDashboard = () => {
           </div>
 
           <div className="status-toggles">
-            <button
-              onClick={toggleOnlineStatus}
-              className={`status-toggle-btn ${isOnline ? 'online' : 'offline'}`}
-            >
-              {isOnline ? 'Go Offline' : 'Go Online'}
-            </button>
+            {/* Removed Go Online/Go Offline button */}
             <button
               onClick={toggleAvailability}
               className={`status-toggle-btn ${isAvailable ? 'available' : 'busy'}`}
-              disabled={!isOnline || !!currentJobId}
+              // The button is disabled if there's an active job, forcing 'busy' state
+              disabled={!!currentJobId}
             >
               {isAvailable ? 'Set Busy' : 'Set Available'}
             </button>
@@ -409,6 +390,13 @@ const TranscriberDashboard = () => {
               <div className="card-icon">⭐</div>
               <h3>Profile & Ratings</h3>
               <p>Update your profile and check client feedback.</p>
+            </Link>
+
+            {/* NEW: Payment History Card */}
+            <Link to="/transcriber-payments" className="dashboard-card">
+              <div className="card-icon">💰</div>
+              <h3>Payment History (KES {totalEarnings.toLocaleString()})</h3> {/* Display total earnings */}
+              <p>Review your past transactions and earnings.</p>
             </Link>
           </div>
         </div>

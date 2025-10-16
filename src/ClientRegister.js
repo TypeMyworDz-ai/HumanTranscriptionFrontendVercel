@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import './Register.css';
 
+// Define the backend URL constant for API calls within this component
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
 const ClientRegister = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -47,7 +50,8 @@ const ClientRegister = () => {
     hideToast(); // Clear any previous toast
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      // FIXED: Use BACKEND_API_URL constant for the API call
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

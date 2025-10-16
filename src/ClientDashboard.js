@@ -1,4 +1,4 @@
-// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment
+// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, and My Jobs link
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -6,14 +6,14 @@ import Toast from './Toast';
 import './ClientDashboard.css';
 
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket, disconnectSocket } from './ChatService'; 
+import { connectSocket, disconnectSocket } from './ChatService';
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // --- Component Definition ---
 const ClientDashboard = () => {
-  const { user, isAuthenticated, isAuthReady, logout } = useAuth(); 
+  const { user, isAuthenticated, isAuthReady, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [clientStats, setClientStats] = useState({
@@ -23,6 +23,7 @@ const ClientDashboard = () => {
     clientRating: 5.0
   });
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [totalClientPayments, setTotalClientPayments] = useState(0); // NEW: State for client's total payments
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -59,7 +60,6 @@ const ClientDashboard = () => {
     if (!token || !user?.id) return;
 
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const response = await fetch(`${BACKEND_API_URL}/api/user/chat/unread-count`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -80,9 +80,8 @@ const ClientDashboard = () => {
         setLoading(false);
         return;
     }
-    setLoading(true);
+    // setLoading(true); // Moved to main useEffect finally block
     try {
-      // FIXED: Use BACKEND_API_URL constant
       const userResponse = await fetch(`${BACKEND_API_URL}/api/auth/user/${clientId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -91,7 +90,6 @@ const ClientDashboard = () => {
       const userDataFromApi = await userResponse.json();
       const clientRating = userDataFromApi.user?.client_profile?.client_rating || 5.0;
 
-      // FIXED: Use BACKEND_API_URL constant
       const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -120,6 +118,27 @@ const ClientDashboard = () => {
       // setLoading(false); // This will be set by the main useEffect after all data is fetched
     }
   }, [showToast]);
+
+  // NEW: Fetch Client Payment History
+  const fetchClientPaymentHistory = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id) return;
+
+    try {
+      const response = await fetch(`${BACKEND_API_URL}/api/client/payments`, { // NEW: Client-specific payment history endpoint
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok && data.summary) {
+        setTotalClientPayments(data.summary.totalPayments || 0); // Assuming totalPayments in summary
+      } else {
+        console.error('Failed to fetch client payment history:', data.error);
+      }
+    } catch (error) {
+      console.error('Network error fetching client payment history:', error);
+    }
+  }, [user]);
+
 
   // --- Main Data Management and Socket Setup useEffect ---
   useEffect(() => {
@@ -150,7 +169,8 @@ const ClientDashboard = () => {
 
     Promise.all([
         fetchClientStats(user.id, token),
-        fetchUnreadMessageCount()
+        fetchUnreadMessageCount(),
+        fetchClientPaymentHistory() // NEW: Fetch client payment history
     ]).finally(() => {
         setLoading(false);
     });
@@ -162,6 +182,7 @@ const ClientDashboard = () => {
         console.log('ClientDashboard Real-time: Negotiation update received!', data);
         showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
         fetchClientStats(user.id, localStorage.getItem('token'));
+        fetchClientPaymentHistory(); // Refresh payments on negotiation update
     };
 
     const handleUnreadMessageCountUpdate = (data) => {
@@ -184,12 +205,22 @@ const ClientDashboard = () => {
         }
     };
 
+    const handlePaymentSuccessful = (data) => { // NEW: Handle payment_successful event
+        console.log('ClientDashboard Real-time: Payment successful event received!', data);
+        showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
+        fetchClientStats(user.id, localStorage.getItem('token'));
+        fetchClientPaymentHistory(); // Refresh payments on payment success
+    };
+
+
     socket.on('negotiation_accepted', handleNegotiationUpdate);
     socket.on('negotiation_rejected', handleNegotiationUpdate);
     socket.on('negotiation_countered', handleNegotiationUpdate);
     socket.on('negotiation_cancelled', handleNegotiationUpdate);
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
     socket.on('newChatMessage', handleNewChatMessage);
+    socket.on('payment_successful', handlePaymentSuccessful); // NEW: Listen for payment_successful event
+
 
     return () => {
         console.log(`ClientDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
@@ -199,11 +230,12 @@ const ClientDashboard = () => {
         socket.off('negotiation_cancelled', handleNegotiationUpdate);
         socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
         socket.off('newChatMessage', handleNewChatMessage);
+        socket.off('payment_successful', handlePaymentSuccessful); // NEW: Detach payment_successful listener
         disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, playNotificationSound]);
-// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment (Continue from Part 1)
+  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
+// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, and My Jobs link (Continue from Part 1)
 
 
   // Display a loading indicator if client-specific data is still being fetched.
@@ -268,15 +300,16 @@ const ClientDashboard = () => {
               <p>View and manage your direct messages.</p>
             </Link>
 
-            <Link to="/client-jobs" className="dashboard-card">
+            <Link to="/client-jobs" className="dashboard-card"> {/* UPDATED: Link to /client-jobs */}
               <div className="card-icon">📝</div>
               <h3>My Jobs ({clientStats.activeJobs})</h3>
               <p>Track the progress of your active transcription jobs.</p>
             </Link>
 
-            <Link to="/client-payments" className="dashboard-card">
+            {/* NEW: Client Payment History Card */}
+            <Link to="/client-payments" className="dashboard-card"> {/* NEW: Link to /client-payments */}
               <div className="card-icon">💰</div>
-              <h3>Payment History ({clientStats.completedJobs})</h3>
+              <h3>Payment History (KES {totalClientPayments.toLocaleString()})</h3> {/* Display total payments */}
               <p>Review your past transactions and invoices.</p>
             </Link>
           </div>

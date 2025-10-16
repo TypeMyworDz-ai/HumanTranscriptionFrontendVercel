@@ -1,4 +1,4 @@
-// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with ResetPassword Route
+// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History and Client Jobs Routes
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
@@ -6,30 +6,36 @@ import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 
 // Import your existing page components
-import LandingPage from '..//LandingPage';
-import Login from '..//Login';
-import ClientRegister from '..//ClientRegister';
-import WorkerRegister from '..//WorkerRegister';
-import ClientDashboard from '..//ClientDashboard';
-import ClientNegotiations from '..//ClientNegotiations';
-import TranscriberDashboard from '..//TranscriberDashboard';
-import TranscriberNegotiations from '..//TranscriberNegotiations';
-import TranscriberPool from '..//TranscriberPool';
-import TranscriberTest from '..//TranscriberTest';
-import TranscriberWaiting from '..//TranscriberWaiting';
-import AdminDashboard from '..//AdminDashboard';
-import AdminTranscriberTests from '..//AdminTranscriberTests.js';
-import AdminUsers from '..//AdminUsers.js';
-import AdminJobs from '..//AdminJobs';
-import AdminDisputes from '..//AdminDisputes';
-import AdminSettings from '..//AdminSettings';
-import AdminTranscriberTestDetails from '..//AdminTranscriberTestDetails.js';
-import AdminChat from '..//AdminChat.js';
-import UserChat from '..//UserChat.js';
-import AdminMessageList from '..//AdminMessageList.js';
+import LandingPage from '../LandingPage';
+import Login from '../Login';
+import ClientRegister from '../ClientRegister';
+import WorkerRegister from '../WorkerRegister';
+import ClientDashboard from '../ClientDashboard';
+import ClientNegotiations from '../ClientNegotiations';
+import TranscriberDashboard from '../TranscriberDashboard';
+import TranscriberNegotiations from '../TranscriberNegotiations';
+import TranscriberPool from '../TranscriberPool';
+import TranscriberTest from '../TranscriberTest';
+import TranscriberWaiting from '../TranscriberWaiting';
+import AdminDashboard from '../AdminDashboard';
+import AdminTranscriberTests from '../AdminTranscriberTests.js';
+import AdminUsers from '../AdminUsers.js';
+import AdminJobs from '../AdminJobs';
+import AdminDisputes from '../AdminDisputes';
+import AdminSettings from '../AdminSettings';
+import AdminTranscriberTestDetails from '../AdminTranscriberTestDetails.js';
+import AdminChat from '../AdminChat.js';
+import UserChat from '../UserChat.js';
+import AdminMessageList from '../AdminMessageList.js';
 
 // NEW: Import the ResetPassword component
-import ResetPassword from '..//ResetPassword.js';
+import ResetPassword from '../ResetPassword.js';
+// NEW: Import Payment-related components
+import TranscriberPaymentHistory from '../TranscriberPaymentHistory';
+import PaymentCallback from '../PaymentCallback';
+// NEW: Import Client-specific components
+import ClientPaymentHistory from '../ClientPaymentHistory'; // NEW: Client Payment History
+import ClientJobs from '../ClientJobs'; // NEW: Client Jobs
 
 
 const AppRoutes = () => {
@@ -42,6 +48,9 @@ const AppRoutes = () => {
             <Route path="/worker-register" element={<WorkerRegister />} />
             {/* NEW: Public Route for Reset Password */}
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* NEW: Public Route for Paystack Payment Callback */}
+            <Route path="/payment-callback" element={<PaymentCallback />} />
+
 
             {/* Protected Routes (Authenticated Users) */}
             <Route element={<ProtectedRoute />}>
@@ -51,6 +60,8 @@ const AppRoutes = () => {
                 <Route path="/client-negotiations" element={<ClientNegotiations />} />
                 <Route path="/transcriber-pool" element={<TranscriberPool />} />
                 <Route path="/client/chat/:chatId" element={<UserChat />} />
+                <Route path="/client-payments" element={<ClientPaymentHistory />} /> {/* NEW: Client Payment History Route */}
+                <Route path="/client-jobs" element={<ClientJobs />} /> {/* NEW: Client Jobs Route */}
 
 
                 {/* Transcriber Routes */}
@@ -59,6 +70,7 @@ const AppRoutes = () => {
                 <Route path="/transcriber-test" element={<TranscriberTest />} />
                 <Route path="/transcriber-waiting" element={<TranscriberWaiting />} />
                 <Route path="/transcriber/chat/:chatId" element={<UserChat />} />
+                <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
 
 
                 {/* Admin Routes */}

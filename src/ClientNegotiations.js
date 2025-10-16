@@ -1,4 +1,4 @@
-// src/ClientNegotiations.js - Part 1 - UPDATED for Vercel deployment
+// src/ClientNegotiations.js - Part 1 - UPDATED for Vercel deployment and Paystack Integration
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -13,6 +13,8 @@ import { useAuth } from './contexts/AuthContext';
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+// Paystack Public Key from Vercel environment variable
+const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY; // NEW: Paystack Public Key
 
 // --- Component Definition ---
 const ClientNegotiations = () => {
@@ -40,7 +42,7 @@ const ClientNegotiations = () => {
 
     const navigate = useNavigate();
     // REMOVED: socketRef is no longer needed as ChatService manages the global instance
-    // const socketRef = useRef(null); 
+    // const socketRef = useRef(null);
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -133,12 +135,21 @@ const ClientNegotiations = () => {
             fetchNegotiations();
         };
 
+        const handlePaymentSuccessful = (data) => { // NEW: Handle payment_successful event
+            console.log('ClientNegotiations Real-time: Payment successful event received!', data);
+            showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
+            fetchNegotiations();
+            // Redirect to dashboard or show confirmation
+            // navigate('/client-dashboard'); // Optional: Redirect after successful payment
+        };
+
         // FIXED: Attach listeners to the global socket instance
         socket.on('negotiation_accepted', handleNegotiationUpdate);
         socket.on('negotiation_rejected', handleNegotiationUpdate);
         socket.on('negotiation_countered', handleNegotiationUpdate);
         socket.on('negotiation_cancelled', handleNegotiationUpdate);
         socket.on('transcriber_hired', handleTranscriberHired);
+        socket.on('payment_successful', handlePaymentSuccessful); // NEW: Listen for payment_successful event
 
 
         return () => {
@@ -149,11 +160,12 @@ const ClientNegotiations = () => {
             socket.off('negotiation_countered', handleNegotiationUpdate);
             socket.off('negotiation_cancelled', handleNegotiationUpdate);
             socket.off('transcriber_hired', handleTranscriberHired);
+            socket.off('payment_successful', handlePaymentSuccessful); // NEW: Detach payment_successful listener
             disconnectSocket();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, isAuthenticated, fetchNegotiations, showToast]);
-// src/ClientNegotiations.js - Part 2 - UPDATED for Vercel deployment (Continue from Part 1)
+// src/ClientNegotiations.js - Part 2 - UPDATED for Vercel deployment and Paystack Integration (Continue from Part 1)
 
 
     // --- Modals Handlers ---
@@ -329,6 +341,53 @@ const ClientNegotiations = () => {
         }
     }, [selectedNegotiationId, counterBackOfferData, showToast, closeCounterBackModal, fetchNegotiations, logout]);
 
+    // NEW: Handle Proceed to Payment
+    const handleProceedToPayment = useCallback(async (negotiation) => {
+        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_kes) {
+            showToast('Missing client email or negotiation details for payment.', 'error');
+            return;
+        }
+        if (!PAYSTACK_PUBLIC_KEY) {
+            showToast('Payment gateway not configured. Please contact support.', 'error');
+            console.error('PAYSTACK_PUBLIC_KEY is not set in environment variables.');
+            return;
+        }
+
+        setLoading(true); // Show loading while initiating payment
+        const token = localStorage.getItem('token');
+
+        try {
+            // Call backend to initialize Paystack transaction
+            const response = await fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    negotiationId: negotiation.id,
+                    amount: negotiation.agreed_price_kes, // Amount in KES, backend converts to kobo
+                    email: user.email // Client's email
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.data && data.data.authorization_url) {
+                showToast('Redirecting to payment gateway...', 'info');
+                window.location.href = data.data.authorization_url; // Redirect to Paystack
+            } else {
+                showToast(data.error || 'Failed to initiate payment.', 'error');
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error('Error initiating payment:', error);
+            showToast('Network error while initiating payment. Please try again.', 'error');
+            setLoading(false);
+        }
+    }, [user, showToast]);
+
+
     // --- Utility Functions for Status Display ---
     const getStatusColor = useCallback((status, isClientViewing) => {
         const colors = {
@@ -336,7 +395,7 @@ const ClientNegotiations = () => {
             'transcriber_counter': '#ffc107', // Client view: transcriber counter is yellow (action needed)
             'accepted': '#28a745',
             'rejected': '#dc3545',
-            'hired': '#28a745', // Hired can be same as accepted visually
+            'hired': '#007bff', // Hired can be blue (job active)
             'cancelled': '#dc3545',
             'completed': '#6f42c1'
         };
@@ -347,9 +406,9 @@ const ClientNegotiations = () => {
         const texts = {
             'pending': 'Waiting for Transcriber',
             'transcriber_counter': 'Transcriber Countered', // Client view
-            'accepted': 'Accepted',
+            'accepted': 'Accepted - Awaiting Payment', // Clarified status
             'rejected': 'Rejected',
-            'hired': 'Transcriber Hired',
+            'hired': 'Job Active - Paid', // Clarified status
             'cancelled': 'Cancelled',
             'completed': 'Completed'
         };
@@ -431,6 +490,7 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
+                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
@@ -456,6 +516,7 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
+                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
@@ -480,6 +541,7 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
+                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
@@ -505,6 +567,7 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
+                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
