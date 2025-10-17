@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext'; // Assuming AuthContext is used for user authentication
-import { BACKEND_API_URL } from './config'; // Assuming config file for backend URL
-import './AdminDirectUploadJobs.css'; // We'll create this CSS file next
+import { useAuth } from './contexts/AuthContext'; // CORRECTED PATH
+import { BACKEND_API_URL } from './config';
+import './AdminDirectUploadJobs.css';
 
 const AdminDirectUploadJobs = () => {
     const { user } = useAuth();
@@ -20,7 +20,7 @@ const AdminDirectUploadJobs = () => {
             try {
                 const response = await fetch(`${BACKEND_API_URL}/api/admin/direct-upload-jobs`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}` // Assuming token is stored in localStorage
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
                 });
 
@@ -30,7 +30,7 @@ const AdminDirectUploadJobs = () => {
                 }
 
                 const data = await response.json();
-                setJobs(data.jobs); // The backend returns an object with a 'jobs' key
+                setJobs(data.jobs);
             } catch (err) {
                 console.error('Error fetching all direct upload jobs:', err);
                 setError(err.message || 'Failed to load direct upload jobs.');

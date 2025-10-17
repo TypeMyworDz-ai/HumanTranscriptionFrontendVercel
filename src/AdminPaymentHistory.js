@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext'; // Assuming AuthContext is used for user authentication
-import { BACKEND_API_URL } from './config'; // Assuming config file for backend URL
-import './AdminPaymentHistory.css'; // We'll create this CSS file next
+import { useAuth } from './contexts/AuthContext'; // CORRECTED PATH
+import { BACKEND_API_URL } from './config';
+import './AdminPaymentHistory.css';
 
 const AdminPaymentHistory = () => {
     const { user } = useAuth();
@@ -20,7 +20,7 @@ const AdminPaymentHistory = () => {
             try {
                 const response = await fetch(`${BACKEND_API_URL}/api/admin/payments`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}` // Assuming token is stored in localStorage
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
                 });
 
