@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './contexts/AuthContext'; // CORRECTED PATH
+import { useAuth } from './contexts/AuthContext';
 import { BACKEND_API_URL } from './config';
 import './AdminDirectUploadJobs.css';
 
@@ -11,7 +11,8 @@ const AdminDirectUploadJobs = () => {
 
     useEffect(() => {
         const fetchAllDirectUploadJobs = async () => {
-            if (!user || user.userType !== 'admin') {
+            // CORRECTED: Changed user.userType to user.user_type
+            if (!user || user.user_type !== 'admin') {
                 setError('Access denied. Only admins can view this page.');
                 setLoading(false);
                 return;
@@ -78,7 +79,6 @@ const AdminDirectUploadJobs = () => {
                                     <td>{job.id}</td>
                                     <td>{job.client?.full_name || 'N/A'}</td>
                                     <td>{job.transcriber?.full_name || 'N/A'}</td>
-                                    <td>{job.file_name}</td>
                                     <td>{job.audio_length_minutes ? job.audio_length_minutes.toFixed(2) : 'N/A'}</td>
                                     <td>{job.quote_amount ? job.quote_amount.toFixed(2) : 'N/A'}</td>
                                     <td>{job.status}</td>

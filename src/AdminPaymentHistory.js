@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './contexts/AuthContext'; // CORRECTED PATH
+import { useAuth } from './contexts/AuthContext';
 import { BACKEND_API_URL } from './config';
 import './AdminPaymentHistory.css';
 
@@ -11,7 +11,8 @@ const AdminPaymentHistory = () => {
 
     useEffect(() => {
         const fetchAllPaymentHistory = async () => {
-            if (!user || user.userType !== 'admin') {
+            // CORRECTED: Changed user.userType to user.user_type
+            if (!user || user.user_type !== 'admin') {
                 setError('Access denied. Only admins can view this page.');
                 setLoading(false);
                 return;
