@@ -1,9 +1,9 @@
-// src/ClientProfile.js - UPDATED with Edit Profile functionality for Clients
+// src/ClientProfile.js - UPDATED for Phone Number Reflection Fix
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Toast from './Toast';
-import Modal from './Modal'; // NEW: Import Modal component
+import Modal from './Modal';
 import { useAuth } from './contexts/AuthContext';
 import './ClientProfile.css';
 
@@ -12,14 +12,13 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const ClientProfile = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
-    const { clientId: profileId } = useParams(); // Get client ID from URL params
+    const { clientId: profileId } = useParams();
 
     const [profileData, setProfileData] = useState(null);
     const [ratings, setRatings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
-    // NEW: State for Edit Profile Modal
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [editFullName, setEditFullName] = useState('');
     const [editPhone, setEditPhone] = useState('');
@@ -47,7 +46,6 @@ const ClientProfile = () => {
 
         setLoading(true);
         try {
-            // Fetch client's main user data and profile data
             const userResponse = await fetch(`${BACKEND_API_URL}/api/users/${profileId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -55,30 +53,33 @@ const ClientProfile = () => {
 
             if (!userResponse.ok || !userData.user) {
                 showToast(userData.error || 'Failed to load client profile.', 'error');
-                navigate('/client-dashboard'); // Redirect if profile not found
+                navigate('/client-dashboard');
                 return;
             }
 
-            // Fetch client's ratings
             const ratingsResponse = await fetch(`${BACKEND_API_URL}/api/ratings/client/${profileId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const ratingsData = await ratingsResponse.json();
 
             if (ratingsResponse.ok) {
+                // When setting profileData, ensure to pick the nested client_profile correctly
+                // userData.user already contains client_profile from getUserById in authController
                 setProfileData({
                     ...userData.user,
-                    average_rating: ratingsData.averageRating || 0, // Use the fetched average rating
+                    average_rating: ratingsData.averageRating || 0,
                 });
                 setRatings(ratingsData.ratings || []);
+                
                 // Pre-fill edit states if this is the current user's profile
                 if (user?.id === profileId) {
                     setEditFullName(userData.user.full_name || '');
-                    setEditPhone(userData.user.clients?.[0]?.phone || '');
+                    // CORRECTED: Access phone from client_profile
+                    setEditPhone(userData.user.client_profile?.phone || '');
                 }
             } else {
                 showToast(ratingsData.error || 'Failed to load client ratings.', 'error');
-                setProfileData(userData.user); // Still show basic profile if ratings fail
+                setProfileData(userData.user);
             }
 
         } catch (error) {
@@ -88,7 +89,7 @@ const ClientProfile = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, navigate, profileId, showToast, user?.id]); // Added user.id to dependencies
+    }, [isAuthenticated, logout, navigate, profileId, showToast, user?.id]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -99,8 +100,6 @@ const ClientProfile = () => {
             return;
         }
 
-        // Ensure the current user is authorized to view this profile
-        // Admins can view any client profile. Clients can view their own.
         if (user.user_type !== 'admin' && user.id !== profileId) {
             showToast('Access denied. You can only view your own profile.', 'error');
             navigate('/client-dashboard');
@@ -111,14 +110,12 @@ const ClientProfile = () => {
     }, [isAuthenticated, authLoading, user, navigate, profileId, fetchClientProfile, showToast]);
 
 
-    // NEW: Edit Profile Modal Handlers
     const openEditProfileModal = useCallback(() => {
-        // Only allow if current user is the profile owner
         if (user?.id === profileId) {
             setShowEditProfileModal(true);
-            // Pre-fill form fields from current profileData
             setEditFullName(profileData.full_name || '');
-            setEditPhone(profileData.clients?.[0]?.phone || '');
+            // CORRECTED: Access phone from client_profile for pre-fill
+            setEditPhone(profileData.client_profile?.phone || '');
         } else {
             showToast('You are not authorized to edit this profile.', 'error');
         }
@@ -148,16 +145,15 @@ const ClientProfile = () => {
         }
 
         try {
-            // API call to update client profile (e.g., phone, full_name in users table)
-            const response = await fetch(`${BACKEND_API_URL}/api/client-profile/${profileId}`, { // NEW API ENDPOINT
+            const response = await fetch(`${BACKEND_API_URL}/api/client-profile/${profileId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    full_name: editFullName, // Update full_name in users table
-                    phone: editPhone // Update phone in clients table
+                    full_name: editFullName,
+                    phone: editPhone
                 })
             });
             const data = await response.json();
@@ -165,7 +161,8 @@ const ClientProfile = () => {
             if (response.ok) {
                 showToast(data.message || 'Profile updated successfully!', 'success');
                 closeEditProfileModal();
-                fetchClientProfile(); // Re-fetch profile to show updated details
+                // After successful update, re-fetch profile data to ensure UI reflects latest changes
+                fetchClientProfile(); 
             } else {
                 showToast(data.error || 'Failed to update profile.', 'error');
             }
@@ -175,7 +172,7 @@ const ClientProfile = () => {
         } finally {
             setEditModalLoading(false);
         }
-    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile, user?.id]); // Added user.id to dependencies
+    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile, user?.id]);
 
 
     if (authLoading || !isAuthenticated || !user || loading || !profileData) {
@@ -213,11 +210,11 @@ const ClientProfile = () => {
                     </div>
 
                     <div className="profile-details-card">
-                        <div className="card-header-with-button"> {/* NEW: For title and edit button */}
-                           <h3>Client Information</h3>
-                           {user?.id === profileId && ( // Only show edit button to profile owner
-                               <button onClick={openEditProfileModal} className="edit-profile-btn">Edit Profile</button>
-                           )}
+                        <div className="card-header-with-button">
+                        <h3>Client Information</h3>
+                        {user?.id === profileId && (
+                            <button onClick={openEditProfileModal} className="edit-profile-btn">Edit Profile</button>
+                        )}
                         </div>
 
                         <div className="detail-row">
@@ -233,15 +230,16 @@ const ClientProfile = () => {
                             <strong>{profileData.user_type}</strong>
                         </div>
                         <div className="detail-row">
-                            <span>Phone:</span> {/* NEW: Display Phone Number */}
-                            <strong>{profileData.clients?.[0]?.phone || 'Not provided'}</strong>
+                            <span>Phone:</span>
+                            {/* CORRECTED: Access phone from client_profile */}
+                            <strong>{profileData.client_profile?.phone || 'Not provided'}</strong>
                         </div>
                         <div className="detail-row">
                             <span>Client Rating:</span>
                             <div className="rating-display">
-                                {'★'.repeat(Math.floor(profileData.average_rating || 0))}
-                                {'☆'.repeat(5 - Math.floor(profileData.average_rating || 0))}
-                                <span className="rating-number">({(profileData.average_rating || 0).toFixed(1)})</span>
+                                {'★'.repeat(Math.floor(profileData.client_profile?.client_rating || 0))}
+                                {'☆'.repeat(5 - Math.floor(profileData.client_profile?.client_rating || 0))}
+                                <span className="rating-number">({(profileData.client_profile?.client_rating || 0).toFixed(1)})</span>
                             </div>
                         </div>
                     </div>
@@ -267,7 +265,6 @@ const ClientProfile = () => {
                 </div>
             </main>
 
-            {/* NEW: Edit Profile Modal */}
             {showEditProfileModal && (
                 <Modal
                     show={showEditProfileModal}
