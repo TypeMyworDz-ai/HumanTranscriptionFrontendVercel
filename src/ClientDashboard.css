@@ -44,11 +44,45 @@
   gap: 20px;
 }
 
-.user-info span {
+/* NEW: Profile Section Styles */
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-avatar-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease-in-out;
+}
+
+.profile-avatar-link:hover {
+    transform: scale(1.05);
+}
+
+.profile-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #ffc107; /* Yellow background for avatar */
+    color: #3a2b5a; /* Dark text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.welcome-text {
   font-size: 1.1rem;
   opacity: 0.95; /* Slightly less opaque for better readability */
   font-weight: 500;
+  color: white; /* Ensure welcome text is white */
 }
+
 
 .logout-btn {
   background: rgba(255, 255, 255, 0.2); /* More subtle background */
@@ -389,7 +423,10 @@
   }
   .stat-item h4 {
     font-size: 0.9rem;
-    margin-bottom: 8px;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
   }
   .stat-item .stat-value {
     font-size: 2rem;

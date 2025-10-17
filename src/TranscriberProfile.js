@@ -1,10 +1,11 @@
-// src/TranscriberProfile.js
+// src/TranscriberProfile.js - UPDATED with Edit Profile functionality for Transcribers
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Toast from './Toast';
+import Modal from './Modal'; // NEW: Import Modal component for edit form
 import { useAuth } from './contexts/AuthContext';
-import './TranscriberProfile.css'; // You'll need to create this CSS file
+import './TranscriberProfile.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -17,6 +18,13 @@ const TranscriberProfile = () => {
     const [ratings, setRatings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+
+    // NEW: State for Edit Profile Modal
+    const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+    const [editMpesaNumber, setEditMpesaNumber] = useState('');
+    const [editPaypalEmail, setEditPaypalEmail] = useState('');
+    const [editModalLoading, setEditModalLoading] = useState(false);
+
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ isVisible: true, message, type });
@@ -40,6 +48,7 @@ const TranscriberProfile = () => {
         setLoading(true);
         try {
             // Fetch transcriber's main user data and profile data
+            // Ensure mpesa_number and paypal_email are fetched here
             const userResponse = await fetch(`${BACKEND_API_URL}/api/users/${profileId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -63,6 +72,11 @@ const TranscriberProfile = () => {
                     average_rating: ratingsData.averageRating || 0, // Use the fetched average rating
                 });
                 setRatings(ratingsData.ratings || []);
+                // Pre-fill edit states if this is the current user's profile
+                if (user?.id === profileId) {
+                    setEditMpesaNumber(userData.user.transcribers?.[0]?.mpesa_number || '');
+                    setEditPaypalEmail(userData.user.transcribers?.[0]?.paypal_email || '');
+                }
             } else {
                 showToast(ratingsData.error || 'Failed to load transcriber ratings.', 'error');
                 setProfileData(userData.user); // Still show basic profile if ratings fail
@@ -75,7 +89,8 @@ const TranscriberProfile = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, navigate, profileId, showToast]);
+    }, [isAuthenticated, logout, navigate, profileId, showToast, user?.id]); // Added user.id to dependencies
+
 
     useEffect(() => {
         if (authLoading) return;
@@ -86,13 +101,78 @@ const TranscriberProfile = () => {
             return;
         }
 
-        // Ensure the current user is authorized to view this profile
-        // Clients can view any transcriber profile. Transcribers can view their own. Admins can view any.
-        // For simplicity, allow any authenticated user to view transcriber profiles for browsing.
+        // Only the owner of the profile or an admin can view full details (like payment info)
+        // For simplicity, allow any authenticated user to view basic profile for browsing.
         // More granular control can be added with RLS on backend.
         
         fetchTranscriberProfile();
     }, [isAuthenticated, authLoading, user, navigate, profileId, fetchTranscriberProfile, showToast]);
+
+
+    // NEW: Edit Profile Modal Handlers
+    const openEditProfileModal = useCallback(() => {
+        // Only allow if current user is the profile owner or an admin
+        if (user?.id === profileId || user?.user_type === 'admin') {
+            setShowEditProfileModal(true);
+            // Pre-fill form fields from current profileData
+            setEditMpesaNumber(profileData.transcribers?.[0]?.mpesa_number || '');
+            setEditPaypalEmail(profileData.transcribers?.[0]?.paypal_email || '');
+        } else {
+            showToast('You are not authorized to edit this profile.', 'error');
+        }
+    }, [user, profileId, profileData, showToast]);
+
+    const closeEditProfileModal = useCallback(() => {
+        setShowEditProfileModal(false);
+        setEditModalLoading(false);
+    }, []);
+
+    const handleEditFormChange = useCallback((e) => {
+        const { name, value } = e.target;
+        if (name === 'mpesa_number') {
+            setEditMpesaNumber(value);
+        } else if (name === 'paypal_email') {
+            setEditPaypalEmail(value);
+        }
+    }, []);
+
+    const submitEditProfile = useCallback(async () => {
+        setEditModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_API_URL}/api/transcriber-profile/${profileId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    mpesa_number: editMpesaNumber,
+                    paypal_email: editPaypalEmail
+                })
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(data.message || 'Profile updated successfully!', 'success');
+                closeEditProfileModal();
+                fetchTranscriberProfile(); // Re-fetch profile to show updated details
+            } else {
+                showToast(data.error || 'Failed to update profile.', 'error');
+            }
+        } catch (error) {
+            console.error('Error submitting profile update:', error);
+            showToast('Network error while updating profile.', 'error');
+        } finally {
+            setEditModalLoading(false);
+        }
+    }, [profileId, editMpesaNumber, editPaypalEmail, showToast, logout, closeEditProfileModal, fetchTranscriberProfile]);
 
 
     if (authLoading || !isAuthenticated || !user || loading || !profileData) {
@@ -133,7 +213,13 @@ const TranscriberProfile = () => {
                     </div>
 
                     <div className="profile-details-card">
-                        <h3>Transcriber Information</h3>
+                        <div className="card-header-with-button"> {/* NEW: For title and edit button */}
+                           <h3>Transcriber Information</h3>
+                           {(user?.id === profileId || user?.user_type === 'admin') && ( // Only show edit button to owner or admin
+                               <button onClick={openEditProfileModal} className="edit-profile-btn">Edit Profile</button>
+                           )}
+                        </div>
+
                         <div className="detail-row">
                             <span>Full Name:</span>
                             <strong>{profileData.full_name}</strong>
@@ -172,6 +258,19 @@ const TranscriberProfile = () => {
                                 </div>
                             </div>
                         )}
+                        {/* NEW: Display Payment Details (only to owner or admin) */}
+                        {(user?.id === profileId || user?.user_type === 'admin') && (
+                            <>
+                                <div className="detail-row">
+                                    <span>Mpesa Number:</span>
+                                    <strong>{transcriberDetails.mpesa_number || 'Not provided'}</strong>
+                                </div>
+                                <div className="detail-row">
+                                    <span>PayPal Email:</span>
+                                    <strong>{transcriberDetails.paypal_email || 'Not provided'}</strong>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <h3>Client Reviews ({ratings.length})</h3>
@@ -194,6 +293,42 @@ const TranscriberProfile = () => {
                     )}
                 </div>
             </main>
+
+            {/* NEW: Edit Profile Modal */}
+            {showEditProfileModal && (
+                <Modal
+                    show={showEditProfileModal}
+                    title="Edit Payment Details"
+                    onClose={closeEditProfileModal}
+                    onSubmit={submitEditProfile}
+                    submitText="Save Changes"
+                    loading={editModalLoading}
+                >
+                    <p>Update your Mpesa number and/or PayPal email for receiving payments.</p>
+                    <div className="form-group">
+                        <label htmlFor="mpesa_number">Mpesa Number (Optional):</label>
+                        <input
+                            type="text"
+                            id="mpesa_number"
+                            name="mpesa_number"
+                            value={editMpesaNumber}
+                            onChange={handleEditFormChange}
+                            placeholder="e.g., 07XXXXXXXX"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="paypal_email">PayPal Email (Optional):</label>
+                        <input
+                            type="email"
+                            id="paypal_email"
+                            name="paypal_email"
+                            value={editPaypalEmail}
+                            onChange={handleEditFormChange}
+                            placeholder="e.g., your.email@example.com"
+                        />
+                    </div>
+                </Modal>
+            )}
 
             <Toast
                 message={toast.message}

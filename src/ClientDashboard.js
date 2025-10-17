@@ -1,9 +1,9 @@
-// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and CORRECTED Client Profile Link
+// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, Client Profile Link, and Direct Upload Card
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import './ClientDashboard.css';
+import './ClientDashboard.css'; // Ensure this CSS file exists and has styles for .profile-avatar-link and .profile-icon
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';
@@ -235,7 +235,7 @@ const ClientDashboard = () => {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
-// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, and CORRECTED Client Profile Link (Continue from Part 1)
+// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, Client Profile Link, and Direct Upload Card (Continue from Part 1)
 
 
   // Display a loading indicator if client-specific data is still being fetched.
@@ -263,11 +263,15 @@ const ClientDashboard = () => {
         <div className="header-content">
           <h1>Client Dashboard</h1>
           <div className="user-info">
-            {/* Safely access user.full_name with optional chaining */}
-            {/* NEW: Wrap welcome text in a Link to ClientProfile */}
-            <Link to={`/client-profile/${user.id}`} className="welcome-text-link">
-              <span className="welcome-text-badge">Welcome, {user?.full_name || 'Client'}!</span>
-            </Link>
+            {/* NEW: Profile Avatar/Icon and Welcome Message */}
+            <div className="profile-section">
+              <Link to={`/client-profile/${user.id}`} className="profile-avatar-link">
+                <div className="profile-icon">
+                  {user?.full_name?.charAt(0).toUpperCase() || '👤'} {/* First letter of name or default icon */}
+                </div>
+              </Link>
+              <span className="welcome-text">Welcome, {user?.full_name || 'Client'}!</span> {/* Welcome text moved */}
+            </div>
             <button onClick={logout} className="logout-btn">
               Logout
             </button>
@@ -286,6 +290,13 @@ const ClientDashboard = () => {
               <div className="card-icon">👥</div>
               <h3>Browse Transcribers</h3>
               <p>Find and negotiate with professional transcribers.</p>
+            </Link>
+
+            {/* NEW: Direct Upload & Quote Card */}
+            <Link to="/client-direct-upload" className="dashboard-card"> {/* Link to new direct upload page */}
+              <div className="card-icon">⬆️</div> {/* Upload icon */}
+              <h3>Direct Upload & Quote</h3>
+              <p>Get instant quotes for your audio/video uploads.</p>
             </Link>
 
             {/* Updated My Negotiations Card */}

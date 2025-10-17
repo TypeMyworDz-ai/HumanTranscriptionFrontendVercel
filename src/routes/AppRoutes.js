@@ -1,4 +1,4 @@
-// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, and Profile Routes
+// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, Profile Routes, and Direct Upload Routes
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
@@ -37,8 +37,15 @@ import PaymentCallback from '../PaymentCallback';
 import ClientPaymentHistory from '../ClientPaymentHistory';
 import ClientJobs from '../ClientJobs';
 // NEW: Import Profile-related components
-import ClientProfile from '../ClientProfile'; // NEW: Client Profile
-import TranscriberProfile from '../TranscriberProfile'; // NEW: Transcriber Profile
+import ClientProfile from '../ClientProfile';
+import TranscriberProfile from '../TranscriberProfile';
+// NEW: Import Direct Upload-related components
+import ClientDirectUpload from '../ClientDirectUpload'; // NEW: Client Direct Upload
+import TranscriberOtherJobs from '../TranscriberOtherJobs'; // NEW: Transcriber Other Jobs
+
+// NEW: Import Admin Oversight components
+import AdminPaymentHistory from '../AdminPaymentHistory'; // NEW: Admin Payment History
+import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; // NEW: Admin Direct Upload Jobs
 
 
 const AppRoutes = () => {
@@ -65,7 +72,8 @@ const AppRoutes = () => {
                 <Route path="/client/chat/:chatId" element={<UserChat />} />
                 <Route path="/client-payments" element={<ClientPaymentHistory />} />
                 <Route path="/client-jobs" element={<ClientJobs />} />
-                <Route path="/client-profile/:clientId" element={<ClientProfile />} /> {/* NEW: Client Profile Route */}
+                <Route path="/client-profile/:clientId" element={<ClientProfile />} />
+                <Route path="/client-direct-upload" element={<ClientDirectUpload />} /> {/* NEW: Client Direct Upload Route */}
 
 
                 {/* Transcriber Routes */}
@@ -75,7 +83,8 @@ const AppRoutes = () => {
                 <Route path="/transcriber-waiting" element={<TranscriberWaiting />} />
                 <Route path="/transcriber/chat/:chatId" element={<UserChat />} />
                 <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
-                <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} /> {/* NEW: Transcriber Profile Route */}
+                <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} />
+                <Route path="/transcriber-other-jobs" element={<TranscriberOtherJobs />} /> {/* NEW: Transcriber Other Jobs Route */}
 
 
                 {/* Admin Routes */}
@@ -90,6 +99,9 @@ const AppRoutes = () => {
                 {/* Admin Chat Routes */}
                 <Route path="/admin/chat" element={<AdminMessageList />} />
                 <Route path="/admin/chat/:userId" element={<AdminChat />} />
+                {/* NEW: Admin Oversight Routes */}
+                <Route path="/admin/payments" element={<AdminPaymentHistory />} /> {/* NEW: Admin Payment History Route */}
+                <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> {/* NEW: Admin Direct Upload Jobs Route */}
 
 
             </Route>

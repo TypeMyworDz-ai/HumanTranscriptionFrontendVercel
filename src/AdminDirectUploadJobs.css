@@ -1,0 +1,51 @@
+.admin-direct-upload-jobs-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-direct-upload-jobs-container h2 {
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.direct-upload-jobs-table-wrapper {
+    overflow-x: auto; /* Ensures table is scrollable on smaller screens */
+}
+
+.direct-upload-jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.direct-upload-jobs-table th,
+.direct-upload-jobs-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+.direct-upload-jobs-table th {
+    background-color: #eef;
+    color: #333;
+    font-weight: bold;
+}
+
+.direct-upload-jobs-table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.direct-upload-jobs-table tbody tr:hover {
+    background-color: #e0e0e0;
+}
+
+.error-message {
+    color: #d9534f;
+    font-weight: bold;
+    text-align: center;
+}

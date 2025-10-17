@@ -1,4 +1,4 @@
-/* src/TranscriberDashboard.css */
+/* src/TranscriberDashboard.css - COMPLETE AND UPDATED for UI Improvements */
 
 /* --- Global Body/Container Styles (Enhanced) --- */
 .transcriber-dashboard-container {
@@ -15,7 +15,7 @@
 .transcriber-dashboard-header {
     background: linear-gradient(90deg, #3a2b5a 0%, #5f4a8e 100%);
     color: white;
-    padding: 20px 0;
+    padding: 18px 0; /* Adjusted padding */
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); /* Stronger shadow for header lift */
     position: sticky;
     top: 0;
@@ -26,9 +26,9 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 30px; /* Increased side padding */
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: flex-end;
+    display: flex; /* Changed from grid to flex for easier alignment of new profile section */
+    justify-content: space-between; /* Space out title and user info */
+    align-items: center; /* Vertically center items */
     min-height: 75px; /* Slightly taller header */
     gap: 25px; /* Increased gap */
 }
@@ -43,33 +43,74 @@
 
 .user-profile-actions {
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
+    align-items: center; /* Align items in the user info section */
+    gap: 20px; /* Space between profile section and logout button */
 }
 
+/* NEW: Profile Section Styles */
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between avatar and welcome text */
+}
+
+.profile-avatar-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease-in-out;
+}
+
+.profile-avatar-link:hover {
+    transform: scale(1.05);
+}
+
+.profile-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #ffc107; /* Yellow background for avatar */
+    color: #3a2b5a; /* Dark text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  opacity: 0.95; /* Slightly less opaque for better readability */
+  font-weight: 500;
+  color: white; /* Ensure welcome text is white */
+}
+
+
+/* NOTE: .welcome-text-badge is no longer used for the main welcome text, but might be used elsewhere or was a previous iteration */
 .welcome-text-badge {
     justify-self: center;
     background: #ffc107;
     color: #3a2b5a;
-    padding: 12px 30px; /* Increased padding */
+    padding: 12px 30px;
     border-radius: 30px;
-    font-size: 1.2rem; /* Slightly larger text */
+    font-size: 1.2rem;
     font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Enhanced shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     transition: transform 0.3s ease;
 }
 
 .welcome-text-badge:hover {
-    transform: translateY(-3px) scale(1.05); /* More prominent lift on hover */
+    transform: translateY(-3px) scale(1.05);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
 }
 
 .logout-btn {
-    background: #ff6b6b;
-    border: 1px solid #ff6b6b;
+    background: rgba(255, 255, 255, 0.2); /* More subtle background */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Slightly softer border */
     color: white;
-    padding: 12px 25px; /* Increased padding */
-    border-radius: 30px; /* More rounded */
+    padding: 10px 22px; /* Adjusted padding */
+    border-radius: 28px; /* Slightly more rounded */
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
@@ -77,10 +118,10 @@
 }
 
 .logout-btn:hover {
-    background: #ee5a52;
-    border-color: #ee5a52;
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-2px); /* More noticeable lift */
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow on hover */
 }
 
 /* --- Main Dashboard Content (Enhanced Aesthetics) --- */
@@ -139,28 +180,7 @@
 }
 
 /* Distinctive colors for status buttons */
-.status-toggle-btn.online { /* For "Go Offline" when currently online */
-    background: #28a745; /* Green */
-    border-color: #28a745;
-    color: white;
-}
-
-.status-toggle-btn.online:hover:not(:disabled) {
-    background: #218838;
-    border-color: #218838;
-}
-
-.status-toggle-btn.offline { /* For "Go Online" when currently offline */
-    background: #dc3545; /* Red */
-    border-color: #dc3545;
-    color: white;
-}
-
-.status-toggle-btn.offline:hover:not(:disabled) {
-    background: #c82333;
-    border-color: #c82333;
-}
-
+/* Removed .online and .offline as per new logic */
 .status-toggle-btn.available { /* For "Set Busy" when currently available */
     background: #007bff; /* Blue */
     border-color: #007bff;
@@ -243,6 +263,7 @@
     font-size: 5.5rem; /* Major increase in icon size */
     margin-bottom: 30px; /* Increased space below the icon */
     transition: transform 0.3s ease;
+    order: -1;
     line-height: 1;
 }
 
@@ -250,7 +271,7 @@
     transform: scale(1.15); /* More noticeable scale */
 }
 
-.card-link {
+.card-link { /* This style is no longer explicitly used, but keep for safety */
     /* Link button appearance refined */
     padding: 12px 30px;
     font-size: 1.05rem;
@@ -286,10 +307,7 @@
     .transcriber-dashboard-header h1 {
         font-size: 2.2rem;
     }
-    .welcome-text-badge {
-        font-size: 1.1rem;
-        padding: 10px 25px;
-    }
+    /* Removed welcome-text-badge specific media query */
     .transcriber-dashboard-main {
         padding: 50px 25px;
     }
@@ -302,7 +320,7 @@
     }
     .dashboard-sections-grid {
         gap: 30px;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Keep this minmax */
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
     .dashboard-card {
         padding: 40px;
@@ -311,17 +329,26 @@
         font-size: 1.8rem;
     }
     .card-icon {
-        font-size: 4.5rem; /* Scaled icon size */
+        font-size: 4.5rem;
         margin-bottom: 25px;
     }
 }
 
 @media (max-width: 768px) {
     .header-content {
-        grid-template-columns: 1fr;
+        flex-direction: column;
         gap: 15px;
         text-align: center;
         padding: 0 20px;
+    }
+
+    .user-profile-actions {
+        flex-direction: column; /* Stack profile and logout */
+        gap: 10px;
+    }
+
+    .transcriber-dashboard-header h1 {
+        font-size: 1.8rem;
     }
 
     .transcriber-dashboard-main {
@@ -363,5 +390,35 @@
     .card-icon {
         font-size: 4rem;
         margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .transcriber-dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+    /* Removed user-info span media query */
+    .logout-btn {
+        padding: 8px 18px;
+        font-size: 0.85rem;
+    }
+    .transcriber-dashboard-main {
+        padding: 30px 15px;
+    }
+    .dashboard-title {
+        font-size: 1.8rem;
+    }
+    .dashboard-description {
+        font-size: 0.9rem;
+        margin-bottom: 30px;
+    }
+    .dashboard-card {
+        padding: 30px;
+    }
+    .dashboard-card h3 {
+        font-size: 1.4rem;
+    }
+    .card-icon {
+        font-size: 3.5rem;
     }
 }

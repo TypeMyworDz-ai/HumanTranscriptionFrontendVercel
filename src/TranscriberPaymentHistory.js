@@ -1,4 +1,4 @@
-// src/TranscriberPaymentHistory.js
+// src/TranscriberPaymentHistory.js - UPDATED to display 80% Transcriber Pay
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -131,7 +131,7 @@ const TranscriberPaymentHistory = () => {
                                         <th>Date</th>
                                         <th>Negotiation ID</th>
                                         <th>Client</th>
-                                        <th>Amount</th>
+                                        <th>Your Pay (80%)</th> {/* UPDATED: Column header */}
                                         <th>Status</th>
                                         <th>Details</th>
                                     </tr>
@@ -142,7 +142,7 @@ const TranscriberPaymentHistory = () => {
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
                                             <td>{payment.negotiation_id.substring(0, 8)}...</td>
                                             <td>{payment.client?.full_name || 'N/A'}</td>
-                                            <td>KES {payment.amount.toLocaleString()}</td>
+                                            <td>KES {payment.transcriber_earning.toLocaleString()}</td> {/* UPDATED: Display transcriber_earning */}
                                             <td>{payment.paystack_status}</td>
                                             <td>{payment.negotiation?.requirements?.substring(0, 50)}...</td>
                                         </tr>

@@ -1,10 +1,11 @@
-// src/ClientProfile.js
+// src/ClientProfile.js - UPDATED with Edit Profile functionality for Clients
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Toast from './Toast';
+import Modal from './Modal'; // NEW: Import Modal component
 import { useAuth } from './contexts/AuthContext';
-import './ClientProfile.css'; // You'll need to create this CSS file
+import './ClientProfile.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -17,6 +18,13 @@ const ClientProfile = () => {
     const [ratings, setRatings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+
+    // NEW: State for Edit Profile Modal
+    const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+    const [editFullName, setEditFullName] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editModalLoading, setEditModalLoading] = useState(false);
+
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ isVisible: true, message, type });
@@ -63,6 +71,11 @@ const ClientProfile = () => {
                     average_rating: ratingsData.averageRating || 0, // Use the fetched average rating
                 });
                 setRatings(ratingsData.ratings || []);
+                // Pre-fill edit states if this is the current user's profile
+                if (user?.id === profileId) {
+                    setEditFullName(userData.user.full_name || '');
+                    setEditPhone(userData.user.clients?.[0]?.phone || '');
+                }
             } else {
                 showToast(ratingsData.error || 'Failed to load client ratings.', 'error');
                 setProfileData(userData.user); // Still show basic profile if ratings fail
@@ -75,7 +88,7 @@ const ClientProfile = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, navigate, profileId, showToast]);
+    }, [isAuthenticated, logout, navigate, profileId, showToast, user?.id]); // Added user.id to dependencies
 
     useEffect(() => {
         if (authLoading) return;
@@ -96,6 +109,73 @@ const ClientProfile = () => {
         
         fetchClientProfile();
     }, [isAuthenticated, authLoading, user, navigate, profileId, fetchClientProfile, showToast]);
+
+
+    // NEW: Edit Profile Modal Handlers
+    const openEditProfileModal = useCallback(() => {
+        // Only allow if current user is the profile owner
+        if (user?.id === profileId) {
+            setShowEditProfileModal(true);
+            // Pre-fill form fields from current profileData
+            setEditFullName(profileData.full_name || '');
+            setEditPhone(profileData.clients?.[0]?.phone || '');
+        } else {
+            showToast('You are not authorized to edit this profile.', 'error');
+        }
+    }, [user, profileId, profileData, showToast]);
+
+    const closeEditProfileModal = useCallback(() => {
+        setShowEditProfileModal(false);
+        setEditModalLoading(false);
+    }, []);
+
+    const handleEditFormChange = useCallback((e) => {
+        const { name, value } = e.target;
+        if (name === 'full_name') {
+            setEditFullName(value);
+        } else if (name === 'phone') {
+            setEditPhone(value);
+        }
+    }, []);
+
+    const submitEditProfile = useCallback(async () => {
+        setEditModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+
+        try {
+            // API call to update client profile (e.g., phone, full_name in users table)
+            const response = await fetch(`${BACKEND_API_URL}/api/client-profile/${profileId}`, { // NEW API ENDPOINT
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    full_name: editFullName, // Update full_name in users table
+                    phone: editPhone // Update phone in clients table
+                })
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(data.message || 'Profile updated successfully!', 'success');
+                closeEditProfileModal();
+                fetchClientProfile(); // Re-fetch profile to show updated details
+            } else {
+                showToast(data.error || 'Failed to update profile.', 'error');
+            }
+        } catch (error) {
+            console.error('Error submitting profile update:', error);
+            showToast('Network error while updating profile.', 'error');
+        } finally {
+            setEditModalLoading(false);
+        }
+    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile, user?.id]); // Added user.id to dependencies
 
 
     if (authLoading || !isAuthenticated || !user || loading || !profileData) {
@@ -133,7 +213,13 @@ const ClientProfile = () => {
                     </div>
 
                     <div className="profile-details-card">
-                        <h3>Client Information</h3>
+                        <div className="card-header-with-button"> {/* NEW: For title and edit button */}
+                           <h3>Client Information</h3>
+                           {user?.id === profileId && ( // Only show edit button to profile owner
+                               <button onClick={openEditProfileModal} className="edit-profile-btn">Edit Profile</button>
+                           )}
+                        </div>
+
                         <div className="detail-row">
                             <span>Full Name:</span>
                             <strong>{profileData.full_name}</strong>
@@ -147,6 +233,10 @@ const ClientProfile = () => {
                             <strong>{profileData.user_type}</strong>
                         </div>
                         <div className="detail-row">
+                            <span>Phone:</span> {/* NEW: Display Phone Number */}
+                            <strong>{profileData.clients?.[0]?.phone || 'Not provided'}</strong>
+                        </div>
+                        <div className="detail-row">
                             <span>Client Rating:</span>
                             <div className="rating-display">
                                 {'★'.repeat(Math.floor(profileData.average_rating || 0))}
@@ -154,7 +244,6 @@ const ClientProfile = () => {
                                 <span className="rating-number">({(profileData.average_rating || 0).toFixed(1)})</span>
                             </div>
                         </div>
-                        {/* Add more client-specific details if available */}
                     </div>
 
                     <h3>Admin Ratings & Comments ({ratings.length})</h3>
@@ -177,6 +266,43 @@ const ClientProfile = () => {
                     )}
                 </div>
             </main>
+
+            {/* NEW: Edit Profile Modal */}
+            {showEditProfileModal && (
+                <Modal
+                    show={showEditProfileModal}
+                    title="Edit Profile Details"
+                    onClose={closeEditProfileModal}
+                    onSubmit={submitEditProfile}
+                    submitText="Save Changes"
+                    loading={editModalLoading}
+                >
+                    <p>Update your profile information.</p>
+                    <div className="form-group">
+                        <label htmlFor="full_name">Full Name:</label>
+                        <input
+                            type="text"
+                            id="full_name"
+                            name="full_name"
+                            value={editFullName}
+                            onChange={handleEditFormChange}
+                            placeholder="Your Full Name"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="phone">Phone Number (Optional):</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            value={editPhone}
+                            onChange={handleEditFormChange}
+                            placeholder="e.g., 07XXXXXXXX"
+                        />
+                    </div>
+                </Modal>
+            )}
 
             <Toast
                 message={toast.message}

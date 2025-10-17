@@ -1,9 +1,9 @@
-// src/TranscriberDashboard.js - Part 1 - UPDATED for simplified online/availability logic, Payment History card, and Transcriber Profile Link
+// src/TranscriberDashboard.js - Part 1 - UPDATED for simplified online/availability logic, Payment History card, Transcriber Profile Link & UI, and NEW 'Other Jobs' Card
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import './TranscriberDashboard.css';
+import './TranscriberDashboard.css'; // Ensure this CSS file exists and has styles for .profile-avatar-link and .profile-icon
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';
@@ -21,6 +21,7 @@ const TranscriberDashboard = () => {
   const [negotiations, setNegotiations] = useState([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0); // NEW: State for total earnings
+  const [availableDirectJobsCount, setAvailableDirectJobsCount] = useState(0); // NEW: State for available direct jobs
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -144,6 +145,27 @@ const TranscriberDashboard = () => {
     }
   }, [user]);
 
+  // NEW: Fetch Available Direct Upload Jobs Count
+  const fetchAvailableDirectJobsCount = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id) return;
+
+    try {
+      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok && data.jobs) {
+        setAvailableDirectJobsCount(data.jobs.length);
+      } else {
+        console.error('Failed to fetch available direct jobs count:', data.error);
+      }
+    } catch (error) {
+      console.error('Network error fetching available direct jobs count:', error);
+    }
+  }, [user]);
+
+
   // --- Main Data Management and Socket Setup useEffect ---
   useEffect(() => {
     console.log('TranscriberDashboard: Main useEffect. isAuthReady:', isAuthReady, 'user:', user, 'authLoading:', authLoading);
@@ -181,7 +203,8 @@ const TranscriberDashboard = () => {
         fetchNegotiationsData(),
         fetchUnreadMessageCount(),
         fetchTranscriberStatus(),
-        fetchTranscriberPaymentHistory() // NEW: Fetch payment history
+        fetchTranscriberPaymentHistory(), // NEW: Fetch payment history
+        fetchAvailableDirectJobsCount() // NEW: Fetch available direct jobs count
     ]).finally(() => {
         setLoading(false);
     });
@@ -195,6 +218,7 @@ const TranscriberDashboard = () => {
       fetchNegotiationsData();
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on negotiation update
+      fetchAvailableDirectJobsCount(); // NEW: Refresh direct jobs count
     };
 
     const handleUnreadMessageCountUpdate = (data) => {
@@ -223,6 +247,7 @@ const TranscriberDashboard = () => {
         fetchNegotiationsData();
         fetchTranscriberStatus();
         fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on job completion
+        fetchAvailableDirectJobsCount(); // NEW: Refresh direct jobs count
     };
 
     const handleJobHired = (data) => { // NEW: Handle job_hired event
@@ -231,6 +256,22 @@ const TranscriberDashboard = () => {
         fetchNegotiationsData();
         fetchTranscriberStatus();
         fetchTranscriberPaymentHistory(); // NEW: Refresh payment history on job hired
+        fetchAvailableDirectJobsCount(); // NEW: Refresh direct jobs count
+    };
+
+    const handleNewDirectJobAvailable = (data) => { // NEW: Handle new_direct_job_available event
+        console.log('TranscriberDashboard Real-time: New direct job available!', data);
+        showToast(data.message || `A new direct upload job is available!`, 'info');
+        fetchAvailableDirectJobsCount(); // Refresh count
+        playNotificationSound();
+    };
+
+    const handleDirectJobStatusUpdate = (data) => { // NEW: Handle direct_job_status_update (job taken)
+        console.log('TranscriberDashboard Real-time: Direct job status update!', data);
+        showToast(`Direct job ${data.jobId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
+        fetchAvailableDirectJobsCount(); // Refresh count
+        fetchTranscriberStatus(); // Update current job status
+        fetchNegotiationsData(); // May affect active jobs list
     };
 
 
@@ -243,6 +284,8 @@ const TranscriberDashboard = () => {
     socket.on('newChatMessage', handleNewChatMessage);
     socket.on('job_completed', handleJobCompleted);
     socket.on('job_hired', handleJobHired); // NEW: Listen for job_hired event
+    socket.on('new_direct_job_available', handleNewDirectJobAvailable); // NEW: Listen for new direct jobs
+    socket.on('direct_job_status_update', handleDirectJobStatusUpdate); // NEW: Listen for direct job status updates
 
 
     return () => {
@@ -256,11 +299,13 @@ const TranscriberDashboard = () => {
       socket.off('newChatMessage', handleNewChatMessage);
       socket.off('job_completed', handleJobCompleted);
       socket.off('job_hired', handleJobHired); // NEW: Detach job_hired listener
+      socket.off('new_direct_job_available', handleNewDirectJobAvailable); // NEW: Detach new direct job listener
+      socket.off('direct_job_status_update', handleDirectJobStatusUpdate); // NEW: Detach direct job status update listener
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, playNotificationSound]);
-// src/TranscriberDashboard.js - Part 2 - UPDATED for simplified online/availability logic and Payment History card (Continue from Part 1)
+  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound]);
+// src/TranscriberDashboard.js - Part 2 - UPDATED for simplified online/availability logic, Payment History card, Transcriber Profile Link & UI, and NEW 'Other Jobs' Card (Continue from Part 1)
 
   const handleLogout = useCallback(async () => {
     // No need to explicitly set is_online to false here,
@@ -333,8 +378,16 @@ const TranscriberDashboard = () => {
       <header className="transcriber-dashboard-header">
         <div className="header-content">
           <h1>Transcriber Dashboard</h1>
-          <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
-          <div className="user-profile-actions">
+          {/* NEW: Profile Avatar/Icon and Welcome Message */}
+          <div className="profile-section">
+            <Link to={`/transcriber-profile/${user.id}`} className="profile-avatar-link">
+              <div className="profile-icon">
+                {user?.full_name?.charAt(0).toUpperCase() || '👤'} {/* First letter of name or default icon */}
+              </div>
+            </Link>
+            <span className="welcome-text">Welcome, {user?.full_name || 'Transcriber'}!</span> {/* Welcome text moved */}
+          </div>
+          <div className="user-profile-actions"> {/* Moved logout button here for better alignment */}
             <button onClick={handleLogout} className="logout-btn">
               Logout
             </button>
@@ -398,6 +451,13 @@ const TranscriberDashboard = () => {
               <div className="card-icon">💰</div>
               <h3>Payment History (KES {totalEarnings.toLocaleString()})</h3>
               <p>Review your past transactions and earnings.</p>
+            </Link>
+
+            {/* NEW: Other Jobs Card */}
+            <Link to="/transcriber-other-jobs" className="dashboard-card"> {/* Link to new Other Jobs page */}
+              <div className="card-icon">💼</div> {/* Briefcase icon */}
+              <h3>Other Jobs ({availableDirectJobsCount})</h3> {/* Display available direct jobs count */}
+              <p>Browse and take direct upload jobs from clients.</p>
             </Link>
           </div>
         </div>

@@ -284,6 +284,18 @@ const AdminDashboard = () => {
                             <p>Monitor all ongoing and completed transcription jobs.</p>
                         </Link>
 
+                        <Link to="/admin/direct-upload-jobs" className="admin-card"> {/* NEW CARD */}
+                            <div className="card-icon">📤</div>
+                            <h3>Direct Upload Jobs</h3>
+                            <p>Review and manage all client direct upload requests.</p>
+                        </Link>
+
+                        <Link to="/admin/payments" className="admin-card"> {/* NEW CARD */}
+                            <div className="card-icon">💳</div>
+                            <h3>Payment History</h3>
+                            <p>View all client payments and transcriber earnings.</p>
+                        </Link>
+
                         <Link to="/admin/disputes" className="admin-card">
                             <div className="card-icon">⚖️</div>
                             <h3>Dispute Resolution ({adminStats.disputes})</h3>
