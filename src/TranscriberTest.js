@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TranscriberTest.css';
 import { useAuth } from './contexts/AuthContext';
+import { BACKEND_API_URL } from './config'; // NEW: Import BACKEND_API_URL
 
 const TranscriberTest = () => {
   const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -68,7 +69,8 @@ const TranscriberTest = () => {
                 logout();
                 return;
             }
-            const response = await fetch('http://localhost:5000/api/transcriber/status', {
+            // CORRECTED: Use BACKEND_API_URL
+            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/status`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const statusData = await response.json();
@@ -157,7 +159,8 @@ const TranscriberTest = () => {
       }
 
       // Make the API call to the backend
-      const response = await fetch('http://localhost:5000/api/transcriber/submit-test', {
+      // CORRECTED: Use BACKEND_API_URL
+      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/submit-test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,26 +210,26 @@ const TranscriberTest = () => {
   return (
     <div className="test-container">
       <header className="test-header">
-        <h1>Transcriber Assessment Test</h1>
-        <p>Welcome {user.full_name}!</p>
+        <h1 className="test-title">Transcriber Assessment Test</h1>
+        <p className="welcome-message">Welcome {user.full_name}!</p>
       </header>
 
       <div className="test-content">
         {currentSection === 'instructions' && (
           <div className="instructions-section">
-            <h2>Test Instructions</h2>
+            <h2 className="section-title">Test Instructions</h2>
             <div className="instructions-content">
-              <h3>This test consists of two parts:</h3>
+              <h3 className="sub-section-title">This test consists of two parts:</h3>
               <ol>
                 <li><strong>Grammar Test:</strong> 10 multiple choice questions testing basic English grammar</li>
                 <li><strong>Transcription Task:</strong> Listen to a short audio and transcribe it following our guidelines</li>
               </ol>
 
-              <br/><br/><br/> {/* Considerable space */}
-              <h3><u><strong>GUIDELINES:</strong></u></h3>
-              <br/><br/> {/* Space before "Transcription Essentials:" */}
+              <br/><br/><br/>
+              <h3 className="sub-section-title"><u><strong>GUIDELINES:</strong></u></h3>
+              <br/><br/>
 
-              <h3><u>Transcription Essentials:</u></h3>
+              <h3 className="sub-section-title"><u>Transcription Essentials:</u></h3>
               <ul>
                 <li>
                   <em><strong>Listening skills:</strong></em> Mishears; pornography instead geography
@@ -239,13 +242,13 @@ const TranscriberTest = () => {
                 </li>
               </ul>
 
-              <h3><u>Softwares and Tools:</u></h3>
+              <h3 className="sub-section-title"><u>Softwares and Tools:</u></h3>
               <ul>
                 <li>
                   <em><strong>Express Scribe:</strong></em> Playback software or use our simple Editor here <a href="https://typemywordz.ai/transcription-editor" target="_blank" rel="noopener noreferrer" style={{ color: '#007bff', textDecoration: 'underline' }}><strong>https://typemywordz.ai/transcription-editor</strong></a>.
                 </li>
                 <li>
-                  <em><strong>TypeMyworDz 👉 </strong></em><a href="https://typemywordz.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#007bff', textDecoration: 'underline' }}><strong>typemywordz.ai</strong></a>: You can always get an AI transcript and make sure to edit it thoroughly according to client's instructions. <strong>NEVER SUBMIT AN AI TRANSCRIPT.</strong> Read our { /* eslint-disable-next-line jsx-a11y/anchor-is-valid */ }
+                  <em><strong>TypeMyworDz 👉 </strong></em><a href="https://typemywordz.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#007bff', textDecoration: 'underline' }}><strong>typemywordz.ai</strong></a>: You can always get an AI transcript and make sure to edit it thoroughly according to client's instructions. <strong>NEVER SUBMIT AN AI TRANSCRIPT.</strong> Read our {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                         <a href="#" onClick={(e) => e.preventDefault()} role="button" aria-disabled="true" target="_blank" rel="noopener noreferrer">terms and conditions</a>.
                 </li>
                 <li>
@@ -262,7 +265,7 @@ const TranscriberTest = () => {
                 </li>
               </ul>
 
-              <h3><u>NOTE</u></h3>
+              <h3 className="sub-section-title"><u>NOTE</u></h3>
               <ul>
                 <li>
                   A client will always indicate what type of transcript they want. Make sure to follow all the client's instructions to the last one. Failure to follow client's instructions leads to poor ratings, which will lead to removal from our platform.
@@ -275,32 +278,32 @@ const TranscriberTest = () => {
                 </li>
               </ul>
 
-              <h3><u>Full-Verbatim and Clean-Verbatim transcription</u></h3>
-              <h4><u>Full verbatim:</u></h4>
+              <h3 className="sub-section-title"><u>Full-Verbatim and Clean-Verbatim transcription</u></h3>
+              <h4 className="sub-sub-section-title"><u>Full verbatim:</u></h4>
               <p>Transcript where you include everything the speaker saying: Repetitions, stutters, stammers, filler words.</p>
-              <h4><u>Repetitions:</u></h4>
+              <h4 className="sub-sub-section-title"><u>Repetitions:</u></h4>
               <ul>
                 <li>I went to Java Café for some-some-some coffee.</li>
                 <li>I went to Java Café- Java Café- Java Café for some-some coffee.</li>
               </ul>
-              <h4><u>Stutters:</u></h4>
+              <h4 className="sub-sub-section-title"><u>Stutters:</u></h4>
               <ul>
                 <li>Um, Uh, Er, Hmm, Mm, Uh-uh, Uh-oh. Uh-huh, Mm-hmm (affirmatives), for example, I went, um, to the- to the, er, Java House.</li>
               </ul>
-              <h4><u>Stammers:</u></h4>
+              <h4 className="sub-sub-section-title"><u>Stammers:</u></h4>
               <ul>
                 <li>I went to Java for some co-co-co-coffee.</li>
               </ul>
-              <h4><u>Filler words:</u></h4>
+              <h4 className="sub-sub-section-title"><u>Filler words:</u></h4>
               <ul>
                 <li>You know, like, yeah, then, of course;</li>
               </ul>
-              <h4><u>Unnecessary Affirmatives/Negatives:</u></h4>
+              <h4 className="sub-sub-section-title"><u>Unnecessary Affirmatives/Negatives:</u></h4>
               <p>Lawrence: I was going to the church-</p>
               <p>James: Yes.</p>
               <p>Lawrence: When I heard a loud bang.</p>
 
-              <h4><u>Clean-Verbatim</u></h4>
+              <h4 className="sub-sub-section-title"><u>Clean-Verbatim</u></h4>
               <p>Remove stutters, stammers, filler words and repetitions.</p>
               <ul>
                 <li>
@@ -316,7 +319,7 @@ const TranscriberTest = () => {
                 </li>
               </ul>
 
-              <h3><u>Most common tags:</u></h3>
+              <h3 className="sub-section-title"><u>Most common tags:</u></h3>
               <ul>
                 <li>
                   <strong>[unintelligible 00:00:00]:</strong> You can clearly hear what the speaker is saying but can’t make out the words he/she is saying. Accent.
@@ -379,13 +382,13 @@ const TranscriberTest = () => {
                 </li>
               </ul>
 
-              <h3>Timestamping:</h3>
+              <h3 className="sub-section-title">Timestamping:</h3>
               <ul>
                 <li>a. Change of Speaker: Timestamp every change of speaker</li>
                 <li>b. Intervals: Can be in seconds or minutes e.g. Every 30 seconds, every 1 minute, every 2 minutes, et cetera.</li>
               </ul>
 
-              <p><strong>Note:</strong> Your test will be reviewed by our team. You'll be notified of the results within 24 hours.</p>
+              <p className="note-text"><strong>Note:</strong> Your test will be reviewed by our team. You'll be notified of the results within 24 hours.</p>
             </div>
             <button onClick={() => setCurrentSection('grammar')} className="start-test-btn">
               Start Test
@@ -395,12 +398,12 @@ const TranscriberTest = () => {
 
         {currentSection === 'grammar' && (
           <div className="grammar-section">
-            <h2>Part 1: Grammar Test</h2>
+            <h2 className="section-title">Part 1: Grammar Test</h2>
             <div className="questions-container">
               {grammarQuestions.map((q, index) => (
                 <div key={q.id} className="question-card">
-                  <h3>Question {index + 1}</h3>
-                  <p>{q.question}</p>
+                  <h3 className="question-number">Question {index + 1}</h3>
+                  <p className="question-text">{q.question}</p>
                   <div className="options">
                     {q.options.map((option, optionIndex) => (
                       <label key={optionIndex} className="option-label">
@@ -426,9 +429,9 @@ const TranscriberTest = () => {
 
         {currentSection === 'transcription' && (
           <div className="transcription-section">
-            <h2>Part 2: Transcription Task</h2>
+            <h2 className="section-title">Part 2: Transcription Task</h2>
             <div className="audio-section">
-              <p><strong>Instructions:</strong> Listen to the audio below and transcribe exactly what you hear following the guidelines. Use `**text**` for bold and `*text*` for italics.</p>
+              <p className="audio-instructions"><strong>Instructions:</strong> Listen to the audio below and transcribe exactly what you hear following the guidelines. Use `**text**` for bold and `*text*` for italics.</p>
 
               {/* NEW: Placeholder for audio element */}
               <div className="audio-player-container">
@@ -438,7 +441,7 @@ const TranscriberTest = () => {
               </div>
 
               <div className="transcription-input">
-                <label>Your Transcription:</label>
+                <label className="transcription-label">Your Transcription:</label>
                 <textarea
                   value={testData.transcriptionText}
                   onChange={handleTranscriptionChange}
