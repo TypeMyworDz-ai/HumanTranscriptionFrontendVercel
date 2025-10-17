@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'; // Removed useCallback import
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './TranscriberWaiting.css';
 import { useAuth } from './contexts/AuthContext';
+import { BACKEND_API_URL } from './config'; // NEW: Import BACKEND_API_URL
 
 const TranscriberWaiting = () => {
   const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -38,7 +39,8 @@ const TranscriberWaiting = () => {
                 logout();
                 return;
             }
-            const response = await fetch('http://localhost:5000/api/transcriber/status', {
+            // CORRECTED: Use BACKEND_API_URL
+            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/status`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const statusData = await response.json();
