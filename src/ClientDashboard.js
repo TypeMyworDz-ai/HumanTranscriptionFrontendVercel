@@ -1,15 +1,13 @@
-// src/ClientDashboard.js - Part 1 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, Client Profile Link, and Direct Upload Card
+// frontend/client/src/ClientDashboard.js - UPDATED for improved Profile Link UI/UX
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import './ClientDashboard.css'; // Ensure this CSS file exists and has styles for .profile-avatar-link and .profile-icon
+import './ClientDashboard.css'; // Ensure this CSS file exists and has styles for .profile-link, .profile-avatar, .profile-icon
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';
-
-// Define the backend URL constant for API calls within this component
-const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+import { BACKEND_API_URL } from './config';
 
 // --- Component Definition ---
 const ClientDashboard = () => {
@@ -20,10 +18,10 @@ const ClientDashboard = () => {
     pendingNegotiations: 0,
     activeJobs: 0,
     completedJobs: 0,
-    clientRating: 5.0
+    clientRating: 5.0 // This will be updated from user.client_rating
   });
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const [totalClientPayments, setTotalClientPayments] = useState(0); // NEW: State for client's total payments
+  const [totalClientPayments, setTotalClientPayments] = useState(0); 
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -80,14 +78,13 @@ const ClientDashboard = () => {
         setLoading(false);
         return;
     }
-    // setLoading(true); // Moved to main useEffect finally block
     try {
+      // Fetch client's main user data to get the latest rating
       const userResponse = await fetch(`${BACKEND_API_URL}/api/auth/user/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const userDataFromApi = await userResponse.json();
+      // Ensure client_profile and client_rating exist before accessing
       const clientRating = userDataFromApi.user?.client_profile?.client_rating || 5.0;
 
       const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
@@ -105,7 +102,7 @@ const ClientDashboard = () => {
           pendingNegotiations,
           activeJobs,
           completedJobs,
-          clientRating
+          clientRating // Use the fetched clientRating
         });
       } else {
         console.error('Failed to fetch negotiations:', negotiationsData.error);
@@ -125,12 +122,12 @@ const ClientDashboard = () => {
     if (!token || !user?.id) return;
 
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/client/payments`, { // NEW: Client-specific payment history endpoint
+      const response = await fetch(`${BACKEND_API_URL}/api/client/payments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (response.ok && data.summary) {
-        setTotalClientPayments(data.summary.totalPayments || 0); // Assuming totalPayments in summary
+        setTotalClientPayments(data.summary.totalPayments || 0);
       } else {
         console.error('Failed to fetch client payment history:', data.error);
       }
@@ -170,7 +167,7 @@ const ClientDashboard = () => {
     Promise.all([
         fetchClientStats(user.id, token),
         fetchUnreadMessageCount(),
-        fetchClientPaymentHistory() // NEW: Fetch client payment history
+        fetchClientPaymentHistory()
     ]).finally(() => {
         setLoading(false);
     });
@@ -182,7 +179,7 @@ const ClientDashboard = () => {
         console.log('ClientDashboard Real-time: Negotiation update received!', data);
         showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
         fetchClientStats(user.id, localStorage.getItem('token'));
-        fetchClientPaymentHistory(); // Refresh payments on negotiation update
+        fetchClientPaymentHistory();
     };
 
     const handleUnreadMessageCountUpdate = (data) => {
@@ -205,12 +202,22 @@ const ClientDashboard = () => {
         }
     };
 
-    const handlePaymentSuccessful = (data) => { // NEW: Handle payment_successful event
+    const handlePaymentSuccessful = (data) => {
         console.log('ClientDashboard Real-time: Payment successful event received!', data);
         showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
         fetchClientStats(user.id, localStorage.getItem('token'));
-        fetchClientPaymentHistory(); // Refresh payments on payment success
+        fetchClientPaymentHistory();
     };
+
+    const handleSocketConnect = () => {
+        socket.emit('joinUserRoom', user.id);
+    };
+
+    if (!socket.connected) {
+        socket.on('connect', handleSocketConnect);
+    } else {
+        handleSocketConnect();
+    }
 
 
     socket.on('negotiation_accepted', handleNegotiationUpdate);
@@ -219,7 +226,7 @@ const ClientDashboard = () => {
     socket.on('negotiation_cancelled', handleNegotiationUpdate);
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
     socket.on('newChatMessage', handleNewChatMessage);
-    socket.on('payment_successful', handlePaymentSuccessful); // NEW: Listen for payment_successful event
+    socket.on('payment_successful', handlePaymentSuccessful);
 
 
     return () => {
@@ -230,12 +237,12 @@ const ClientDashboard = () => {
         socket.off('negotiation_cancelled', handleNegotiationUpdate);
         socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
         socket.off('newChatMessage', handleNewChatMessage);
-        socket.off('payment_successful', handlePaymentSuccessful); // NEW: Detach payment_successful listener
+        socket.off('payment_successful', handlePaymentSuccessful);
+        socket.off('connect', handleSocketConnect);
         disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
-// src/ClientDashboard.js - Part 2 - UPDATED for Vercel deployment, Client Payment History, My Jobs link, Client Profile Link, and Direct Upload Card (Continue from Part 1)
+  }, [isAuthenticated, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound, isAuthReady]);
 
 
   // Display a loading indicator if client-specific data is still being fetched.
@@ -252,9 +259,12 @@ const ClientDashboard = () => {
 
   // If, for some reason, user is not available here (which ProtectedRoute should prevent)
   // or if the user type check failed, we can show a fallback or redirect.
-  if (!user || !isAuthenticated) { // isAuthenticated is still checked by ProtectedRoute
+  if (!user || !isAuthenticated) {
     return <div>Authentication error or not logged in. Redirecting...</div>;
   }
+
+  // Get the first letter of the user's full name for the avatar
+  const firstLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
 
   return (
@@ -262,16 +272,15 @@ const ClientDashboard = () => {
       <header className="client-dashboard-header">
         <div className="header-content">
           <h1>Client Dashboard</h1>
-          <div className="user-info">
-            {/* NEW: Profile Avatar/Icon and Welcome Message */}
-            <div className="profile-section">
-              <Link to={`/client-profile/${user.id}`} className="profile-avatar-link">
-                <div className="profile-icon">
-                  {user?.full_name?.charAt(0).toUpperCase() || '👤'} {/* First letter of name or default icon */}
+          <div className="profile-section">
+            {/* UPDATED: Profile link with icon and text */}
+            <Link to={`/client-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
+                <div className="profile-avatar">
+                    {firstLetter}
                 </div>
-              </Link>
-              <span className="welcome-text">Welcome, {user?.full_name || 'Client'}!</span> {/* Welcome text moved */}
-            </div>
+                <span className="welcome-text">Welcome, {user.full_name}!</span>
+                <span className="profile-icon">⚙️</span> {/* Added a small gear icon */}
+            </Link>
             <button onClick={logout} className="logout-btn">
               Logout
             </button>
@@ -284,7 +293,6 @@ const ClientDashboard = () => {
           <h2 className="dashboard-title">Your Hub for Transcription Services</h2>
           <p className="dashboard-description">Manage your projects, track negotiations, and connect with transcribers.</p>
 
-          {/* NEW: Dashboard Action Cards (moved to top) */}
           <div className="dashboard-cards-grid">
             <Link to="/transcriber-pool" className="dashboard-card">
               <div className="card-icon">👥</div>
@@ -292,44 +300,39 @@ const ClientDashboard = () => {
               <p>Find and negotiate with professional transcribers.</p>
             </Link>
 
-            {/* NEW: Direct Upload & Quote Card */}
-            <Link to="/client-direct-upload" className="dashboard-card"> {/* Link to new direct upload page */}
-              <div className="card-icon">⬆️</div> {/* Upload icon */}
+            <Link to="/client-direct-upload" className="dashboard-card">
+              <div className="card-icon">⬆️</div>
               <h3>Direct Upload & Quote</h3>
               <p>Get instant quotes for your audio/video uploads.</p>
             </Link>
 
-            {/* Updated My Negotiations Card */}
-            <Link to="/client-negotiations" className="dashboard-card">
-              <div className="card-icon">👋</div> {/* Changed icon to hands greeting */}
-              <h3>My Negotiations ({clientStats.pendingNegotiations})</h3>
-              <p>View pending, agreed, and completed negotiation requests.</p>
-            </Link>
-
-            {/* NEW: My Messages Card */}
-            {/* Using the actual admin ID */}
-            <Link to={`/client/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card">
-              <div className="card-icon">💬</div> {/* Message icon */}
-              <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3> {/* NEW unread count badge */}
-              <p>View and manage your direct messages.</p>
-            </Link>
-
-            <Link to="/client-jobs" className="dashboard-card"> {/* UPDATED: Link to /client-jobs */}
+            <Link to="/client-jobs" className="client-card">
               <div className="card-icon">📝</div>
-              <h3>My Jobs ({clientStats.activeJobs})</h3>
+              <h3>My Active Jobs ({clientStats.activeJobs})</h3>
               <p>Track the progress of your active transcription jobs.</p>
             </Link>
 
-            {/* NEW: Client Payment History Card */}
-            <Link to="/client-payments" className="dashboard-card"> {/* NEW: Link to /client-payments */}
-              <div className="card-icon">💰</div>
-              <h3>Payment History (KES {totalClientPayments.toLocaleString()})</h3> {/* Display total payments */}
-              <p>Review your past transactions and invoices.</p>
+            <Link to="/client-negotiations" className="dashboard-card">
+              <div className="card-icon">🤝</div>
+              <h3>Negotiations History ({clientStats.pendingNegotiations})</h3>
+              <p>View pending, agreed, and completed negotiation requests.</p>
+            </Link>
+
+            <Link to="/client-payments" className="dashboard-card">
+              <div className="card-icon">💳</div>
+              <h3>Payment History (KES {totalClientPayments.toLocaleString()})</h3>
+              <p>View your transaction history and payment details.</p>
+            </Link>
+
+            <Link to={`/client/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card"> {/* Assuming 'admin' is a fixed ID for chat with admin */}
+              <div className="card-icon">💬</div>
+              <h3>Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
+              <p>Chat with transcribers or support.</p>
             </Link>
           </div>
 
           {/* NEW: Combined Client Stats Card */}
-          <div className="combined-stats-card-wrapper"> {/* Wrapper for the single stats card */}
+          <div className="combined-stats-card-wrapper">
             <div className="combined-stats-card">
               <h3>Your Performance Overview</h3>
               <div className="stats-grid">
@@ -367,8 +370,8 @@ const ClientDashboard = () => {
         onClose={hideToast}
         duration={toast.type === 'error' ? 4000 : 3000}
       />
-      {/* NEW: Hidden audio element for notification sound */}
-      <audio ref={audioRef} src="/path/to/your/notification-sound.mp3" preload="auto" />
+      {/* Audio element for notifications, ensure path is correct */}
+      <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
     </div>
   );
 };

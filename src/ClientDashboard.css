@@ -1,158 +1,169 @@
-/* src/ClientDashboard.css */
+/* src/ClientDashboard.css additions/updates */
+
+/* Ensure basic header styles are present */
+.client-dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Your primary purple color */
+    color: white;
+    padding: 18px 0;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.client-dashboard-header h1 {
+    margin: 0;
+    font-size: 2.3rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+/* NEW: Profile Section Container - holds the link and logout button */
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between profile link and logout button */
+}
+
+/* NEW: Style for the entire clickable profile area */
+.profile-link {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between avatar, text, and icon */
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px; /* Adjusted padding for pill shape */
+    border-radius: 25px; /* Pill shape */
+    background-color: rgba(255, 255, 255, 0.15); /* Subtle background */
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Gentle shadow */
+}
+
+.profile-link:hover {
+    background-color: rgba(255, 255, 255, 0.25); /* Darker on hover */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); /* More pronounced shadow on hover */
+}
+
+/* NEW: Style for the avatar circle */
+.profile-avatar {
+    width: 36px; /* Slightly larger avatar */
+    height: 36px;
+    border-radius: 50%;
+    background-color: #f0f0f0; /* Light background for the letter */
+    color: #6a0dad; /* Purple letter */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.1em; /* Larger letter */
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Subtle border */
+}
+
+/* NEW: Style for the welcome text */
+.welcome-text {
+    font-size: 1.05em; /* Slightly larger text */
+    font-weight: 500;
+    color: white;
+}
+
+/* NEW: Style for the gear icon */
+.profile-icon {
+    font-size: 1.2em; /* Adjust size of the gear icon */
+    margin-left: 5px; /* Space from welcome text */
+    color: #ffc107; /* Yellowish color for the icon, or white */
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 22px;
+    border-radius: 28px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Existing styles below this line, ensure they are still correct --- */
 
 /* Global Body/Container Styles */
 .client-dashboard-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e0eafc 100%); /* Softer, modern gradient */
-  font-family: 'Inter', sans-serif; /* Ensure 'Inter' font is imported in index.css or App.css */
+  background: linear-gradient(135deg, #f0f4f8 0%, #e0eafc 100%);
+  font-family: 'Inter', sans-serif;
   color: #333;
   line-height: 1.6;
   display: flex;
-  flex-direction: column; /* Allows header and main to stack correctly */
-}
-
-/* Header Styles */
-.client-dashboard-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Consistent gradient */
-  color: white;
-  padding: 18px 0; /* Slightly refined padding */
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25); /* Slightly stronger and diffused shadow */
-  position: sticky; /* Makes header stick on scroll */
-  top: 0;
-  z-index: 1000; /* Ensures header is on top */
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 30px; /* Increased side padding */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.client-dashboard-header h1 {
-  margin: 0;
-  font-size: 2.3rem; /* Slightly larger */
-  font-weight: 700;
-  letter-spacing: -0.5px; /* Tighter letter spacing for headings */
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-/* NEW: Profile Section Styles */
-.profile-section {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.profile-avatar-link {
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.2s ease-in-out;
-}
-
-.profile-avatar-link:hover {
-    transform: scale(1.05);
-}
-
-.profile-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: #ffc107; /* Yellow background for avatar */
-    color: #3a2b5a; /* Dark text */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.4rem;
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-}
-
-.welcome-text {
-  font-size: 1.1rem;
-  opacity: 0.95; /* Slightly less opaque for better readability */
-  font-weight: 500;
-  color: white; /* Ensure welcome text is white */
-}
-
-
-.logout-btn {
-  background: rgba(255, 255, 255, 0.2); /* More subtle background */
-  border: 1px solid rgba(255, 255, 255, 0.3); /* Slightly softer border */
-  color: white;
-  padding: 10px 22px; /* Adjusted padding */
-  border-radius: 28px; /* Slightly more rounded */
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  font-size: 0.95rem; /* Consistent font size */
-}
-
-.logout-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px); /* More noticeable lift */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow on hover */
+  flex-direction: column;
 }
 
 /* Main Content Area */
 .client-dashboard-main {
-  flex-grow: 1; /* Allows main content to take available space */
+  flex-grow: 1;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 60px 30px; /* Increased top/bottom padding */
-  width: 100%; /* Ensure main content uses max width */
+  padding: 60px 30px;
+  width: 100%;
 }
 
-.dashboard-title { /* Renamed from .client-dashboard-content h2 */
+.dashboard-title {
   color: #2c3e50;
-  margin-bottom: 20px; /* More space */
-  font-size: 2.8rem; /* Larger and bolder title */
+  margin-bottom: 20px;
+  font-size: 2.8rem;
   font-weight: 800;
   text-align: center;
   letter-spacing: -1px;
 }
 
-.dashboard-description { /* Renamed from .client-dashboard-content p */
+.dashboard-description {
   color: #555;
-  margin-bottom: 60px; /* More space */
+  margin-bottom: 60px;
   font-size: 1.15rem;
   text-align: center;
-  max-width: 750px; /* Slightly wider constraint */
+  max-width: 750px;
   margin-left: auto;
   margin-right: auto;
 }
 
 /* Dashboard Action Cards Grid (now at the top) */
 .dashboard-cards-grid {
-  /* Enhanced Grid for Better Distribution */
   display: grid;
-  /* Adjusting minmax for wider cards on larger screens */
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 40px; /* Increased gap for better spacing */
+  gap: 40px;
   margin-bottom: 70px;
 }
 
 .dashboard-card {
   background: white;
-  border-radius: 20px; /* Slightly more rounded */
-  padding: 45px; /* Increased padding for spacious feel */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* Refined shadow */
+  border-radius: 20px;
+  padding: 45px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
   text-decoration: none;
   color: inherit;
   transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
   position: relative;
   overflow: hidden;
-  border: 1px solid #e0eafc; /* Lighter, subtle border */
+  border: 1px solid #e0eafc;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -160,9 +171,9 @@
 }
 
 .dashboard-card:hover {
-  transform: translateY(-10px); /* Slightly less pronounced lift than before, focusing on shadow */
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2); /* Deeper, broader shadow on hover */
-  background: linear-gradient(135deg, #eaf0ff 0%, #f7f9ff 100%); /* Subtle, engaging hover background */
+  transform: translateY(-10px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #eaf0ff 0%, #f7f9ff 100%);
 }
 
 .dashboard-card.disabled {
@@ -179,7 +190,7 @@
 
 .dashboard-card h3 {
   color: #2c3e50;
-  font-size: 2.1rem; /* Slightly larger title */
+  font-size: 2.1rem;
   margin: 0 0 10px 0;
   font-weight: 700;
   letter-spacing: -0.5px;
@@ -187,61 +198,79 @@
 
 .dashboard-card p {
   color: #777;
-  font-size: 1.1rem; /* Slightly larger text */
+  font-size: 1.1rem;
   margin-bottom: 0;
   line-height: 1.6;
 }
 
 .card-icon {
-  /* Enhanced Icon Styling for Prominence */
-  font-size: 5.5rem; /* Significantly larger icon */
-  margin-bottom: 30px; /* Increased space below the icon */
+  font-size: 5.5rem;
+  margin-bottom: 30px;
   transition: transform 0.3s ease;
   order: -1;
-  line-height: 1; /* Ensures no extra vertical space */
+  line-height: 1;
 }
 
 .dashboard-card:hover .card-icon {
-  transform: scale(1.1); /* Slightly less dramatic scale */
+  transform: scale(1.1);
 }
 
 /* Specific icon colors - now matching the new order and icons */
 .dashboard-cards-grid .dashboard-card:nth-child(1) .card-icon { color: #28a745; } /* Browse Transcribers (👥) - Green */
-.dashboard-cards-grid .dashboard-card:nth-child(2) .card-icon { color: #667eea; } /* My Negotiations (👋) - Primary Blue */
-.dashboard-cards-grid .dashboard-card:nth-child(3) .card-icon { color: #ffc107; } /* My Messages (💬) - Yellow */
-.dashboard-cards-grid .dashboard-card:nth-child(4) .card-icon { color: #dc3545; } /* My Jobs (📝) - Red */
-.dashboard-cards-grid .dashboard-card:nth-child(5) .card-icon { color: #6f42c1; } /* Payment History (💰) - Purple */
+.dashboard-cards-grid .dashboard-card:nth-child(2) .card-icon { color: #667eea; } /* Direct Upload (⬆️) - Primary Blue */
+.dashboard-cards-grid .dashboard-card:nth-child(3) .card-icon { color: #dc3545; } /* My Active Jobs (📝) - Red */
+.dashboard-cards-grid .dashboard-card:nth-child(4) .card-icon { color: #ffc107; } /* Negotiations History (🤝) - Yellow */
+.dashboard-cards-grid .dashboard-card:nth-child(5) .card-icon { color: #6f42c1; } /* Payment History (💳) - Purple */
+.dashboard-cards-grid .dashboard-card:nth-child(6) .card-icon { color: #17a2b8; } /* Messages (💬) - Teal/Info */
 
 
 /* Coming Soon Tag */
 .coming-soon {
   position: absolute;
-  top: 18px; /* Adjusted position */
-  right: -35px; /* Adjusted position */
+  top: 18px;
+  right: -35px;
   background: #ffc107;
   color: white;
-  padding: 6px 35px; /* Adjusted padding */
-  font-size: 0.85rem; /* Slightly larger text */
+  padding: 6px 35px;
+  font-size: 0.85rem;
   font-weight: bold;
   text-transform: uppercase;
   transform: rotate(45deg);
   transform-origin: 0% 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* Added shadow for depth */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* NEW: Combined Stats Card Styles */
+/* Unread Badge */
+.unread-badge {
+    background-color: #ff4500;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 50%;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Combined Stats Card Styles */
 .combined-stats-card-wrapper {
-  margin-top: 50px; /* Space above the combined stats card */
-  margin-bottom: 50px; /* Space below if more content follows */
+  margin-top: 50px;
+  margin-bottom: 50px;
 }
 
 .combined-stats-card {
   background: white;
-  border-radius: 20px; /* Consistent rounding */
-  padding: 45px; /* Increased padding */
+  border-radius: 20px;
+  padding: 45px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
-  border: 1px solid #e0eafc; /* Consistent border */
+  border: 1px solid #e0eafc;
 }
 
 .combined-stats-card h3 {
@@ -261,9 +290,9 @@
 .stat-item {
   padding: 20px;
   border-radius: 12px;
-  background: #f8faff; /* Light background for each stat item */
-  border: 1px solid #e0e7ff; /* Subtle border */
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Inner shadow for depth */
+  background: #f8faff;
+  border: 1px solid #e0e7ff;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .stat-item h4 {
@@ -296,24 +325,6 @@
 }
 
 
-/* Add this to your dashboard CSS files */
-.unread-badge {
-    background-color: #ff4500; /* Bright red for unread count */
-    color: white;
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 3px 8px;
-    border-radius: 50%; /* Make it circular */
-    margin-left: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px; /* Ensure it's circular even for single digits */
-    height: 24px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-
 /* Responsive Adjustments */
 @media (max-width: 992px) {
   .client-dashboard-header h1 {
@@ -326,13 +337,13 @@
     font-size: 1.05rem;
   }
   .dashboard-cards-grid {
-    gap: 30px; /* Reduce gap slightly */
+    gap: 30px;
   }
   .dashboard-card h3 {
-    font-size: 1.8rem; /* Adjusted title size */
+    font-size: 1.8rem;
   }
   .card-icon {
-    font-size: 4.5rem; /* Adjusted icon size */
+    font-size: 4.5rem;
   }
   .combined-stats-card h3 {
     font-size: 1.8rem;
@@ -356,7 +367,7 @@
     padding: 0 20px;
   }
 
-  .user-info {
+  .profile-section { /* Adjust profile section for mobile */
     flex-direction: column;
     gap: 10px;
   }
@@ -379,14 +390,13 @@
   }
 
   .dashboard-cards-grid {
-    /* Stack cards on mobile, but keep good vertical spacing */
     grid-template-columns: 1fr;
-    gap: 25px; /* Final mobile gap */
+    gap: 25px;
     margin-bottom: 50px;
   }
 
   .dashboard-card {
-    padding: 35px; /* Slightly reduced mobile padding */
+    padding: 35px;
     border-radius: 15px;
   }
   .dashboard-card h3 {
@@ -397,7 +407,7 @@
     margin-bottom: 0;
   }
   .card-icon {
-    font-size: 4rem; /* Adjusted icon size for mobile */
+    font-size: 4rem;
     margin-bottom: 25px;
   }
 
@@ -443,7 +453,7 @@
   .client-dashboard-header h1 {
     font-size: 1.5rem;
   }
-  .user-info span {
+  .welcome-text { /* Adjusted font size for very small screens */
     font-size: 0.9rem;
   }
   .logout-btn {
