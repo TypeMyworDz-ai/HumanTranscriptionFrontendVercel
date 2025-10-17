@@ -22,12 +22,8 @@ const AdminChat = () => {
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const messagesEndRef = useRef(null);
-    const userRef = useRef(user);
-    const targetUserRef = useRef(targetUser);
+    // Removed individual userRef and targetUserRef updates, will use state directly
     const audioRef = useRef(null);
-
-    useEffect(() => { userRef.current = user; }, [user]);
-    useEffect(() => { targetUserRef.current = targetUser; }, [targetUser]);
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -83,104 +79,32 @@ const AdminChat = () => {
         return () => { isMounted = false; };
     }, [isAuthReady, user, userId, navigate, logout, showToast]);
 
-    useEffect(() => {
-        let isMounted = true;
 
-        if (!isAuthReady || !user || !user.id || user.user_type !== 'admin' || !targetUser) {
-            if (isAuthReady && user && user.user_type === 'admin' && !targetUser) {
-                console.log('AdminChat: Waiting for targetUser details before connecting socket and fetching messages.');
-            }
+    // Refactored fetchChatMessages to directly use user and targetUser state
+    const fetchChatMessages = useCallback(async () => {
+        // Ensure user and targetUser are available before proceeding
+        if (!user || !targetUser) {
+            console.warn('AdminChat: fetchChatMessages called before user or targetUser are available.');
+            setLoading(false); // Stop loading if prerequisites are not met
             return;
         }
 
-        // FIXED: Use ChatService for Socket.IO connection
-        console.log(`AdminChat: Attempting to connect socket via ChatService for user ID: ${user.id}`);
-        const socket = connectSocket(user.id);
-
-        const handleSocketConnect = () => {
-            if (!isMounted) return;
-            // FIXED: Use standardized 'joinUserRoom'
-            socket.emit('joinUserRoom', user.id);
-            socket.emit('joinUserRoom', userId);
-            console.log(`AdminChat: Socket connected. Joined rooms for ${user.id} and ${userId}. Fetching chat messages.`);
-            fetchChatMessages();
-        };
-
-        // FIXED: Only attach 'connect' listener if not already connected
-        if (!socket.connected) {
-            socket.on('connect', handleSocketConnect);
-        } else {
-            handleSocketConnect(); // If already connected, run immediately
-        }
-
-        const handleNewChatMessage = (msg) => {
-            if (!isMounted) return;
-
-            setMessages((prevMessages) => {
-                const currentLoggedInUser = userRef.current;
-                // const currentTargetUser = targetUserRef.current; // Not directly used here, but for context
-
-                // Ensure message is relevant to this chat
-                const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) ||
-                                   (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
-
-                if (!isRelevant) {
-                    console.log('AdminChat: Received irrelevant message, ignoring.', msg);
-                    return prevMessages; // Ignore irrelevant messages
-                }
-
-                if (prevMessages.some(m => m.id === msg.id)) {
-                    console.log('AdminChat: Received duplicate message, ignoring.', msg);
-                    return prevMessages; // Avoid duplicate messages
-                }
-                if (msg.sender_id !== currentLoggedInUser.id) {
-                    playNotificationSound();
-                }
-
-                // Ensure consistent message structure with fetched messages
-                const newMessageObj = {
-                    id: msg.id,
-                    sender_id: msg.sender_id,
-                    receiver_id: msg.receiver_id,
-                    content: msg.content, // Use 'content' as per backend
-                    timestamp: msg.timestamp, // Keep as ISO string
-                    sender_name: msg.sender_name, // Should be provided by backend
-                };
-                console.log('AdminChat: Adding new message to chat:', newMessageObj);
-                return [...prevMessages, newMessageObj];
-            });
-        };
-
-        // FIXED: Attach listeners to the global socket instance from ChatService
-        socket.on('newChatMessage', handleNewChatMessage);
-
-        return () => {
-            if (isMounted) {
-                console.log('AdminChat: Cleaning up socket listeners on unmount.');
-                socket.off('newChatMessage', handleNewChatMessage);
-                socket.off('connect', handleSocketConnect); // Detach the connect listener
-                disconnectSocket(); // Disconnect via ChatService
-            }
-        };
-    }, [isAuthReady, user?.id, user?.full_name, user?.user_type, userId, navigate, showToast, targetUser, playNotificationSound, fetchChatMessages]);
-
-    const fetchChatMessages = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) { logout(); return; }
 
-        console.log(`AdminChat: Fetching chat messages for admin ${user.id} and user ${userId}.`);
+        console.log(`AdminChat: Fetching chat messages for admin ${user.id} and user ${targetUser.id}.`);
         try {
-            // FIXED: Use BACKEND_API_URL constant
-            const response = await fetch(`${BACKEND_API_URL}/api/admin/chat/messages/${userId}`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/chat/messages/${targetUser.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
             if (response.ok && data.messages) {
                 const formattedMessages = data.messages.map(msg => ({
                     ...msg,
-                    sender_name: (msg.sender_id === userRef.current.id) ? userRef.current.full_name : targetUserRef.current?.full_name || 'User',
-                    text: msg.content, // Use 'content' as per backend
-                    timestamp: new Date(msg.timestamp).toLocaleString() // Format for display
+                    // Direct access to user and targetUser state variables
+                    sender_name: (msg.sender_id === user.id) ? user.full_name : targetUser.full_name || 'User',
+                    text: msg.content,
+                    timestamp: new Date(msg.timestamp).toLocaleString()
                 }));
                 setMessages(formattedMessages);
                 console.log(`AdminChat: Successfully fetched ${formattedMessages.length} messages.`);
@@ -194,7 +118,93 @@ const AdminChat = () => {
         } finally {
             setLoading(false);
         }
-    }, [userId, logout, showToast, user?.id, userRef, targetUserRef]);
+    }, [userId, logout, showToast, user, targetUser]); // Added user and targetUser to dependencies
+
+
+    // Refactored handleNewChatMessage to directly use user and targetUser state
+    const handleNewChatMessage = useCallback((msg) => {
+        // Ensure user and targetUser are available before proceeding
+        if (!user || !targetUser) {
+            console.warn('AdminChat: handleNewChatMessage called before user or targetUser are available. Ignoring message.');
+            return;
+        }
+
+        setMessages((prevMessages) => {
+            // Use 'user' directly from the component's state, which is in the useCallback's closure
+            const currentLoggedInUser = user;
+
+            // Ensure message is relevant to this chat
+            const isRelevant = (msg.sender_id === userId && msg.receiver_id === currentLoggedInUser.id) ||
+                               (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === userId);
+
+            if (!isRelevant) {
+                console.log('AdminChat: Received irrelevant message, ignoring.', msg);
+                return prevMessages;
+            }
+
+            if (prevMessages.some(m => m.id === msg.id)) {
+                console.log('AdminChat: Received duplicate message, ignoring.', msg);
+                return prevMessages;
+            }
+            if (msg.sender_id !== currentLoggedInUser.id) {
+                playNotificationSound();
+            }
+
+            const newMessageObj = {
+                id: msg.id,
+                sender_id: msg.sender_id,
+                receiver_id: msg.receiver_id,
+                content: msg.content,
+                timestamp: msg.timestamp,
+                // Determine sender_name based on current user and targetUser
+                sender_name: (msg.sender_id === currentLoggedInUser.id) ? currentLoggedInUser.full_name : targetUser?.full_name || 'User',
+            };
+            console.log('AdminChat: Adding new message to chat:', newMessageObj);
+            return [...prevMessages, newMessageObj];
+        });
+    }, [userId, user, targetUser, playNotificationSound]); // Added user and targetUser to dependencies
+
+
+    useEffect(() => {
+        let isMounted = true;
+
+        if (!isAuthReady || !user || !user.id || user.user_type !== 'admin' || !targetUser) {
+            if (isAuthReady && user && user.user_type === 'admin' && !targetUser) {
+                console.log('AdminChat: Waiting for targetUser details before connecting socket and fetching messages.');
+            }
+            return;
+        }
+
+        console.log(`AdminChat: Attempting to connect socket via ChatService for user ID: ${user.id}`);
+        const socket = connectSocket(user.id);
+
+        const handleSocketConnect = () => {
+            if (!isMounted) return;
+            socket.emit('joinUserRoom', user.id);
+            socket.emit('joinUserRoom', userId);
+            console.log(`AdminChat: Socket connected. Joined rooms for ${user.id} and ${userId}. Fetching chat messages.`);
+            fetchChatMessages(); // Call without arguments, as user and targetUser are in its closure
+        };
+
+        if (!socket.connected) {
+            socket.on('connect', handleSocketConnect);
+        } else {
+            handleSocketConnect(); // If already connected, run immediately
+        }
+
+        // Attach listeners to the global socket instance from ChatService
+        socket.on('newChatMessage', handleNewChatMessage);
+
+        return () => {
+            if (isMounted) {
+                console.log('AdminChat: Cleaning up socket listeners on unmount.');
+                socket.off('newChatMessage', handleNewChatMessage);
+                socket.off('connect', handleSocketConnect); // Detach the connect listener
+                disconnectSocket(); // Disconnect via ChatService
+            }
+        };
+    }, [isAuthReady, user, targetUser, userId, navigate, logout, showToast, fetchChatMessages, handleNewChatMessage, playNotificationSound]);
+
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -203,19 +213,24 @@ const AdminChat = () => {
     const handleSendMessage = async () => {
         if (newMessage.trim() === '') return;
 
+        // Ensure user is available before sending message
+        if (!user) {
+            console.error('AdminChat: Attempted to send message before user object is available.');
+            showToast('Cannot send message: User not logged in or not loaded.', 'error');
+            return;
+        }
+
         try {
-            // FIXED: Use sendMessage from ChatService, passing senderUserType
             await sendMessage({
                 senderId: user.id,
                 receiverId: userId,
                 negotiationId: null, // This is a direct chat, not negotiation specific
                 messageText: newMessage,
                 timestamp: new Date().toISOString(),
-                senderUserType: user.user_type // NEW: Pass the sender's user type
+                senderUserType: user.user_type // Pass the sender's user type
             });
 
             setNewMessage('');
-            // The message will be emitted back via WebSocket and handled by handleNewChatMessage
             console.log('AdminChat: Message sent successfully via ChatService.');
         } catch (error) {
             console.error('AdminChat: Error sending message:', error);
@@ -254,7 +269,7 @@ const AdminChat = () => {
             <main className="admin-chat-main">
                 <div className="back-link-container">
                     <Link to="/admin/users" className="back-link">← Back to Manage Users</Link>
-                </div> {/* Corrected: Removed the extra </Link> and closed the div */}
+                </div>
 
                 <div className="admin-content-section">
                     <h2>Conversation with {targetUser.full_name} ({targetUser.email})</h2>
