@@ -89,6 +89,28 @@ const ClientNegotiations = () => {
         }
     }, [isAuthenticated, logout, showToast]);
 
+    // MOVED: handleNegotiationUpdate to top level
+    const handleNegotiationUpdate = useCallback((data) => {
+        console.log('ClientNegotiations Real-time: Negotiation update received!', data);
+        showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
+        fetchNegotiations(); // Re-fetch all negotiations to update UI
+    }, [fetchNegotiations, showToast]);
+
+    // MOVED: handleTranscriberHired to top level
+    const handleTranscriberHired = useCallback((data) => {
+        console.log('ClientNegotiations Real-time: Transcriber hired event received! (Client)', data);
+        showToast(data.message || `Transcriber for negotiation ${data.negotiationId?.substring(0, 8)}... was hired!`, 'success');
+        fetchNegotiations();
+    }, [fetchNegotiations, showToast]);
+
+    // MOVED: handlePaymentSuccessful to top level
+    const handlePaymentSuccessful = useCallback((data) => {
+        console.log('ClientNegotiations Real-time: Payment successful event received!', data);
+        showToast(data.message || `Payment for negotiation ${data.negotiationId?.substring(0, 8)}... was successful!`, 'success');
+        fetchNegotiations();
+    }, [fetchNegotiations, showToast]);
+
+
     useEffect(() => {
         if (authLoading || !isAuthenticated || !user) {
             setLoading(false);
@@ -102,55 +124,33 @@ const ClientNegotiations = () => {
         }
 
         fetchNegotiations();
-    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations]);
 
-    useEffect(() => {
-        if (!user?.id || !isAuthenticated) {
-            console.log("ClientNegotiations: User ID or authentication status not ready for socket connection.");
-            return;
+        // Socket.IO setup
+        const socket = connectSocket(user.id);
+        if (socket) {
+            socket.on('negotiation_accepted', handleNegotiationUpdate);
+            socket.on('negotiation_rejected', handleNegotiationUpdate);
+            socket.on('negotiation_countered', handleNegotiationUpdate);
+            socket.on('negotiation_cancelled', handleNegotiationUpdate);
+            socket.on('transcriber_hired', handleTranscriberHired);
+            socket.on('payment_successful', handlePaymentSuccessful);
+
+            console.log('ClientNegotiations: Socket listeners attached.');
         }
 
-        console.log(`ClientNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
-        const socket = connectSocket(user.id);
-
-        const handleNegotiationUpdate = useCallback((data) => {
-            console.log('ClientNegotiations Real-time: Negotiation update received!', data);
-            showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
-            fetchNegotiations();
-        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
-
-        const handleTranscriberHired = useCallback((data) => {
-            console.log('ClientNegotiations Real-time: Transcriber hired event received! (Client)', data);
-            showToast(data.message || `Transcriber for negotiation ${data.negotiationId?.substring(0, 8)}... was hired!`, 'success');
-            fetchNegotiations();
-        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
-
-        const handlePaymentSuccessful = useCallback((data) => {
-            console.log('ClientNegotiations Real-time: Payment successful event received!', data);
-            showToast(data.message || `Payment for negotiation ${data.negotiationId?.substring(0, 8)}... was successful!`, 'success');
-            fetchNegotiations();
-        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
-
-
-        socket.on('negotiation_accepted', handleNegotiationUpdate);
-        socket.on('negotiation_rejected', handleNegotiationUpdate);
-        socket.on('negotiation_countered', handleNegotiationUpdate);
-        socket.on('negotiation_cancelled', handleNegotiationUpdate);
-        socket.on('transcriber_hired', handleTranscriberHired);
-        socket.on('payment_successful', handlePaymentSuccessful);
-
-
         return () => {
-            console.log(`ClientNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-            socket.off('negotiation_accepted', handleNegotiationUpdate);
-            socket.off('negotiation_rejected', handleNegotiationUpdate);
-            socket.off('negotiation_countered', handleNegotiationUpdate);
-            socket.off('negotiation_cancelled', handleNegotiationUpdate);
-            socket.off('transcriber_hired', handleTranscriberHired);
-            socket.off('payment_successful', handlePaymentSuccessful);
-            disconnectSocket();
+            if (socket) {
+                console.log(`ClientNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
+                socket.off('negotiation_accepted', handleNegotiationUpdate);
+                socket.off('negotiation_rejected', handleNegotiationUpdate);
+                socket.off('negotiation_countered', handleNegotiationUpdate);
+                socket.off('negotiation_cancelled', handleNegotiationUpdate);
+                socket.off('transcriber_hired', handleTranscriberHired);
+                socket.off('payment_successful', handlePaymentSuccessful);
+                disconnectSocket();
+            }
         };
-    }, [user?.id, isAuthenticated, fetchNegotiations, showToast]);
+    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, handleNegotiationUpdate, handleTranscriberHired, handlePaymentSuccessful]);
 
 
     const openAcceptCounterModal = useCallback((negotiationId) => {
@@ -218,9 +218,12 @@ const ClientNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/accept-counter`, { // NEW: Client-specific endpoint
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/accept-counter`, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             const data = await response.json();
@@ -249,9 +252,12 @@ const ClientNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/reject-counter`, { // NEW: Client-specific endpoint
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/reject-counter`, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     client_response: rejectCounterReason || 'Client rejected the counter-offer.'
                 })
@@ -288,7 +294,7 @@ const ClientNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/counter-back`, { // NEW: Client-specific endpoint
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/counter-back`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -364,12 +370,12 @@ const ClientNegotiations = () => {
 
     const getStatusColor = useCallback((status, isClientViewing) => {
         const colors = {
-            'pending': '#007bff', // Client view: pending is blue (waiting for transcriber)
-            'transcriber_counter': '#ffc107', // Client view: transcriber counter is yellow (action needed)
-            'client_counter': '#007bff', // Client has countered, waiting for transcriber
-            'accepted_awaiting_payment': '#28a745', // Client accepted, green (action needed: payment)
+            'pending': '#007bff',
+            'transcriber_counter': '#ffc107',
+            'client_counter': '#007bff',
+            'accepted_awaiting_payment': '#28a745',
             'rejected': '#dc3545',
-            'hired': '#007bff', // Hired can be blue (job active)
+            'hired': '#007bff',
             'cancelled': '#dc3545',
             'completed': '#6f42c1'
         };
@@ -459,7 +465,6 @@ const ClientNegotiations = () => {
                         </Link>
                     </div>
 
-                    {/* Pending Negotiations (Client Waiting for Transcriber Response) */}
                     <h3>Pending Transcriber Response</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'pending').map(negotiation => (
@@ -484,7 +489,6 @@ const ClientNegotiations = () => {
                         )}
                     </div>
 
-                    {/* Transcriber Counter-Offers (Client needs to respond) */}
                     <h3>Transcriber Counter-Offers</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'transcriber_counter').map(negotiation => (
@@ -509,7 +513,6 @@ const ClientNegotiations = () => {
                         )}
                     </div>
 
-                    {/* Client Countered Offers (Waiting for Transcriber Response) */}
                     <h3>Client Countered Offers</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'client_counter').map(negotiation => (
@@ -534,7 +537,6 @@ const ClientNegotiations = () => {
                         )}
                     </div>
 
-                    {/* Accepted/Hired Negotiations */}
                     <h3>Active Jobs</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired').map(negotiation => (
@@ -559,7 +561,6 @@ const ClientNegotiations = () => {
                         )}
                     </div>
 
-                    {/* Completed/Rejected/Cancelled Negotiations */}
                     <h3>Closed Negotiations</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
