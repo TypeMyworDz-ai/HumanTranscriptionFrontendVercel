@@ -1,18 +1,31 @@
-// frontend/client/src/UserChat.js
+// frontend/client/src/UserChat.js - UPDATED for robust timestamp handling and consistent formatting
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Toast from './Toast';
-import './ClientDashboard.css';
-import io from 'socket.io-client';
+import './ClientDashboard.css'; 
+import { connectSocket, disconnectSocket, sendMessage, uploadChatAttachment } from './ChatService';
 
-// Define the backend URL constant for API calls and Socket.IO connection
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const MAX_CHAT_FILE_SIZE_MB = 500; 
 
-// Initialize Socket.IO client outside the component with autoConnect: false
-// FIXED: Use BACKEND_API_URL for socket connection
-const socket = io(BACKEND_API_URL, { autoConnect: false });
+// Helper function to format timestamp robustly for display
+const formatDisplayTimestamp = (isoTimestamp) => {
+    if (!isoTimestamp) return 'N/A';
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) {
+            console.warn(`Attempted to format invalid date string: ${isoTimestamp}`);
+            return 'Invalid Date';
+        }
+        // Use a consistent format for all displays: date and time
+        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+        return 'Invalid Date';
+    }
+};
 
 
 const UserChat = () => {
@@ -21,23 +34,26 @@ const UserChat = () => {
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [loading, setLoading] = useState(true); // Manages overall loading state
+    const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
     const [chatPartner, setChatPartner] = useState(null);
 
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
+
     const messagesEndRef = useRef(null);
-    const userRef = useRef(user); // Ref to hold latest user object
-    const chatPartnerRef = useRef(chatPartner); // Ref to hold latest chatPartner object
+    const fileInputRef = useRef(null); 
+    const audioRef = useRef(null); 
 
-    // Update refs whenever user or chatPartner change
-    useEffect(() => { userRef.current = user; }, [user]);
-    useEffect(() => { chatPartnerRef.current = chatPartner; }, [chatPartner]);
-
+    const playNotificationSound = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.play().catch(e => console.error("Error playing sound:", e));
+        }
+    }, []);
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    // Effect for initial authentication check and redirection
     useEffect(() => {
         console.log('UserChat: Auth check useEffect. isAuthReady:', isAuthReady, 'user:', user);
 
@@ -48,22 +64,19 @@ const UserChat = () => {
             }
             return;
         }
-        // No setLoading(true) here; initial loading is handled by the component's main loading state
     }, [isAuthReady, user, navigate]);
 
 
-    // Effect for fetching chat partner details
     useEffect(() => {
-        let isMounted = true; // Cleanup flag
+        let isMounted = true;
         const fetchDetails = async () => {
-            if (!isAuthReady || !user || !user.id || !user.user_type) return; // Gate
+            if (!isAuthReady || !user || !user.id || !user.user_type) return;
 
             const token = localStorage.getItem('token');
             if (!token) { logout(); return; }
 
             console.log('UserChat: Fetching chat partner details for chatId:', chatId);
             try {
-                // FIXED: Use BACKEND_API_URL for API call
                 const response = await fetch(`${BACKEND_API_URL}/api/users/${chatId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -85,95 +98,22 @@ const UserChat = () => {
             }
         };
         fetchDetails();
-        return () => { isMounted = false; }; // Cleanup
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthReady, user?.id, user?.user_type, chatId, navigate, logout, showToast]); // Dependencies for this useEffect
+        return () => { isMounted = false; };
+    }, [isAuthReady, user, chatId, navigate, logout, showToast]);
 
 
-    // Effect for managing Socket.IO connection and listeners
-    useEffect(() => {
-        let isMounted = true; // Cleanup flag
-
-        if (!isAuthReady || !user || !user.id || !user.user_type || !chatPartner) {
-            console.log('UserChat: Socket useEffect gated. isAuthReady:', isAuthReady, 'user:', user?.id, 'chatPartner:', chatPartner?.id);
-            return; // Gate socket logic until auth and chatPartner are ready
-        }
-
-        console.log('UserChat: Socket useEffect running. Attempting to connect/join.');
-
-        // Connect socket only if not already connected
-        if (!socket.connected) {
-            console.log('UserChat: Socket not connected, attempting to connect to:', BACKEND_API_URL); // FIXED: Log BACKEND_API_URL
-            socket.connect();
-        }
-
-        const handleSocketConnect = () => {
-            if (!isMounted) return;
-            console.log('UserChat: Socket connected, joining user room.');
-            socket.emit('joinUserRoom', user.id);
-            // Once connected and room joined, we can proceed to fetch messages
-            // This prevents fetching messages until the socket is ready for real-time updates
-            fetchChatHistory();
-        };
-
-        if (socket.connected) {
-            handleSocketConnect();
-        } else {
-            socket.on('connect', handleSocketConnect);
-        }
-
-        const handleNewChatMessage = (msg) => {
-            if (!isMounted) return;
-            console.log('UserChat: Received new message via socket:', msg);
-            setMessages((prevMessages) => {
-                const currentLoggedInUser = userRef.current;
-                const currentChatPartner = chatPartnerRef.current;
-
-                const senderName = (msg.sender_id === currentLoggedInUser.id)
-                    ? currentLoggedInUser.full_name
-                    : (currentChatPartner?.full_name || 'Admin');
-
-                if ((msg.sender_id === chatId && msg.receiver_id === currentLoggedInUser.id) ||
-                    (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === chatId)) {
-                    if (prevMessages.some(m => m.id === msg.id)) {
-                        console.log('UserChat: Duplicate message received via socket, ignoring:', msg.id);
-                        return prevMessages;
-                    }
-                    return [...prevMessages, {
-                        id: msg.id,
-                        sender_id: msg.sender_id,
-                        receiver_id: msg.receiver_id,
-                        content: msg.content,
-                        text: msg.content,
-                        timestamp: new Date(msg.timestamp).toLocaleString(),
-                        sender_name: senderName,
-                    }];
-                }
-                return prevMessages;
-            });
-        };
-
-        socket.on('newChatMessage', handleNewChatMessage);
-
-        // Cleanup on component unmount
-        return () => {
-            if (isMounted) {
-                console.log('UserChat: Cleaning up socket listeners on unmount.');
-                socket.off('newChatMessage', handleNewChatMessage);
-                socket.off('connect', handleSocketConnect);
-            }
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthReady, user?.id, user?.full_name, user?.user_type, chatId, showToast, chatPartner]); // Added chatPartner to dependencies
-
-    // This useEffect will only run once chatPartner and user are set, and after socket is connected
     const fetchChatHistory = useCallback(async () => {
+        if (!user || !chatPartner) {
+            console.warn('UserChat: fetchChatHistory called before user or chatPartner are available.');
+            setLoading(false);
+            return;
+        }
+
         const token = localStorage.getItem('token');
         if (!token) { logout(); return; }
 
         console.log('UserChat: Fetching historical chat messages.');
         try {
-            // FIXED: Use BACKEND_API_URL for API call
             const response = await fetch(`${BACKEND_API_URL}/api/user/chat/messages/${chatId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -182,9 +122,12 @@ const UserChat = () => {
             if (response.ok && data.messages) {
                 const formattedMessages = data.messages.map(msg => ({
                     ...msg,
-                    sender_name: msg.sender_id === userRef.current.id ? userRef.current.full_name : chatPartnerRef.current?.full_name || 'Admin',
+                    sender_name: msg.sender_id === user.id ? user.full_name : chatPartner.full_name || 'Admin',
                     text: msg.content,
-                    timestamp: new Date(msg.timestamp).toLocaleString()
+                    // Format timestamp immediately upon fetching
+                    timestamp: formatDisplayTimestamp(msg.timestamp), 
+                    file_url: msg.file_url, 
+                    file_name: msg.file_name 
                 }));
                 setMessages(formattedMessages);
             } else {
@@ -194,44 +137,239 @@ const UserChat = () => {
             console.error('Error fetching chat messages:', error);
             showToast('Network error fetching chat messages.', 'error');
         } finally {
-            setLoading(false); // Only set loading to false after messages are fetched
+            setLoading(false);
         }
-    }, [chatId, logout, showToast]); // Removed user and chatPartner from dependencies, now using refs
+    }, [chatId, logout, showToast, user, chatPartner]);
 
 
-    // Auto-scroll to the bottom of messages whenever messages change
+    const handleNewChatMessage = useCallback((msg) => {
+        if (!user || !chatPartner) {
+            console.warn('UserChat: handleNewChatMessage called before user or chatPartner are available. Ignoring message.');
+            return;
+        }
+
+        setMessages((prevMessages) => {
+            const currentLoggedInUser = user;
+            const currentChatPartner = chatPartner;
+
+            const isRelevant = (msg.sender_id === chatId && msg.receiver_id === currentLoggedInUser.id) ||
+                               (msg.sender_id === currentLoggedInUser.id && msg.receiver_id === chatId);
+
+            if (!isRelevant) {
+                console.log('UserChat: Received irrelevant message, ignoring. ', msg);
+                return prevMessages;
+            }
+
+            // Deduplicate: Check if a message with the same ID already exists
+            if (prevMessages.some(m => m.id === msg.id)) {
+                console.log('UserChat: Received duplicate message, ignoring. ', msg);
+                return prevMessages;
+            }
+
+            // Check if there's an optimistic message that this server message should replace
+            const updatedMessages = prevMessages.map(m =>
+                m.isOptimistic && m.sender_id === msg.sender_id && m.content === msg.content &&
+                m.receiver_id === msg.receiver_id && (m.file_url === msg.file_url || (!m.file_url && !msg.file_url))
+                    ? { ...msg, isOptimistic: false, timestamp: formatDisplayTimestamp(msg.timestamp) } // Replace optimistic with real message, format timestamp
+                    : m
+            );
+
+            // If no optimistic message was replaced, or if it's a new message entirely
+            if (!updatedMessages.some(m => m.id === msg.id && !m.isOptimistic)) {
+                if (msg.sender_id !== currentLoggedInUser.id) {
+                    playNotificationSound();
+                }
+                const newMessageObj = {
+                    id: msg.id,
+                    sender_id: msg.sender_id,
+                    receiver_id: msg.receiver_id,
+                    content: msg.content,
+                    text: msg.content, 
+                    // Format timestamp immediately upon receiving
+                    timestamp: formatDisplayTimestamp(msg.timestamp), 
+                    sender_name: (msg.sender_id === currentLoggedInUser.id) ? currentLoggedInUser.full_name : currentChatPartner?.full_name || 'Admin',
+                    file_url: msg.file_url,
+                    file_name: msg.file_name
+                };
+                console.log('UserChat: Adding new message to chat: ', newMessageObj);
+                return [...updatedMessages, newMessageObj];
+            }
+            return updatedMessages; 
+        });
+    }, [chatId, user, chatPartner, playNotificationSound]);
+
+
+    useEffect(() => {
+        let isMounted = true;
+
+        if (!isAuthReady || !user || !user.id || !user.user_type || !chatPartner) {
+            console.log('UserChat: Socket useEffect gated. isAuthReady:', isAuthReady, 'user:', user?.id, 'chatPartner:', chatPartner?.id);
+            return;
+        }
+
+        console.log('UserChat: Socket useEffect running. Attempting to connect/join.');
+
+        const socket = connectSocket(user.id); 
+
+        const handleSocketConnect = () => {
+            if (!isMounted) return;
+            console.log('UserChat: Socket connected, joining user room.');
+            socket.emit('joinUserRoom', user.id);
+            socket.emit('joinUserRoom', chatId); 
+            fetchChatHistory(); 
+        };
+
+        if (socket.connected) {
+            handleSocketConnect();
+        } else {
+            socket.on('connect', handleSocketConnect);
+        }
+
+        socket.on('newChatMessage', handleNewChatMessage);
+
+        return () => {
+            if (isMounted) {
+                console.log('UserChat: Cleaning up socket listeners on unmount.');
+                socket.off('newChatMessage', handleNewChatMessage);
+                socket.off('connect', handleSocketConnect);
+                disconnectSocket(); 
+            }
+        };
+    }, [isAuthReady, user, chatPartner, chatId, fetchChatHistory, handleNewChatMessage]);
+
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
 
-    const handleSendMessage = async () => {
-        if (newMessage.trim() === '') return;
+    const triggerFileInput = useCallback(() => {
+        fileInputRef.current?.click();
+    }, []);
 
-        console.log(`User ${user.full_name} sending message to ${chatPartner?.full_name}: ${newMessage}`);
-        const token = localStorage.getItem('token');
+    const handleSendMessage = useCallback(async (fileToUpload = null) => {
+        const messageToSend = newMessage.trim();
+        const file = fileToUpload || selectedFile;
+
+        if (messageToSend === '' && !file) return;
+
+        if (!user) {
+            console.error('UserChat: Attempted to send message before user object is available.');
+            showToast('Cannot send message: User not logged in or not loaded.', 'error');
+            return;
+        }
+
+        let fileUrl = null;
+        let fileName = null;
+        let tempMessageId;
+
+        if (file) {
+            setIsUploadingFile(true);
+            try {
+                const uploadResponse = await uploadChatAttachment(file, user.id); 
+                fileUrl = uploadResponse.fileUrl;
+                fileName = file.name;
+                showToast('File uploaded successfully!', 'success');
+            } catch (error) {
+                console.error('UserChat: Error uploading file:', error);
+                showToast(`Failed to upload file: ${error.message || 'Network error.'}`, 'error');
+                setIsUploadingFile(false);
+                setSelectedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return; 
+            } finally {
+                setIsUploadingFile(false);
+            }
+        }
+
         try {
-            // FIXED: Use BACKEND_API_URL for API call
-            const response = await fetch(`${BACKEND_API_URL}/api/user/chat/send-message`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    receiverId: chatId,
-                    messageText: newMessage,
-                })
+            tempMessageId = `temp-${Date.now()}`;
+            const optimisticMessage = {
+                id: tempMessageId,
+                sender_id: user.id,
+                receiver_id: chatId,
+                content: messageToSend,
+                text: messageToSend, 
+                // Format timestamp immediately upon creation for optimistic message
+                timestamp: formatDisplayTimestamp(new Date().toISOString()),
+                sender_name: user.full_name,
+                file_url: fileUrl, 
+                file_name: fileName,
+                isOptimistic: true, 
+            };
+            setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+
+            await sendMessage({
+                senderId: user.id,
+                receiverId: chatId,
+                negotiationId: null,
+                messageText: messageToSend,
+                timestamp: new Date().toISOString(), // Still send ISO string to backend
+                senderUserType: user.user_type,
+                fileUrl: fileUrl,
+                fileName: fileName,
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                setNewMessage('');
-            } else {
-                showToast(data.error || 'Failed to send message.', 'error');
-            }
+            setNewMessage('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            console.log('UserChat: Message sent successfully via ChatService.');
+
         } catch (error) {
-            console.error('Error sending message:', error);
-            showToast('Network error sending message.', 'error');
+            console.error('UserChat: Error sending message:', error);
+            showToast(error.message || 'Network error sending message.', 'error');
+            if (tempMessageId) {
+                setMessages((prevMessages) => prevMessages.filter(msg => msg.id !== tempMessageId));
+            }
+        }
+    }, [newMessage, selectedFile, user, chatId, showToast]);
+
+
+    const handleFileChange = useCallback((e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            setSelectedFile(null);
+            return;
+        }
+
+        if (file.size > MAX_CHAT_FILE_SIZE_MB * 1024 * 1024) {
+            showToast(`File must be smaller than ${MAX_CHAT_FILE_SIZE_MB}MB.`, 'error');
+            e.target.value = '';
+            setSelectedFile(null);
+            return;
+        }
+
+        setSelectedFile(file);
+        if (newMessage.trim() === '') {
+            handleSendMessage(file);
+        } else {
+            showToast(`File selected: ${file.name}. Click send to attach with your message.`, 'info');
+        }
+    }, [newMessage, showToast, handleSendMessage]);
+
+    const handleRemoveFile = useCallback(() => {
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }, []);
+
+    const renderFileAttachment = (fileUrl, fileName) => {
+        if (!fileUrl) return null;
+        const fullFileUrl = `${BACKEND_API_URL}${fileUrl}`; 
+        const fileExtension = fileName ? fileName.split('.').pop().toLowerCase() : '';
+
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+            return <p><a href={fullFileUrl} target="_blank" rel="noopener noreferrer"><img src={fullFileUrl} alt={fileName} className="chat-image-attachment" /></a></p>;
+        } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(fileExtension)) {
+            return <p><a href={fullFileUrl} target="_blank" rel="noopener noreferrer">🎵 {fileName}</a><audio controls src={fullFileUrl} className="chat-audio-attachment"></audio></p>;
+        } else if (['mp4', 'webm', 'ogg'].includes(fileExtension)) {
+            return <p><a href={fullFileUrl} target="_blank" rel="noopener noreferrer">🎥 {fileName}</a><video controls src={fullFileUrl} className="chat-video-attachment"></video></p>;
+        } else {
+            return <p><a href={fullFileUrl} target="_blank" rel="noopener noreferrer">📎 {fileName || 'Attached File'}</a></p>;
         }
     };
+
 
     if (loading) {
         return (
@@ -277,23 +415,58 @@ const UserChat = () => {
                                     <div key={msg.id} className={`chat-message ${msg.sender_id === user.id ? 'my-message' : 'partner-message'}`}>
                                         <div className="message-header">
                                             <strong>{msg.sender_id === user.id ? 'Me' : chatPartner.full_name}</strong>
-                                            <span>{msg.timestamp}</span>
+                                            <span>
+                                                {msg.timestamp} {/* Use the pre-formatted timestamp directly */}
+                                            </span> 
                                         </div>
-                                        <p>{msg.text}</p>
+                                        {msg.content && <p>{msg.content}</p>}
+                                        {msg.file_url && renderFileAttachment(msg.file_url, msg.file_name)}
                                     </div>
                                 ))
                             )}
                             <div ref={messagesEndRef} />
                         </div>
                         <div className="message-input-area">
-                            <textarea
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                                placeholder="Type your message..."
-                                rows="3"
-                            ></textarea>
-                            <button onClick={handleSendMessage} className="send-message-btn">Send</button>
+                            <div className="input-controls">
+                                <textarea
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                                    placeholder="Type your message..."
+                                    rows="3"
+                                    disabled={isUploadingFile}
+                                ></textarea>
+                                <div className="message-actions">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        style={{ display: 'none' }}
+                                        onChange={handleFileChange}
+                                        accept="audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
+                                    />
+                                    <button
+                                        onClick={triggerFileInput}
+                                        className="attach-file-btn"
+                                        disabled={isUploadingFile}
+                                        title="Attach File"
+                                    >
+                                        📎
+                                    </button>
+                                    {selectedFile && (
+                                        <div className="selected-file-info">
+                                            <span>{selectedFile.name}</span>
+                                            <button onClick={handleRemoveFile} className="remove-file-btn">✕</button>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => handleSendMessage()}
+                                        className="send-message-btn"
+                                        disabled={isUploadingFile || (newMessage.trim() === '' && !selectedFile)}
+                                    >
+                                        {isUploadingFile ? 'Uploading...' : 'Send'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -305,6 +478,7 @@ const UserChat = () => {
                 onClose={hideToast}
                 duration={toast.type === 'error' ? 4000 : 3000}
             />
+            <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" />
         </div>
     );
 };

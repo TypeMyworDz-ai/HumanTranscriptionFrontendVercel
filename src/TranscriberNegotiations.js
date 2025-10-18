@@ -1,6 +1,6 @@
 // src/TranscriberNegotiations.js - Part 1 - UPDATED for Vercel deployment
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
@@ -9,7 +9,7 @@ import './TranscriberNegotiations.css';
 
 // FIXED: Import connectSocket, disconnectSocket from ChatService
 import { connectSocket, disconnectSocket } from './ChatService';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext'; // Reverted path to AuthContext
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -155,7 +155,7 @@ const TranscriberNegotiations = () => {
         };
 
         const handleJobCompleted = (data) => {
-            console.log('TranscriberNegotiations Real-time: Job completed!', data);
+            console.log('TranscriberNegotiations Real-time: Job completed! ', data);
             showToast(data.message || `Job ${data.negotiationId} was completed!`, 'success');
             fetchNegotiations();
         };
@@ -407,6 +407,7 @@ const TranscriberNegotiations = () => {
         const colors = {
             'pending': '#ffc107',
             'transcriber_counter': '#007bff',
+            'client_counter': '#6c757d',
             'accepted': '#28a745',
             'rejected': '#dc3545',
             'hired': '#007bff',
@@ -423,6 +424,7 @@ const TranscriberNegotiations = () => {
         const texts = {
             'pending': 'Waiting for Response',
             'transcriber_counter': 'Counter-Offer Received',
+            'client_counter': 'Client Counter-Offer',
             'accepted': 'Accepted',
             'rejected': 'Rejected',
             'hired': 'Transcriber Hired',
@@ -502,7 +504,7 @@ const TranscriberNegotiations = () => {
                 <div className="transcriber-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>New Job Offers</h2>
+                            <h2 className="negotiation-room-title">Negotiation Room</h2>
                             <p>Review negotiation requests from clients and decide whether to accept, counter, or reject.</p>
                         </div>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
@@ -510,9 +512,9 @@ const TranscriberNegotiations = () => {
                         </Link>
                     </div>
 
-                    <h3>Pending Negotiations</h3>
+                    <h3 className="negotiation-room-subtitle">Active Negotiations</h3>
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter').map(negotiation => (
+                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
@@ -530,8 +532,8 @@ const TranscriberNegotiations = () => {
                                 openCompleteJobModal={openCompleteJobModal}
                             />
                         ))}
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter').length === 0 && (
-                            <p>No pending negotiations.</p>
+                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').length === 0 && (
+                            <p>No active negotiations.</p>
                         )}
                     </div>
 

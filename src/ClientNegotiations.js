@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
@@ -14,8 +14,6 @@ const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
 const ClientNegotiations = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const statusFilter = searchParams.get('status');
 
     const [negotiations, setNegotiations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,7 +30,8 @@ const ClientNegotiations = () => {
     const [counterBackOfferData, setCounterBackOfferData] = useState({
         proposedPrice: '',
         deadlineHours: '',
-        clientResponse: ''
+        clientResponse: '',
+        counterBackFile: null // State to hold the selected file
     });
     const [rejectCounterReason, setRejectCounterReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
@@ -184,7 +183,8 @@ const ClientNegotiations = () => {
             setCounterBackOfferData({
                 proposedPrice: currentNeg.agreed_price_kes?.toString() || '',
                 deadlineHours: currentNeg.deadline_hours?.toString() || '',
-                clientResponse: ''
+                clientResponse: '',
+                counterBackFile: null // Reset file on modal open
             });
             setShowCounterBackModal(true);
         }
@@ -193,7 +193,7 @@ const ClientNegotiations = () => {
     const closeCounterBackModal = useCallback(() => {
         setShowCounterBackModal(false);
         setSelectedNegotiationId(null);
-        setCounterBackOfferData({ proposedPrice: '', deadlineHours: '', clientResponse: '' });
+        setCounterBackOfferData({ proposedPrice: '', deadlineHours: '', clientResponse: '', counterBackFile: null }); // Reset file on modal close
         setModalLoading(false);
     }, []);
 
@@ -203,6 +203,14 @@ const ClientNegotiations = () => {
             [e.target.name]: e.target.value
         });
     }, [counterBackOfferData]);
+
+    // Handle file selection for counter-offer
+    const handleCounterBackFileChange = useCallback((e) => {
+        setCounterBackOfferData(prevData => ({
+            ...prevData,
+            counterBackFile: e.target.files[0] || null
+        }));
+    }, []);
 
     const handleRejectCounterReasonChange = useCallback((e) => {
         setRejectCounterReason(e.target.value);
@@ -223,7 +231,10 @@ const ClientNegotiations = () => {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify({
+                    // No file for accept, so no FormData needed here
+                })
             });
 
             const data = await response.json();
@@ -294,17 +305,23 @@ const ClientNegotiations = () => {
         }
 
         try {
+            // Use FormData for file upload
+            const formData = new FormData();
+            formData.append('proposed_price_kes', parseFloat(counterBackOfferData.proposedPrice));
+            formData.append('deadline_hours', parseInt(counterBackOfferData.deadlineHours, 10));
+            formData.append('client_response', counterBackOfferData.clientResponse);
+            
+            if (counterBackOfferData.counterBackFile) {
+                formData.append('negotiationFile', counterBackOfferData.counterBackFile); // Append the file
+            }
+
             const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/counter-back`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
+                    // DO NOT set Content-Type header when sending FormData; browser sets it automatically
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    proposed_price_kes: parseFloat(counterBackOfferData.proposedPrice),
-                    deadline_hours: parseInt(counterBackOfferData.deadlineHours, 10),
-                    client_response: counterBackOfferData.clientResponse
-                })
+                body: formData // Send FormData directly
             });
 
             const data = await response.json();
@@ -376,7 +393,7 @@ const ClientNegotiations = () => {
             'accepted_awaiting_payment': '#28a745',
             'rejected': '#dc3545',
             'hired': '#007bff',
-            'cancelled': '#dc3545',
+            'cancelled': '#dc3545', // Reverted to red for cancelled as it's a terminal, negative state
             'completed': '#6f42c1'
         };
         return colors[status] || '#6c757d';
@@ -426,11 +443,6 @@ const ClientNegotiations = () => {
         }
     }, [showToast, fetchNegotiations, logout]);
 
-
-    const filteredNegotiations = statusFilter
-    ? negotiations.filter(neg => neg.status === statusFilter)
-    : negotiations;
-
     if (authLoading || !isAuthenticated || !user) {
         return <div className="loading-container">Loading authentication...</div>;
     }
@@ -457,17 +469,22 @@ const ClientNegotiations = () => {
                 <div className="client-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>Your Negotiation History</h2>
-                            <p>Manage your ongoing and completed transcription service negotiations.</p>
+                            <h2 className="negotiation-room-title">Negotiation Room</h2> {/* Changed heading */}
+                            <p>Manage all ongoing offers, counter-offers, and awaiting payment statuses for your transcription jobs.</p> {/* Updated description */}
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
                         </Link>
                     </div>
 
-                    <h3>Pending Transcriber Response</h3>
+                    <h3 className="negotiation-room-subtitle">Ongoing Negotiations</h3> {/* New subtitle for the consolidated list */}
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'pending').map(negotiation => (
+                        {negotiations.filter(n =>
+                            n.status === 'pending' ||
+                            n.status === 'transcriber_counter' ||
+                            n.status === 'client_counter' ||
+                            n.status === 'accepted_awaiting_payment'
+                        ).map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
@@ -484,62 +501,19 @@ const ClientNegotiations = () => {
                                 openCounterBackModal={openCounterBackModal}
                             />
                         ))}
-                        {negotiations.filter(n => n.status === 'pending').length === 0 && (
-                            <p>No pending negotiations awaiting transcriber response.</p>
-                        )}
-                    </div>
-
-                    <h3>Transcriber Counter-Offers</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'transcriber_counter').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptCounterModal={openAcceptCounterModal}
-                                openRejectCounterModal={openRejectCounterModal}
-                                openCounterBackModal={openCounterBackModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'transcriber_counter').length === 0 && (
-                            <p>No counter-offers from transcribers.</p>
-                        )}
-                    </div>
-
-                    <h3>Client Countered Offers</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'client_counter').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptCounterModal={openAcceptCounterModal}
-                                openRejectCounterModal={openRejectCounterModal}
-                                openCounterBackModal={openCounterBackModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'client_counter').length === 0 && (
-                            <p>No client-countered offers awaiting transcriber response.</p>
+                        {negotiations.filter(n =>
+                            n.status === 'pending' ||
+                            n.status === 'transcriber_counter' ||
+                            n.status === 'client_counter' ||
+                            n.status === 'accepted_awaiting_payment'
+                        ).length === 0 && (
+                            <p>No ongoing negotiations in the Negotiation Room.</p>
                         )}
                     </div>
 
                     <h3>Active Jobs</h3>
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired').map(negotiation => (
+                        {negotiations.filter(n => n.status === 'hired').map(negotiation => ( // Filtered for only 'hired' status
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
@@ -556,7 +530,7 @@ const ClientNegotiations = () => {
                                 openCounterBackModal={openCounterBackModal}
                             />
                         ))}
-                        {negotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired').length === 0 && (
+                        {negotiations.filter(n => n.status === 'hired').length === 0 && ( // Updated empty state message
                             <p>No active jobs.</p>
                         )}
                     </div>
@@ -660,6 +634,17 @@ const ClientNegotiations = () => {
                             placeholder="Enter revised deadline in hours"
                             min="1"
                             required
+                        />
+                    </div>
+                    {/* NEW: File input for counter-offer */}
+                    <div className="form-group">
+                        <label htmlFor="counterBackFile">Attach Audio/Video/Doc File (Optional, Max 500MB):</label> {/* Updated max size in comment */}
+                        <input
+                            id="counterBackFile"
+                            type="file"
+                            name="counterBackFile"
+                            onChange={handleCounterBackFileChange}
+                            accept="audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
                         />
                     </div>
                     <div className="form-group">

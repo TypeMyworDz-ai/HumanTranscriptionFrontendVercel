@@ -34,6 +34,10 @@
   opacity: 0;
   display: flex;
   flex-direction: column;
+
+  /* CRITICAL FIX: Constrain modal height and make it scrollable if needed */
+  max-height: 90vh; /* Set a maximum height relative to viewport height */
+  overflow-y: auto; /* Enable vertical scrolling for the entire modal content */
 }
 
 .modal-overlay.show .modal-content {
@@ -56,6 +60,7 @@
 
 /* Modal Header */
 .modal-header {
+  flex-shrink: 0; /* Prevent header from shrinking */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -89,16 +94,19 @@
 
 /* Modal Body */
 .modal-body {
+  flex-grow: 1; /* Allow body to take available space */
   padding: 25px;
   font-size: 1rem;
   color: #555;
   line-height: 1.6;
-  flex-grow: 1;
-  overflow-y: auto; /* Scroll if content is long */
+  /* CRITICAL FIX: Set max-height and overflow-y for the body itself */
+  max-height: 60vh; /* Example: 60% of viewport height for body content */
+  overflow-y: auto; /* Enable scrolling for the body content */
 }
 
 /* Modal Footer */
 .modal-footer {
+  flex-shrink: 0; /* Prevent footer from shrinking */
   display: flex;
   justify-content: flex-end;
   padding: 15px 25px;
@@ -163,7 +171,8 @@
 
 .modal-body input[type="text"],
 .modal-body input[type="number"],
-.modal-body textarea {
+.modal-body textarea,
+.modal-body input[type="file"] { /* Added file input */
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -175,7 +184,8 @@
 
 .modal-body input[type="text"]:focus,
 .modal-body input[type="number"]:focus,
-.modal-body textarea:focus {
+.modal-body textarea:focus,
+.modal-body input[type="file"]:focus { /* Added file input */
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
@@ -191,6 +201,8 @@
   .modal-content {
     max-width: 95%;
     margin: 20px;
+    /* On small screens, allow the modal to be taller but still constrain it */
+    max-height: 95vh;
   }
 
   .modal-header, .modal-footer {
@@ -199,6 +211,7 @@
 
   .modal-body {
     padding: 20px;
+    max-height: 70vh; /* Adjust body max-height for smaller screens */
   }
 
   .modal-footer {

@@ -96,7 +96,7 @@ export const connectSocket = (userId) => {
  * Sends a message (text or file attachment) to the server via HTTP POST.
  * Handles different endpoints based on message type (negotiation vs. direct chat).
  * @param {object} messageData - The message object.
- *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, senderUserType?: string, file_url?: string, file_name?: string, timestamp: string }
+ *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, senderUserType?: string, fileUrl?: string, fileName?: string, timestamp: string }
  * @returns {Promise<object>} The response data from the server.
  * @throws {Error} If authentication token is missing or network error occurs.
  */
@@ -110,8 +110,8 @@ export const sendMessage = async (messageData) => {
   let endpoint = '';
   let payload = { // Base payload structure
     messageText: messageData.messageText,
-    file_url: messageData.file_url,
-    file_name: messageData.file_name,
+    fileUrl: messageData.fileUrl, // Corrected to camelCase
+    fileName: messageData.fileName, // Corrected to camelCase
     timestamp: messageData.timestamp // Include timestamp if provided
   };
 
@@ -156,7 +156,7 @@ export const sendMessage = async (messageData) => {
     console.log('ChatService: Message sent successfully via HTTP POST: ', data);
     return data; // Return server response data
   } catch (error) {
-    console.error('ChatService: Network error sending message via HTTP POST:','', error);
+    console.error('ChatService: Network error sending message via HTTP POST:', '', error);
     throw error; // Re-throw error for handling upstream
   }
 };

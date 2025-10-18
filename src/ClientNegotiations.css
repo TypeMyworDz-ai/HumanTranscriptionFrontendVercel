@@ -406,6 +406,13 @@
   border: 1px solid #f5c6cb;
 }
 
+/* NEW: Modal specific styles for better responsiveness and scrollability */
+.modal-content-scrollable {
+  max-height: 70vh; /* Max height for modal content */
+  overflow-y: auto; /* Enable vertical scrolling */
+  padding-right: 15px; /* Prevent scrollbar from overlapping content */
+}
+
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;

@@ -15,7 +15,6 @@ const TranscriberDashboard = () => {
   const [currentJobId, setCurrentJobId] = useState(null);
   const [negotiations, setNegotiations] = useState([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const [totalEarnings, setTotalEarnings] = useState(0);
   const [availableDirectJobsCount, setAvailableDirectJobsCount] = useState(0);
   const [toast, setToast] = useState({
     isVisible: false,
@@ -31,6 +30,7 @@ const TranscriberDashboard = () => {
           audioRef.current.play().catch(e => console.error("Error playing sound:", e));
       }
   }, []);
+
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({
@@ -82,11 +82,9 @@ const TranscriberDashboard = () => {
         setUnreadMessageCount(data.count);
       } else {
         console.error('Failed to fetch unread message count:', data.error);
-        return Promise.reject(new Error(data.error || 'Failed to fetch unread message count.'));
       }
     } catch (error) {
       console.error('Network error fetching unread message count:', error);
-      return Promise.reject(error);
     }
   }, [user]);
 
@@ -131,7 +129,8 @@ const TranscriberDashboard = () => {
       });
       const data = await response.json();
       if (response.ok && data.summary) {
-        setTotalEarnings(data.summary.totalEarnings || 0);
+        // We still fetch it, but don't set a state for totalEarnings directly on the dashboard
+        // If this data is needed elsewhere, it should be passed or fetched in that component.
       } else {
         console.error('Failed to fetch transcriber payment history:', data.error);
         return Promise.reject(new Error(data.error || 'Failed to fetch transcriber payment history.'));
@@ -166,7 +165,7 @@ const TranscriberDashboard = () => {
   }, [user]);
 
 
-  const handleSocketConnect = useCallback((socketInstance) => { // Passed socketInstance
+  const handleSocketConnect = useCallback((socketInstance) => {
     if (user?.id) {
         socketInstance.emit('joinUserRoom', user.id);
         console.log(`TranscriberDashboard: Sent joinUserRoom event for userId: ${user.id}`);
@@ -323,11 +322,11 @@ const TranscriberDashboard = () => {
       socket.off('job_hired', handleJobHired);
       socket.off('new_direct_job_available', handleNewDirectJobAvailable);
       socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-      socket.off('connect', () => handleSocketConnect(socket)); // Detach with same handler reference
+      socket.off('connect', () => handleSocketConnect(socket));
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound, handleSocketConnect, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate]);
+  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound]);
 
 
   const handleLogout = useCallback(async () => {
@@ -387,10 +386,12 @@ const TranscriberDashboard = () => {
     );
   }
 
-  const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'accepted_awaiting_payment').length;
+  const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'accepted_awaiting_payment' || n.status === 'client_counter').length;
   const activeCount = negotiations.filter(n => n.status === 'hired').length;
   const completedCount = negotiations.filter(n => n.status === 'completed').length;
   const transcriberRating = user.average_rating || 0;
+  const firstLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+
 
   return (
     <div className="transcriber-dashboard-container">
@@ -398,14 +399,14 @@ const TranscriberDashboard = () => {
         <div className="header-content">
           <h1>Transcriber Dashboard</h1>
           <div className="profile-section">
-            <Link to={`/transcriber-profile/${user.id}`} className="profile-avatar-link">
-              <div className="profile-icon">
-                {user?.full_name?.charAt(0).toUpperCase() || '👤'}
-              </div>
+            {/* UPDATED: Profile link with avatar, welcome text, and settings gear icon */}
+            <Link to={`/transcriber-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
+                <div className="profile-avatar">
+                    {firstLetter}
+                </div>
+                <span className="welcome-text">Welcome, {user.full_name}!</span>
+                <span className="profile-icon">⚙️</span> {/* Added a small gear icon */}
             </Link>
-            <span className="welcome-text">Welcome, {user?.full_name || 'Transcriber'}!</span>
-          </div>
-          <div className="user-profile-actions">
             <button onClick={handleLogout} className="logout-btn">
               Logout
             </button>
@@ -433,8 +434,8 @@ const TranscriberDashboard = () => {
           <div className="dashboard-sections-grid">
             <Link to="/transcriber-negotiations" className="dashboard-card">
               <div className="card-icon">👋</div>
-              <h3>Pending Negotiations ({pendingCount})</h3>
-              <p>Review new job offers from clients.</p>
+              <h3>Negotiation Room ({pendingCount})</h3>
+              <p>Review and manage all ongoing negotiation offers from clients.</p>
             </Link>
 
             <Link to={`/transcriber/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card">
@@ -463,7 +464,7 @@ const TranscriberDashboard = () => {
 
             <Link to="/transcriber-payments" className="dashboard-card">
               <div className="card-icon">💰</div>
-              <h3>Payment History (KES {totalEarnings.toLocaleString()})</h3>
+              <h3>Payment History</h3>
               <p>Review your past transactions and earnings.</p>
             </Link>
 

@@ -17,7 +17,7 @@ const NegotiationCard = ({
   currentUserType,
   openAcceptCounterModal,
   openRejectCounterModal,
-  openCounterBackModal,
+  openCounterBackModal, // This prop is used to open the modal in ClientNegotiations.js
   openAcceptModal,
   openCounterModal,
   openRejectModal,

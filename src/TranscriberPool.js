@@ -1,4 +1,4 @@
-// src/TranscriberPool.js - Part 1 - UPDATED for Vercel deployment and prominent transcriber ratings
+// src/TranscriberPool.js - Part 1 - UPDATED for Vercel deployment, prominent transcriber ratings, and decoupled file upload
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { useAuth } from './contexts/AuthContext';
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const MAX_FILE_SIZE_MB = 500; // Define max file size for client-side validation
 
 const TranscriberPool = () => {
   const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -21,7 +22,9 @@ const TranscriberPool = () => {
     requirements: '',
     proposedPrice: '',
     deadlineHours: '24',
-    negotiationFile: null
+    selectedFile: null, // Holds the File object selected by the user
+    uploadedFileUrl: null, // Holds the URL/ID from the backend after temp upload
+    isUploadingFile: false // Indicates if a file upload is in progress
   });
   const [toast, setToast] = useState({
     isVisible: false,
@@ -113,7 +116,9 @@ const TranscriberPool = () => {
       requirements: '',
       proposedPrice: '',
       deadlineHours: '24',
-      negotiationFile: null
+      selectedFile: null,
+      uploadedFileUrl: null,
+      isUploadingFile: false
     });
   }, []);
 
@@ -124,26 +129,73 @@ const TranscriberPool = () => {
       requirements: '',
       proposedPrice: '',
       deadlineHours: '24',
-      negotiationFile: null
+      selectedFile: null,
+      uploadedFileUrl: null,
+      isUploadingFile: false
     });
     const fileInput = document.getElementById('negotiationFileInput');
     if (fileInput) fileInput.value = '';
   }, []);
 
-  const handleNegotiationChange = useCallback((e) => {
+  const uploadFileForNegotiation = useCallback(async (file) => {
+    setNegotiationData(prev => ({ ...prev, isUploadingFile: true, uploadedFileUrl: null }));
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('Authentication token missing. Please log in again.', 'error');
+        setNegotiationData(prev => ({ ...prev, isUploadingFile: false }));
+        return null;
+    }
+
+    const formData = new FormData();
+    formData.append('negotiationFile', file);
+
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/api/negotiations/temp-upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            showToast('File uploaded successfully!', 'success');
+            setNegotiationData(prev => ({ ...prev, uploadedFileUrl: data.fileUrl, isUploadingFile: false }));
+            return data.fileUrl;
+        } else {
+            showToast(data.error || 'Failed to upload file.', 'error');
+            setNegotiationData(prev => ({ ...prev, selectedFile: null, uploadedFileUrl: null, isUploadingFile: false }));
+            const fileInput = document.getElementById('negotiationFileInput');
+            if (fileInput) fileInput.value = '';
+            return null;
+        }
+    } catch (error) {
+        console.error("File upload error:", error);
+        showToast('Network error during file upload. Please try again.', 'error');
+        setNegotiationData(prev => ({ ...prev, selectedFile: null, uploadedFileUrl: null, isUploadingFile: false }));
+        const fileInput = document.getElementById('negotiationFileInput');
+        if (fileInput) fileInput.value = '';
+        return null;
+    }
+  }, [showToast]);
+
+
+  const handleNegotiationChange = useCallback(async (e) => {
     const { name, value, files } = e.target;
     if (name === 'negotiationFile') {
       const file = files[0];
       if (file) {
-        if (file.size > 100 * 1024 * 1024) {
-          showToast('Negotiation file must be smaller than 100MB', 'error');
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          showToast(`File must be smaller than ${MAX_FILE_SIZE_MB}MB`, 'error');
           e.target.value = '';
-          setNegotiationData((prev) => ({ ...prev, negotiationFile: null }));
+          setNegotiationData((prev) => ({ ...prev, selectedFile: null, uploadedFileUrl: null, isUploadingFile: false }));
           return;
         }
-        setNegotiationData((prev) => ({ ...prev, negotiationFile: file }));
+        setNegotiationData((prev) => ({ ...prev, selectedFile: file }));
+        await uploadFileForNegotiation(file); // Trigger file upload
       } else {
-        setNegotiationData((prev) => ({ ...prev, negotiationFile: null }));
+        setNegotiationData((prev) => ({ ...prev, selectedFile: null, uploadedFileUrl: null, isUploadingFile: false }));
       }
     } else {
       setNegotiationData((prev) => ({
@@ -151,20 +203,22 @@ const TranscriberPool = () => {
         [name]: value
       }));
     }
-  }, [showToast]);
+  }, [showToast, uploadFileForNegotiation]);
 
   const handleRemoveNegotiationFile = useCallback(() => {
     setNegotiationData((prev) => ({
       ...prev,
-      negotiationFile: null
+      selectedFile: null,
+      uploadedFileUrl: null,
+      isUploadingFile: false
     }));
     const fileInput = document.getElementById('negotiationFileInput');
     if (fileInput) fileInput.value = '';
   }, []);
 
   const submitNegotiation = useCallback(async () => {
-    if (!negotiationData.requirements || !negotiationData.proposedPrice || !negotiationData.negotiationFile) {
-      showToast('Please fill in all required fields and attach an audio/video file.', 'error');
+    if (!negotiationData.requirements || !negotiationData.proposedPrice || !negotiationData.uploadedFileUrl) {
+      showToast('Please fill in all required fields and ensure the file is uploaded.', 'error');
       return;
     }
 
@@ -176,19 +230,21 @@ const TranscriberPool = () => {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('transcriber_id', selectedTranscriber.id);
-      formData.append('requirements', negotiationData.requirements);
-      formData.append('proposed_price_kes', parseFloat(negotiationData.proposedPrice));
-      formData.append('deadline_hours', parseInt(negotiationData.deadlineHours));
-      formData.append('negotiationFile', negotiationData.negotiationFile);
+      const postData = {
+        transcriber_id: selectedTranscriber.id,
+        requirements: negotiationData.requirements,
+        proposed_price_kes: parseFloat(negotiationData.proposedPrice),
+        deadline_hours: parseInt(negotiationData.deadlineHours),
+        negotiation_file_url: negotiationData.uploadedFileUrl // Pass the URL, not the file object
+      };
 
       const response = await fetch(`${BACKEND_API_URL}/api/negotiations/create`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json', // Now sending JSON
           'Authorization': `Bearer ${token}`
         },
-        body: formData
+        body: JSON.stringify(postData)
       });
 
       const data = await response.json();
@@ -338,6 +394,16 @@ const TranscriberPool = () => {
             </div>
 
             <div className="modal-content">
+              {/* NEW: Client Info with Rating */}
+              <div className="client-info-for-transcriber">
+                <h4>Your Rating:</h4>
+                <div className="rating-display">
+                  {'★'.repeat(Math.floor(user?.client_profile?.average_rating || 0))}
+                  {'☆'.repeat(5 - Math.floor(user?.client_profile?.average_rating || 0))}
+                  <span className="rating-number">({(user?.client_profile?.average_rating || 0).toFixed(1)})</span>
+                </div>
+              </div>
+              
               <div className="form-group">
                 <label>Project Requirements:</label>
                 <textarea
@@ -359,11 +425,15 @@ const TranscriberPool = () => {
                     name="negotiationFile"
                     accept="audio/*,video/*,.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
                     onChange={handleNegotiationChange}
+                    disabled={negotiationData.isUploadingFile} // Disable input during upload
                     required
                   />
-                  {negotiationData.negotiationFile && (
+                  {negotiationData.isUploadingFile && (
+                    <div className="upload-progress">Uploading file...</div>
+                  )}
+                  {negotiationData.uploadedFileUrl && negotiationData.selectedFile && (
                     <div className="attached-file-info">
-                      <span>📄 {negotiationData.negotiationFile.name}</span>
+                      <span>📄 {negotiationData.selectedFile.name} (Uploaded)</span>
                       <button
                         type="button"
                         onClick={handleRemoveNegotiationFile}
@@ -374,7 +444,7 @@ const TranscriberPool = () => {
                     </div>
                   )}
                   <small className="help-text">
-                    Mandatory: Attach the audio/video file for the transcriber to assess. Also supports documents (PDF, DOC, TXT) and images (Max 100MB).
+                    Mandatory: Attach the audio/video file for the transcriber to assess. Also supports documents (PDF, DOC, TXT) and images (Max {MAX_FILE_SIZE_MB}MB).
                   </small>
                 </div>
               </div>
@@ -411,8 +481,12 @@ const TranscriberPool = () => {
                 <button onClick={closeNegotiation} className="cancel-btn">
                   Cancel
                 </button>
-                <button onClick={submitNegotiation} className="send-btn" disabled={loading}>
-                  {loading ? 'Sending...' : 'Send Negotiation Request'}
+                <button
+                  onClick={submitNegotiation}
+                  className="send-btn"
+                  disabled={loading || negotiationData.isUploadingFile || !negotiationData.uploadedFileUrl} // Disable if overall loading, file uploading, or no file uploaded
+                >
+                  {loading ? 'Sending...' : (negotiationData.isUploadingFile ? 'Uploading File...' : 'Send Negotiation Request')}
                 </button>
               </div>
             </div>

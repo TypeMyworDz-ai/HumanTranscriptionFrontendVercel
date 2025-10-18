@@ -1,4 +1,4 @@
-// frontend/client/src/ClientDashboard.js - UPDATED for improved Profile Link UI/UX
+// frontend/client/src/ClientDashboard.js - UPDATED for improved Profile Link UI/UX and consistent card styling
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -94,8 +94,8 @@ const ClientDashboard = () => {
       });
       const negotiationsData = await negotiationsResponse.json();
       if (negotiationsResponse.ok) {
-        const pendingNegotiations = negotiationsData.negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter').length;
-        const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'accepted' || n.status === 'hired').length;
+        const pendingNegotiations = negotiationsData.negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').length; // Added client_counter
+        const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'hired').length; // Changed to filter only 'hired'
         const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
 
         setClientStats({
@@ -306,16 +306,16 @@ const ClientDashboard = () => {
               <p>Get instant quotes for your audio/video uploads.</p>
             </Link>
 
-            <Link to="/client-jobs" className="client-card">
+            <Link to="/client-jobs" className="dashboard-card"> {/* Corrected class to dashboard-card */}
               <div className="card-icon">📝</div>
               <h3>My Active Jobs ({clientStats.activeJobs})</h3>
               <p>Track the progress of your active transcription jobs.</p>
             </Link>
 
-            <Link to="/client-negotiations" className="dashboard-card">
+            <Link to="/client-negotiations" className="dashboard-card"> {/* Removed duplicate className */}
               <div className="card-icon">🤝</div>
-              <h3>Negotiations History ({clientStats.pendingNegotiations})</h3>
-              <p>View pending, agreed, and completed negotiation requests.</p>
+              <h3>Negotiation Room ({clientStats.pendingNegotiations})</h3>
+              <p>View all ongoing negotiation offers and statuses.</p>
             </Link>
 
             <Link to="/client-payments" className="dashboard-card">

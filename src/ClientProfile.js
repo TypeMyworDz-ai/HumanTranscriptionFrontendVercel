@@ -1,4 +1,4 @@
-// src/ClientProfile.js - UPDATED for Phone Number Reflection Fix
+// src/ClientProfile.js - UPDATED for Phone Number Reflection Fix and correct Client Rating display
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -63,11 +63,13 @@ const ClientProfile = () => {
             const ratingsData = await ratingsResponse.json();
 
             if (ratingsResponse.ok) {
-                // When setting profileData, ensure to pick the nested client_profile correctly
-                // userData.user already contains client_profile from getUserById in authController
                 setProfileData({
                     ...userData.user,
-                    average_rating: ratingsData.averageRating || 0,
+                    // Use the averageRating fetched from the ratings API directly for the profile's main display
+                    client_profile: {
+                        ...userData.user.client_profile,
+                        average_rating: ratingsData.averageRating || 5.0, // Default to 5.0 if no rating
+                    }
                 });
                 setRatings(ratingsData.ratings || []);
                 
@@ -79,7 +81,14 @@ const ClientProfile = () => {
                 }
             } else {
                 showToast(ratingsData.error || 'Failed to load client ratings.', 'error');
-                setProfileData(userData.user);
+                // Even if ratings fail, set basic profile data
+                setProfileData({
+                    ...userData.user,
+                    client_profile: {
+                        ...userData.user.client_profile,
+                        average_rating: 5.0, // Default to 5.0 if ratings cannot be fetched
+                    }
+                });
             }
 
         } catch (error) {
@@ -172,7 +181,7 @@ const ClientProfile = () => {
         } finally {
             setEditModalLoading(false);
         }
-    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile, user?.id]);
+    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile]); // Removed user?.id from dependencies
 
 
     if (authLoading || !isAuthenticated || !user || loading || !profileData) {
@@ -237,9 +246,10 @@ const ClientProfile = () => {
                         <div className="detail-row">
                             <span>Client Rating:</span>
                             <div className="rating-display">
-                                {'★'.repeat(Math.floor(profileData.client_profile?.client_rating || 0))}
-                                {'☆'.repeat(5 - Math.floor(profileData.client_profile?.client_rating || 0))}
-                                <span className="rating-number">({(profileData.client_profile?.client_rating || 0).toFixed(1)})</span>
+                                {/* Use profileData.client_profile.average_rating for display */}
+                                {'★'.repeat(Math.floor(profileData.client_profile?.average_rating || 0))}
+                                {'☆'.repeat(5 - Math.floor(profileData.client_profile?.average_rating || 0))}
+                                <span className="rating-number">({(profileData.client_profile?.average_rating || 0).toFixed(1)})</span>
                             </div>
                         </div>
                     </div>
@@ -306,7 +316,7 @@ const ClientProfile = () => {
                 type={toast.type}
                 isVisible={toast.isVisible}
                 onClose={hideToast}
-                duration={toast.type === 'success' ? 2000 : 4000}
+                duration={toast.type === 'error' ? 4000 : 3000}
             />
         </div>
     );
