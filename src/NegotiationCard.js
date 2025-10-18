@@ -32,8 +32,8 @@ const NegotiationCard = ({
 
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
-  const [isSendingFile, setIsSendingFile] = useState(false); // NEW: State for file upload loading
-  const fileInputRef = useRef(null); // NEW: Ref for file input
+  const [isSendingFile, setIsSendingFile] = useState(false);
+  const fileInputRef = useRef(null);
   const chatWindowRef = useRef(null);
 
   const [showRateTranscriberModal, setShowRateTranscriberModal] = useState(false);
@@ -44,11 +44,9 @@ const NegotiationCard = ({
   const handleReceiveMessageForCard = useCallback((data) => {
     if (data.negotiation_id === negotiationId) {
       setCardMessages(prevMessages => {
-        // Prevent duplicate messages by checking if ID already exists
         if (prevMessages.some(msg => msg.id === data.id)) {
           return prevMessages;
         }
-        // Format timestamp for display
         const formattedData = {
           ...data,
           timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -63,13 +61,13 @@ const NegotiationCard = ({
     const socket = getSocketInstance();
 
     if (socket) {
-      socket.on('receiveMessage', handleReceiveMessageForCard); // CORRECTED: Removed '='
+      socket.on('receiveMessage', handleReceiveMessageForCard);
       console.log(`NegotiationCard: Attached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
       if (socket) {
-        socket.off('receiveMessage', handleReceiveMessageForCard); // CORRECTED: Removed '='
+        socket.off('receiveMessage', handleReceiveMessageForCard);
         console.log(`NegotiationCard: Detached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
@@ -85,13 +83,13 @@ const NegotiationCard = ({
         }
 
         const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
+          method: 'GET', // Explicitly set method for clarity
           headers: {
-            'Authorization': `Bearer ${token}` // CORRECTED: Removed '='
+            'Authorization': `Bearer ${token}` // CORRECTED: Removed stray backtick
           }
         });
         const data = await response.json();
         if (response.ok) {
-          // Format timestamps for fetched messages
           const formattedMessages = (data.messages || []).map(msg => ({
             ...msg,
             timestamp: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -132,20 +130,18 @@ const NegotiationCard = ({
       receiverId: otherPartyId,
       negotiationId: negotiationId,
       messageText: cardNewMessage,
-      timestamp: new Date().toISOString(), // Send raw ISO string
-      senderUserType: currentUserType // Pass user type for backend routing
+      timestamp: new Date().toISOString(),
+      senderUserType: currentUserType
     };
 
     try {
       await sendMessage(messageData);
-      setCardNewMessage(''); // Clear input
-      // REMOVED: Manual setCardMessages here. It will be added when Socket.IO emits 'receiveMessage'.
+      setCardNewMessage('');
     } catch (error) {
       showToast(error.message || 'Failed to send message.', 'error');
     }
   };
 
-  // NEW: Handle file attachment selection and upload
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -156,12 +152,11 @@ const NegotiationCard = ({
     try {
       const uploadResponse = await uploadChatAttachment(file);
       if (uploadResponse.file_url) {
-        // Once file is uploaded, send a message with the file_url
         const messageData = {
           senderId: currentUserId,
           receiverId: otherPartyId,
           negotiationId: negotiationId,
-          messageText: `Attached file: ${uploadResponse.file_name}`, // Optional: send a descriptive text
+          messageText: `Attached file: ${uploadResponse.file_name}`,
           file_url: uploadResponse.file_url,
           file_name: uploadResponse.file_name,
           timestamp: new Date().toISOString(),
@@ -169,7 +164,6 @@ const NegotiationCard = ({
         };
         await sendMessage(messageData);
         showToast('File sent successfully!', 'success');
-        // No manual update to cardMessages, rely on socket.io
       } else {
         showToast('File upload failed: No URL returned.', 'error');
       }
@@ -178,11 +172,10 @@ const NegotiationCard = ({
       showToast(error.message || 'Failed to upload and send file.', 'error');
     } finally {
       setIsSendingFile(false);
-      event.target.value = null; // Clear file input
+      event.target.value = null;
     }
   };
 
-  // Helper to trigger hidden file input click
   const triggerFileInput = () => {
     fileInputRef.current.click();
   };
@@ -387,7 +380,6 @@ const NegotiationCard = ({
             )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* NEW: Hidden file input */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -396,7 +388,6 @@ const NegotiationCard = ({
                 accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/jpeg,image/jpg,image/png,image/gif"
                 disabled={isSendingFile}
             />
-            {/* NEW: Attach file button */}
             <button
                 onClick={triggerFileInput}
                 style={{
@@ -575,7 +566,7 @@ const NegotiationCard = ({
       {showRateTranscriberModal && (
           <Modal
               show={showRateTranscriberModal}
-              title={`Rate ${otherPartyName}`}
+              title={`Rate \${otherPartyName}`}
               onClose={closeRateTranscriberModal}
               onSubmit={submitTranscriberRating}
               submitText="Submit Rating"

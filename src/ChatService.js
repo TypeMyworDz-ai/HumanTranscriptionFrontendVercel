@@ -25,7 +25,7 @@ export const connectSocket = (userId) => {
     globalSocketInstance.on('connect', () => {
       console.log('ChatService: Connected to WebSocket server');
       if (activeSocketState.userId) {
-        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId); // CORRECTED: Removed '='
+        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId);
         console.log(`ChatService: Sent joinUserRoom event for userId: ${activeSocketState.userId}`);
       } else {
         console.warn('ChatService: userId not provided in activeSocketState, cannot join user room.');
@@ -40,14 +40,14 @@ export const connectSocket = (userId) => {
       activeSocketState.userId = null;
     });
 
-    globalSocketInstance.on('reconnect', (attempt) => { // CORRECTED: Removed '='
+    globalSocketInstance.on('reconnect', (attempt) => {
       console.log('ChatService: Reconnected to WebSocket server after attempt: ', attempt);
       if (activeSocketState.userId) {
-        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId); // CORRECTED: Removed '='
+        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId);
       }
     });
 
-    globalSocketInstance.on('messageError', (errorData) => { // CORRECTED: Removed '='
+    globalSocketInstance.on('messageError', (errorData) => {
       console.error('ChatService: Message error received via WebSocket:', errorData);
     });
 
@@ -110,7 +110,7 @@ export const sendMessage = async (messageData) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // CORRECTED: Removed '='
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(payload)
     });
@@ -141,7 +141,7 @@ export const uploadChatAttachment = async (file) => {
   }
 
   const formData = new FormData();
-  formData.append('chatAttachment', file); // 'chatAttachment' is the field name expected by multer
+  formData.append('chatAttachment', file);
 
   try {
     const response = await fetch(`${BACKEND_API_URL}/api/chat/upload-attachment`, {
@@ -149,7 +149,7 @@ export const uploadChatAttachment = async (file) => {
       headers: {
         'Authorization': `Bearer ${token}`
       },
-      body: formData // Browser sets 'Content-Type: multipart/form-data' automatically
+      body: formData
     });
 
     const data = await response.json();
