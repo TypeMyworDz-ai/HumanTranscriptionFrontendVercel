@@ -1,4 +1,4 @@
-// src/TranscriberNegotiations.js - Part 1 - UPDATED for Vercel deployment
+// src/TranscriberNegotiations.js - Part 1 - UPDATED for Vercel deployment and disabling counter-offer in certain states
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -408,7 +408,7 @@ const TranscriberNegotiations = () => {
             'pending': '#ffc107',
             'transcriber_counter': '#007bff',
             'client_counter': '#6c757d',
-            'accepted': '#28a745',
+            'accepted_awaiting_payment': '#28a745', // Added for clarity
             'rejected': '#dc3545',
             'hired': '#007bff',
             'cancelled': '#dc3545',
@@ -425,7 +425,7 @@ const TranscriberNegotiations = () => {
             'pending': 'Waiting for Response',
             'transcriber_counter': 'Counter-Offer Received',
             'client_counter': 'Client Counter-Offer',
-            'accepted': 'Accepted',
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', // Added for clarity
             'rejected': 'Rejected',
             'hired': 'Transcriber Hired',
             'cancelled': 'Cancelled',
@@ -514,7 +514,7 @@ const TranscriberNegotiations = () => {
 
                     <h3 className="negotiation-room-subtitle">Active Negotiations</h3>
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').map(negotiation => (
+                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').map(negotiation => ( // Added accepted_awaiting_payment to filter
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
@@ -527,12 +527,21 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
-                                openCounterModal={openCounterModal}
+                                openCounterModal={
+                                    // Disable counter if status is accepted_awaiting_payment or hired, completed, rejected, cancelled
+                                    negotiation.status !== 'accepted_awaiting_payment' && 
+                                    negotiation.status !== 'hired' && 
+                                    negotiation.status !== 'completed' && 
+                                    negotiation.status !== 'rejected' && 
+                                    negotiation.status !== 'cancelled'
+                                        ? openCounterModal
+                                        : null // Disable counter if status is accepted_awaiting_payment or hired
+                                }
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
                             />
                         ))}
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').length === 0 && (
+                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length === 0 && (
                             <p>No active negotiations.</p>
                         )}
                     </div>
