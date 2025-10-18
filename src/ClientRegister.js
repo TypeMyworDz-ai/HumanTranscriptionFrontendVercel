@@ -1,9 +1,8 @@
-import React, { useState, useCallback } from 'react'; // Added useCallback
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import './Register.css';
 
-// Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 const ClientRegister = () => {
@@ -27,7 +26,7 @@ const ClientRegister = () => {
       ...prev,
       [e.target.name]: e.target.value
     }));
-  }, []); // setFormData is stable, so empty dependency array is fine
+  }, []);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({
@@ -35,22 +34,23 @@ const ClientRegister = () => {
       message,
       type
     });
-  }, []); // Empty dependency array for stable function
+  }, []);
 
   const hideToast = useCallback(() => {
     setToast((prev) => ({
       ...prev,
       isVisible: false
     }));
-  }, []); // Empty dependency array for stable function
+  }, []);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setLoading(true);
-    hideToast(); // Clear any previous toast
+    hideToast();
+
+    console.log('ClientRegister: Attempting to submit registration with data:', formData);
 
     try {
-      // FIXED: Use BACKEND_API_URL constant for the API call
       const response = await fetch(`${BACKEND_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -59,7 +59,9 @@ const ClientRegister = () => {
         body: JSON.stringify(formData),
       });
 
+      console.log('ClientRegister: Received response from backend:', response);
       const data = await response.json();
+      console.log('ClientRegister: Parsed response data:', data);
 
       if (response.ok) {
         showToast('Registration successful! Redirecting to login...', 'success');
@@ -72,12 +74,12 @@ const ClientRegister = () => {
         showToast(data.error || 'Registration failed', 'error');
       }
     } catch (error) {
-      console.error('Network error during client registration:', error); // Added more specific log
-      showToast('Network error. Please try again.', 'error');
+      console.error('ClientRegister: Network error during client registration:', error);
+      showToast('Network error. Please try again. If this persists, check your network connection or try again later.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [formData, hideToast, navigate, showToast]); // Added dependencies
+  }, [formData, hideToast, navigate, showToast]);
 
   return (
     <div className="register-container">
@@ -115,6 +117,7 @@ const ClientRegister = () => {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            // 'required' attribute is intentionally absent for optional field
           />
         </div>
 
