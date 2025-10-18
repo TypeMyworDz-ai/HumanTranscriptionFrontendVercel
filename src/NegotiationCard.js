@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocketInstance, sendMessage, uploadChatAttachment } from './ChatService';
 import Modal from './Modal';
-import { useAuth } from './contexts/AuthContext'; // NEW: Import useAuth
+import { useAuth } from './contexts/AuthContext'; 
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const STATIC_FILES_URL = BACKEND_API_URL; // Base URL for static files
@@ -11,11 +11,10 @@ const formatDisplayTimestamp = (isoTimestamp) => {
     if (!isoTimestamp) return 'N/A';
     try {
         const date = new Date(isoTimestamp);
-        if (isNaN(date.getTime())) { // Check if the date is invalid
+        if (isNaN(date.getTime())) { 
             console.warn(`Attempted to format invalid date string: ${isoTimestamp}`);
             return 'Invalid Date';
         }
-        // Use a consistent format for all displays: date and time
         return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch (e) {
         console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
@@ -35,14 +34,14 @@ const NegotiationCard = ({
   currentUserType,
   openAcceptCounterModal,
   openRejectCounterModal,
-  openCounterBackModal, // This prop is used to open the modal in ClientNegotiations.js
+  openCounterBackModal, 
   openAcceptModal,
-  onOpenCounterModal, // RENAMED: This is the function to open the counter modal
+  onOpenCounterModal, 
   openRejectModal,
   openCompleteJobModal,
-  canCounter // NEW: Boolean prop to control if counter is allowed
+  canCounter 
 }) => {
-  const { user } = useAuth(); // NEW: Access user from AuthContext
+  const { user } = useAuth(); 
   const negotiationId = negotiation.id;
 
   const isClientViewing = currentUserType === 'client';
@@ -62,23 +61,19 @@ const NegotiationCard = ({
   const [ratingModalLoading, setRatingModalLoading] = useState(false);
 
   const handleReceiveMessageForCard = useCallback((data) => {
-    // CRITICAL: Check if the message is for *this specific negotiation card*
-    // And also ensure it's a negotiation message, not a direct message being caught by this listener
     if (data.negotiation_id === negotiationId && data.negotiation_id !== null) {
       setCardMessages(prevMessages => {
-        // Deduplication: Prevent adding the same message multiple times
-        // Also check if there's an optimistic message that this server message should replace
         const updatedMessages = prevMessages.map(m =>
             m.isOptimistic && m.sender_id === data.sender_id && m.content === data.content &&
             m.receiver_id === data.receiver_id && (m.file_url === data.file_url || (!m.file_url && !data.file_url))
-                ? { ...data, isOptimistic: false, timestamp: formatDisplayTimestamp(data.timestamp) } // Format timestamp
+                ? { ...data, isOptimistic: false, timestamp: formatDisplayTimestamp(data.timestamp) }
                 : m
         );
 
         if (!updatedMessages.some(m => m.id === data.id && !m.isOptimistic)) {
             const formattedData = {
               ...data,
-              timestamp: formatDisplayTimestamp(data.timestamp) // Format timestamp
+              timestamp: formatDisplayTimestamp(data.timestamp)
             };
             return [...updatedMessages, formattedData];
         }
@@ -86,7 +81,6 @@ const NegotiationCard = ({
       });
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
     } else {
-        // Log if message is not for this card, or is a direct message being caught by a negotiation card listener
         console.log(`NegotiationCard: Received message not for this card (${negotiationId}) or is a direct message. Data:`, data);
     }
   }, [negotiationId]);
@@ -95,19 +89,17 @@ const NegotiationCard = ({
     const socket = getSocketInstance();
 
     if (socket) {
-      // Attach the listener
-      socket.on('newChatMessage', handleReceiveMessageForCard); // Listen for newChatMessage
+      socket.on('newChatMessage', handleReceiveMessageForCard);
       console.log(`NegotiationCard: Attached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
-      // Detach the listener when the component unmounts
       if (socket) {
         socket.off('newChatMessage', handleReceiveMessageForCard);
         console.log(`NegotiationCard: Detached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
-  }, [negotiationId, handleReceiveMessageForCard]); // Dependencies for useEffect
+  }, [negotiationId, handleReceiveMessageForCard]); 
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -119,7 +111,7 @@ const NegotiationCard = ({
         }
 
         const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
-          method: 'GET', // Explicitly set method for clarity
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}` 
           }
@@ -128,7 +120,7 @@ const NegotiationCard = ({
         if (response.ok) {
           const formattedMessages = (data.messages || []).map(msg => ({
             ...msg,
-            timestamp: formatDisplayTimestamp(msg.timestamp) // Format timestamp
+            timestamp: formatDisplayTimestamp(msg.timestamp)
           }));
           setCardMessages(formattedMessages);
           console.log(`NegotiationCard: Fetched ${formattedMessages.length} messages for ${negotiationId}`);
@@ -164,37 +156,36 @@ const NegotiationCard = ({
     const messageData = {
       senderId: currentUserId,
       receiverId: otherPartyId,
-      negotiationId: negotiationId, // Ensure negotiationId is always present for negotiation chat
+      negotiationId: negotiationId, 
       messageText: cardNewMessage,
       timestamp: new Date().toISOString(),
       senderUserType: currentUserType
     };
 
+    let tempMessageId; 
     try {
-      // Optimistic update
-      const tempMessageId = `temp-${Date.now()}`;
+      tempMessageId = `temp-${Date.now()}`;
       const optimisticMessage = {
           id: tempMessageId,
           sender_id: currentUserId,
           receiver_id: otherPartyId,
           negotiation_id: negotiationId,
           content: cardNewMessage,
-          timestamp: formatDisplayTimestamp(new Date().toISOString()), // Format timestamp
-          sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client
+          timestamp: formatDisplayTimestamp(new Date().toISOString()),
+          sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
           isOptimistic: true,
       };
       setCardMessages(prevMessages => [...prevMessages, optimisticMessage]);
 
 
-      // Send message via HTTP POST
-      const response = await sendMessage(messageData);
+      await sendMessage(messageData); 
       
-      // No need for separate optimistic update logic here, as handleNewChatMessage will deduplicate
-      setCardNewMessage(''); // Clear input field
+      setCardNewMessage(''); 
     } catch (error) {
       showToast(error.message || 'Failed to send message.', 'error');
-      // If send fails, remove the optimistic message
-      setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
+      if (tempMessageId) { 
+        setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
+      }
     }
   };
 
@@ -205,6 +196,7 @@ const NegotiationCard = ({
     setIsSendingFile(true);
     showToast('Uploading file...', 'info');
 
+    let tempMessageId; 
     try {
       const uploadResponse = await uploadChatAttachment(file);
       if (uploadResponse.fileUrl) {
@@ -219,26 +211,23 @@ const NegotiationCard = ({
           senderUserType: currentUserType
         };
 
-        // Optimistic update for file attachments
-        const tempMessageId = `temp-${Date.now()}`;
+        tempMessageId = `temp-${Date.now()}`;
         const optimisticMessage = {
             id: tempMessageId,
             sender_id: currentUserId,
             receiver_id: otherPartyId,
             negotiation_id: negotiationId,
             content: messageData.messageText,
-            timestamp: formatDisplayTimestamp(new Date().toISOString()), // Format timestamp
-            sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client
+            timestamp: formatDisplayTimestamp(new Date().toISOString()),
+            sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
             file_url: messageData.fileUrl,
             file_name: messageData.fileName,
             isOptimistic: true,
         };
         setCardMessages(prevMessages => [...prevMessages, optimisticMessage]);
 
-        // Send message via HTTP POST
-        const response = await sendMessage(messageData);
+        await sendMessage(messageData); 
 
-        // No need for separate optimistic update logic here, as handleNewChatMessage will deduplicate
         showToast('File sent successfully!', 'success');
       } else {
         showToast('File upload failed: No URL returned.', 'error');
@@ -246,11 +235,12 @@ const NegotiationCard = ({
     } catch (error) {
       console.error('Error uploading or sending file:', error);
       showToast(error.message || 'Failed to upload and send file.', 'error');
-      // If send fails, remove the optimistic message
-      setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
+      if (tempMessageId) { 
+        setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
+      }
     } finally {
       setIsSendingFile(false);
-      event.target.value = null; // Clear file input
+      event.target.value = null; 
     }
   };
 
@@ -612,8 +602,8 @@ const NegotiationCard = ({
                 >
                   Accept
                 </button>}
-                {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
-                  onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
+                {canCounter && onOpenCounterModal && <button 
+                  onClick={() => onOpenCounterModal(negotiation.id)} 
                   className="action-btn counter-btn"
                 >
                   Counter
@@ -641,8 +631,8 @@ const NegotiationCard = ({
                 <div className="transcriber-client-countered-actions">
                     <span className="info-text">📝 Client sent a counter-offer!</span>
                     {openAcceptModal && <button onClick={() => openAcceptModal(negotiation.id)} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
-                    {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
-                      onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
+                    {canCounter && onOpenCounterModal && <button 
+                      onClick={() => onOpenCounterModal(negotiation.id)} 
                       className="action-btn counter-client-counter-btn"
                     >
                       Counter Back
