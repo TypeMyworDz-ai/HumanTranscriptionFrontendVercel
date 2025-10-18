@@ -36,10 +36,10 @@ const NegotiationCard = ({
   openRejectCounterModal,
   openCounterBackModal, 
   openAcceptModal,
-  onOpenCounterModal, 
+  onOpenCounterModal, // RENAMED: This is the function to open the counter modal
   openRejectModal,
   openCompleteJobModal,
-  canCounter 
+  canCounter // NEW: Boolean prop to control if counter is allowed
 }) => {
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
@@ -602,8 +602,8 @@ const NegotiationCard = ({
                 >
                   Accept
                 </button>}
-                {canCounter && onOpenCounterModal && <button 
-                  onClick={() => onOpenCounterModal(negotiation.id)} 
+                {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
+                  onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
                   className="action-btn counter-btn"
                 >
                   Counter
