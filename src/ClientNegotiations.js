@@ -1,24 +1,21 @@
-// src/ClientNegotiations.js - Part 1 - UPDATED for Vercel deployment and Paystack Integration
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
 import './ClientNegotiations.css';
 
-// FIXED: Import connectSocket, disconnectSocket from ChatService
 import { connectSocket, disconnectSocket } from './ChatService';
 import { useAuth } from './contexts/AuthContext';
 
-// Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-// Paystack Public Key from Vercel environment variable
-const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY; // NEW: Paystack Public Key
+const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
 
-// --- Component Definition ---
 const ClientNegotiations = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const statusFilter = searchParams.get('status');
 
     const [negotiations, setNegotiations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -39,10 +36,6 @@ const ClientNegotiations = () => {
     });
     const [rejectCounterReason, setRejectCounterReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
-
-    const navigate = useNavigate();
-    // REMOVED: socketRef is no longer needed as ChatService manages the global instance
-    // const socketRef = useRef(null);
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -73,7 +66,6 @@ const ClientNegotiations = () => {
 
         setLoading(true);
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -112,7 +104,6 @@ const ClientNegotiations = () => {
         fetchNegotiations();
     }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations]);
 
-    // --- Socket.IO Event Listeners ---
     useEffect(() => {
         if (!user?.id || !isAuthenticated) {
             console.log("ClientNegotiations: User ID or authentication status not ready for socket connection.");
@@ -120,55 +111,48 @@ const ClientNegotiations = () => {
         }
 
         console.log(`ClientNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
-        // FIXED: Connect via ChatService and get the global socket instance
         const socket = connectSocket(user.id);
 
-        const handleNegotiationUpdate = (data) => {
+        const handleNegotiationUpdate = useCallback((data) => {
             console.log('ClientNegotiations Real-time: Negotiation update received!', data);
-            showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
+            showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
             fetchNegotiations();
-        };
+        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
 
-        const handleTranscriberHired = (data) => {
-            console.log('ClientNegotiations Real-time: Transcriber hired event received!', data);
-            showToast(data.message || `Transcriber for negotiation ${data.negotiationId} was hired!`, 'success');
+        const handleTranscriberHired = useCallback((data) => {
+            console.log('ClientNegotiations Real-time: Transcriber hired event received! (Client)', data);
+            showToast(data.message || `Transcriber for negotiation ${data.negotiationId?.substring(0, 8)}... was hired!`, 'success');
             fetchNegotiations();
-        };
+        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
 
-        const handlePaymentSuccessful = (data) => { // NEW: Handle payment_successful event
+        const handlePaymentSuccessful = useCallback((data) => {
             console.log('ClientNegotiations Real-time: Payment successful event received!', data);
-            showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
+            showToast(data.message || `Payment for negotiation ${data.negotiationId?.substring(0, 8)}... was successful!`, 'success');
             fetchNegotiations();
-            // Redirect to dashboard or show confirmation
-            // navigate('/client-dashboard'); // Optional: Redirect after successful payment
-        };
+        }, [fetchNegotiations, showToast]); // Added fetchNegotiations, showToast to dependencies
 
-        // FIXED: Attach listeners to the global socket instance
+
         socket.on('negotiation_accepted', handleNegotiationUpdate);
         socket.on('negotiation_rejected', handleNegotiationUpdate);
         socket.on('negotiation_countered', handleNegotiationUpdate);
         socket.on('negotiation_cancelled', handleNegotiationUpdate);
         socket.on('transcriber_hired', handleTranscriberHired);
-        socket.on('payment_successful', handlePaymentSuccessful); // NEW: Listen for payment_successful event
+        socket.on('payment_successful', handlePaymentSuccessful);
 
 
         return () => {
             console.log(`ClientNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-            // FIXED: Detach listeners from the global socket instance
             socket.off('negotiation_accepted', handleNegotiationUpdate);
             socket.off('negotiation_rejected', handleNegotiationUpdate);
             socket.off('negotiation_countered', handleNegotiationUpdate);
             socket.off('negotiation_cancelled', handleNegotiationUpdate);
             socket.off('transcriber_hired', handleTranscriberHired);
-            socket.off('payment_successful', handlePaymentSuccessful); // NEW: Detach payment_successful listener
+            socket.off('payment_successful', handlePaymentSuccessful);
             disconnectSocket();
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, isAuthenticated, fetchNegotiations, showToast]);
-// src/ClientNegotiations.js - Part 2 - UPDATED for Vercel deployment and Paystack Integration (Continue from Part 1)
 
 
-    // --- Modals Handlers ---
     const openAcceptCounterModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowAcceptCounterModal(true);
@@ -194,15 +178,15 @@ const ClientNegotiations = () => {
     }, []);
 
     const openCounterBackModal = useCallback((negotiationId) => {
-        setSelectedNegotiationId(negotiationId);
-        setShowCounterBackModal(true);
-        const currentNegotiation = negotiations.find(n => n.id === negotiationId);
-        if (currentNegotiation) {
+        const currentNeg = negotiations.find(n => n.id === negotiationId);
+        if (currentNeg) {
+            setSelectedNegotiationId(negotiationId);
             setCounterBackOfferData({
-                proposedPrice: currentNegotiation.agreed_price_kes?.toString() || '',
-                deadlineHours: currentNegotiation.deadline_hours?.toString() || '',
+                proposedPrice: currentNeg.agreed_price_kes?.toString() || '',
+                deadlineHours: currentNeg.deadline_hours?.toString() || '',
                 clientResponse: ''
             });
+            setShowCounterBackModal(true);
         }
     }, [negotiations]);
 
@@ -224,28 +208,24 @@ const ClientNegotiations = () => {
         setRejectCounterReason(e.target.value);
     }, []);
 
-    // --- ACTUAL API Actions ---
     const confirmAcceptCounter = useCallback(async () => {
         setModalLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
             logout();
             return;
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/accept-counter`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/accept-counter`, { // NEW: Client-specific endpoint
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer accepted! Transcriber hired.', 'success');
+                showToast(data.message || 'Counter-offer accepted! Proceed to payment.', 'success');
                 closeAcceptCounterModal();
                 fetchNegotiations();
             } else {
@@ -263,18 +243,15 @@ const ClientNegotiations = () => {
         setModalLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
             logout();
             return;
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/reject-counter`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/reject-counter`, { // NEW: Client-specific endpoint
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
                     client_response: rejectCounterReason || 'Client rejected the counter-offer.'
                 })
@@ -311,8 +288,7 @@ const ClientNegotiations = () => {
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/counter-back`, { // Assuming a client-side counter-back endpoint
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/counter-back`, { // NEW: Client-specific endpoint
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -341,7 +317,6 @@ const ClientNegotiations = () => {
         }
     }, [selectedNegotiationId, counterBackOfferData, showToast, closeCounterBackModal, fetchNegotiations, logout]);
 
-    // NEW: Handle Proceed to Payment
     const handleProceedToPayment = useCallback(async (negotiation) => {
         if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_kes) {
             showToast('Missing client email or negotiation details for payment.', 'error');
@@ -353,11 +328,10 @@ const ClientNegotiations = () => {
             return;
         }
 
-        setLoading(true); // Show loading while initiating payment
+        setLoading(true);
         const token = localStorage.getItem('token');
 
         try {
-            // Call backend to initialize Paystack transaction
             const response = await fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
                 method: 'POST',
                 headers: {
@@ -366,8 +340,8 @@ const ClientNegotiations = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: negotiation.id,
-                    amount: negotiation.agreed_price_kes, // Amount in KES, backend converts to kobo
-                    email: user.email // Client's email
+                    amount: negotiation.agreed_price_kes,
+                    email: user.email
                 })
             });
 
@@ -375,7 +349,7 @@ const ClientNegotiations = () => {
 
             if (response.ok && data.data && data.data.authorization_url) {
                 showToast('Redirecting to payment gateway...', 'info');
-                window.location.href = data.data.authorization_url; // Redirect to Paystack
+                window.location.href = data.data.authorization_url;
             } else {
                 showToast(data.error || 'Failed to initiate payment.', 'error');
                 setLoading(false);
@@ -388,12 +362,12 @@ const ClientNegotiations = () => {
     }, [user, showToast]);
 
 
-    // --- Utility Functions for Status Display ---
     const getStatusColor = useCallback((status, isClientViewing) => {
         const colors = {
             'pending': '#007bff', // Client view: pending is blue (waiting for transcriber)
             'transcriber_counter': '#ffc107', // Client view: transcriber counter is yellow (action needed)
-            'accepted': '#28a745',
+            'client_counter': '#007bff', // Client has countered, waiting for transcriber
+            'accepted_awaiting_payment': '#28a745', // Client accepted, green (action needed: payment)
             'rejected': '#dc3545',
             'hired': '#007bff', // Hired can be blue (job active)
             'cancelled': '#dc3545',
@@ -405,17 +379,17 @@ const ClientNegotiations = () => {
     const getStatusText = useCallback((status, isClientViewing) => {
         const texts = {
             'pending': 'Waiting for Transcriber',
-            'transcriber_counter': 'Transcriber Countered', // Client view
-            'accepted': 'Accepted - Awaiting Payment', // Clarified status
+            'transcriber_counter': 'Transcriber Countered',
+            'client_counter': 'Client Countered',
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment',
             'rejected': 'Rejected',
-            'hired': 'Job Active - Paid', // Clarified status
+            'hired': 'Job Active - Paid',
             'cancelled': 'Cancelled',
             'completed': 'Completed'
         };
         return texts[status] || status;
     }, []);
 
-    // --- Delete Negotiation Handler ---
     const handleDeleteNegotiation = useCallback(async (negotiationId) => {
         if (!window.confirm('Are you sure you want to cancel this negotiation? This action cannot be undone.')) {
             return;
@@ -427,7 +401,6 @@ const ClientNegotiations = () => {
                 logout();
                 return;
             }
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationId}`, {
                 method: 'DELETE',
                 headers: {
@@ -447,6 +420,10 @@ const ClientNegotiations = () => {
         }
     }, [showToast, fetchNegotiations, logout]);
 
+
+    const filteredNegotiations = statusFilter
+    ? negotiations.filter(neg => neg.status === statusFilter)
+    : negotiations;
 
     if (authLoading || !isAuthenticated || !user) {
         return <div className="loading-container">Loading authentication...</div>;
@@ -490,14 +467,13 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
+                                onPayment={handleProceedToPayment}
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
                                 showToast={showToast}
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
-                                // Client-specific modal handlers for counter-offers from transcriber
                                 openAcceptCounterModal={openAcceptCounterModal}
                                 openRejectCounterModal={openRejectCounterModal}
                                 openCounterBackModal={openCounterBackModal}
@@ -516,7 +492,7 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
+                                onPayment={handleProceedToPayment}
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
@@ -533,28 +509,52 @@ const ClientNegotiations = () => {
                         )}
                     </div>
 
-                    {/* Accepted/Hired Negotiations */}
-                    <h3>Active Jobs</h3>
+                    {/* Client Countered Offers (Waiting for Transcriber Response) */}
+                    <h3>Client Countered Offers</h3>
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'accepted' || n.status === 'hired').map(negotiation => (
+                        {negotiations.filter(n => n.status === 'client_counter').map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
+                                onPayment={handleProceedToPayment}
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
                                 showToast={showToast}
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
-                                // Client-specific modal handlers for counter-offers from transcriber
                                 openAcceptCounterModal={openAcceptCounterModal}
                                 openRejectCounterModal={openRejectCounterModal}
                                 openCounterBackModal={openCounterBackModal}
                             />
                         ))}
-                        {negotiations.filter(n => n.status === 'accepted' || n.status === 'hired').length === 0 && (
+                        {negotiations.filter(n => n.status === 'client_counter').length === 0 && (
+                            <p>No client-countered offers awaiting transcriber response.</p>
+                        )}
+                    </div>
+
+                    {/* Accepted/Hired Negotiations */}
+                    <h3>Active Jobs</h3>
+                    <div className="negotiations-list">
+                        {negotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired').map(negotiation => (
+                            <NegotiationCard
+                                key={negotiation.id}
+                                negotiation={negotiation}
+                                onDelete={handleDeleteNegotiation}
+                                onPayment={handleProceedToPayment}
+                                onLogout={logout}
+                                getStatusColor={getStatusColor}
+                                getStatusText={getStatusText}
+                                showToast={showToast}
+                                currentUserId={user.id}
+                                currentUserType={user.user_type}
+                                openAcceptCounterModal={openAcceptCounterModal}
+                                openRejectCounterModal={openRejectCounterModal}
+                                openCounterBackModal={openCounterBackModal}
+                            />
+                        ))}
+                        {negotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired').length === 0 && (
                             <p>No active jobs.</p>
                         )}
                     </div>
@@ -567,14 +567,13 @@ const ClientNegotiations = () => {
                                 key={negotiation.id}
                                 negotiation={negotiation}
                                 onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment} // NEW: Pass payment handler
+                                onPayment={handleProceedToPayment}
                                 onLogout={logout}
                                 getStatusColor={getStatusColor}
                                 getStatusText={getStatusText}
                                 showToast={showToast}
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
-                                // Client-specific modal handlers for counter-offers from transcriber
                                 openAcceptCounterModal={openAcceptCounterModal}
                                 openRejectCounterModal={openRejectCounterModal}
                                 openCounterBackModal={openCounterBackModal}
@@ -587,25 +586,24 @@ const ClientNegotiations = () => {
                 </div>
             </main>
 
-            {/* --- Modals --- */}
             {showAcceptCounterModal && (
                 <Modal
                     show={showAcceptCounterModal}
-                    title="Accept Counter-Offer"
+                    title="Accept Transcriber's Counter-Offer"
                     onClose={closeAcceptCounterModal}
                     onSubmit={confirmAcceptCounter}
                     submitText="Confirm Accept"
                     loading={modalLoading}
                 >
                     <p>Are you sure you want to accept the transcriber's counter-offer?</p>
-                    <p>This will finalize the negotiation and mark the job as active.</p>
+                    <p className="modal-warning">This will finalize the agreement and you will be prompted for payment.</p>
                 </Modal>
             )}
 
             {showRejectCounterModal && (
                 <Modal
                     show={showRejectCounterModal}
-                    title="Reject Counter-Offer"
+                    title="Reject Transcriber's Counter-Offer"
                     onClose={closeRejectCounterModal}
                     onSubmit={confirmRejectCounter}
                     submitText="Confirm Reject"
@@ -682,7 +680,7 @@ const ClientNegotiations = () => {
                 type={toast.type}
                 isVisible={toast.isVisible}
                 onClose={hideToast}
-                duration={toast.type === 'success' ? 2000 : 4000}
+                duration={toast.type === 'error' ? 4000 : 3000}
             />
         </div>
     );
