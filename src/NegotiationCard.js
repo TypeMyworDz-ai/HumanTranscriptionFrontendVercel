@@ -1,15 +1,14 @@
-// src/NegotiationCard.js - COMPLETE AND CORRECTED (Final Version) - with Payment Button and Rating Feature
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getSocketInstance, sendMessage } from './ChatService';
-import Modal from './Modal'; // NEW: Import Modal component
+import { getSocketInstance, sendMessage, uploadChatAttachment } from './ChatService';
+import Modal from './Modal';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const STATIC_FILES_URL = BACKEND_API_URL; // Base URL for static files
 
 const NegotiationCard = ({
   negotiation,
   onDelete,
-  onPayment, // This prop is used for the "Proceed to Payment" button
+  onPayment,
   onLogout,
   getStatusColor,
   getStatusText,
@@ -33,17 +32,29 @@ const NegotiationCard = ({
 
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
+  const [isSendingFile, setIsSendingFile] = useState(false); // NEW: State for file upload loading
+  const fileInputRef = useRef(null); // NEW: Ref for file input
   const chatWindowRef = useRef(null);
 
-  // NEW: State for Transcriber Rating Modal
   const [showRateTranscriberModal, setShowRateTranscriberModal] = useState(false);
-  const [ratingScore, setRatingScore] = useState(5); // Default to 5 stars
+  const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingModalLoading, setRatingModalLoading] = useState(false);
 
   const handleReceiveMessageForCard = useCallback((data) => {
     if (data.negotiation_id === negotiationId) {
-      setCardMessages(prevMessages => [...prevMessages, data]);
+      setCardMessages(prevMessages => {
+        // Prevent duplicate messages by checking if ID already exists
+        if (prevMessages.some(msg => msg.id === data.id)) {
+          return prevMessages;
+        }
+        // Format timestamp for display
+        const formattedData = {
+          ...data,
+          timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        return [...prevMessages, formattedData];
+      });
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
     }
   }, [negotiationId]);
@@ -52,13 +63,13 @@ const NegotiationCard = ({
     const socket = getSocketInstance();
 
     if (socket) {
-      socket.on('receiveMessage', handleReceiveMessageForCard);
+      socket.on('receiveMessage', handleReceiveMessageForCard); // CORRECTED: Removed '='
       console.log(`NegotiationCard: Attached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
       if (socket) {
-        socket.off('receiveMessage', handleReceiveMessageForCard);
+        socket.off('receiveMessage', handleReceiveMessageForCard); // CORRECTED: Removed '='
         console.log(`NegotiationCard: Detached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
@@ -75,13 +86,18 @@ const NegotiationCard = ({
 
         const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}` // CORRECTED: Removed '='
           }
         });
         const data = await response.json();
         if (response.ok) {
-          setCardMessages(data.messages || []);
-          console.log(`NegotiationCard: Fetched ${data.messages?.length || 0} messages for ${negotiationId}`);
+          // Format timestamps for fetched messages
+          const formattedMessages = (data.messages || []).map(msg => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }));
+          setCardMessages(formattedMessages);
+          console.log(`NegotiationCard: Fetched ${formattedMessages.length} messages for ${negotiationId}`);
         } else {
           console.error('Failed to fetch messages:', data.error);
           showToast(data.error || 'Failed to load messages.', 'error');
@@ -102,39 +118,79 @@ const NegotiationCard = ({
   }, [cardMessages]);
 
   const handleSendMessageForCard = async () => {
-    if (cardNewMessage.trim() && currentUserId && negotiationId && otherPartyId) {
-      const messageData = {
-        senderId: currentUserId,
-        receiverId: otherPartyId,
-        negotiationId: negotiationId,
-        messageText: cardNewMessage,
-        timestamp: new Date().toISOString()
-      };
+    if (!cardNewMessage.trim()) {
+      showToast('Please enter a message.', 'error');
+      return;
+    }
+    if (!currentUserId || !negotiationId || !otherPartyId) {
+      showToast('Cannot send message: missing required info (user, negotiation, or recipient).', 'error');
+      return;
+    }
 
-      try {
-        await sendMessage(messageData);
-        setCardMessages(prevMessages => [...prevMessages, {
-            ...messageData,
-            content: messageData.messageText,
-            is_read: false,
-            id: Date.now().toString()
-        }]);
-        setCardNewMessage('');
-      } catch (error) {
-        showToast(error.message || 'Failed to send message.', 'error');
-      }
+    const messageData = {
+      senderId: currentUserId,
+      receiverId: otherPartyId,
+      negotiationId: negotiationId,
+      messageText: cardNewMessage,
+      timestamp: new Date().toISOString(), // Send raw ISO string
+      senderUserType: currentUserType // Pass user type for backend routing
+    };
 
-    } else {
-      if (!cardNewMessage.trim()) showToast('Please enter a message.', 'error');
-      else showToast('Cannot send message: missing required info (user, negotiation, or recipient).', 'error');
+    try {
+      await sendMessage(messageData);
+      setCardNewMessage(''); // Clear input
+      // REMOVED: Manual setCardMessages here. It will be added when Socket.IO emits 'receiveMessage'.
+    } catch (error) {
+      showToast(error.message || 'Failed to send message.', 'error');
     }
   };
 
-  // NEW: Rating Modal Handlers
+  // NEW: Handle file attachment selection and upload
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsSendingFile(true);
+    showToast('Uploading file...', 'info');
+
+    try {
+      const uploadResponse = await uploadChatAttachment(file);
+      if (uploadResponse.file_url) {
+        // Once file is uploaded, send a message with the file_url
+        const messageData = {
+          senderId: currentUserId,
+          receiverId: otherPartyId,
+          negotiationId: negotiationId,
+          messageText: `Attached file: ${uploadResponse.file_name}`, // Optional: send a descriptive text
+          file_url: uploadResponse.file_url,
+          file_name: uploadResponse.file_name,
+          timestamp: new Date().toISOString(),
+          senderUserType: currentUserType
+        };
+        await sendMessage(messageData);
+        showToast('File sent successfully!', 'success');
+        // No manual update to cardMessages, rely on socket.io
+      } else {
+        showToast('File upload failed: No URL returned.', 'error');
+      }
+    } catch (error) {
+      console.error('Error uploading or sending file:', error);
+      showToast(error.message || 'Failed to upload and send file.', 'error');
+    } finally {
+      setIsSendingFile(false);
+      event.target.value = null; // Clear file input
+    }
+  };
+
+  // Helper to trigger hidden file input click
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
   const openRateTranscriberModal = useCallback(() => {
       setShowRateTranscriberModal(true);
-      setRatingScore(5); // Reset to default
-      setRatingComment(''); // Clear comment
+      setRatingScore(5);
+      setRatingComment('');
   }, []);
 
   const closeRateTranscriberModal = useCallback(() => {
@@ -155,7 +211,7 @@ const NegotiationCard = ({
       const token = localStorage.getItem('token');
       if (!token) {
           showToast('Authentication token missing. Please log in again.', 'error');
-          onLogout(); // Assuming onLogout is passed to log out
+          onLogout();
           return;
       }
 
@@ -177,8 +233,6 @@ const NegotiationCard = ({
           if (response.ok) {
               showToast(data.message || 'Transcriber rated successfully!', 'success');
               closeRateTranscriberModal();
-              // You might want to refresh the parent component's data here
-              // e.g., if ClientNegotiations needs to update to show rating given
           } else {
               showToast(data.error || 'Failed to submit rating.', 'error');
           }
@@ -240,7 +294,7 @@ const NegotiationCard = ({
             <span className="label">Attached File:</span>
             <span className="value">
               <a
-                href={`${BACKEND_API_URL}/uploads/negotiation_files/${negotiation.negotiation_files}`}
+                href={`${STATIC_FILES_URL}/uploads/negotiation_files/${negotiation.negotiation_files}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="file-link"
@@ -292,30 +346,74 @@ const NegotiationCard = ({
             {cardMessages.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#999' }}>No messages yet.</p>
             ) : (
-              cardMessages.map((msg, index) => (
-                <div key={msg.id || index} className={`message-bubble ${msg.sender_id === currentUserId ? 'sent' : 'received'}`}>
-                    <p style={{
+              cardMessages.map((msg) => (
+                <div key={msg.id} className={`message-bubble ${msg.sender_id === currentUserId ? 'sent' : 'received'}`} style={{
+                    display: 'flex',
+                    justifyContent: msg.sender_id === currentUserId ? 'flex-end' : 'flex-start',
+                    marginBottom: '8px'
+                }}>
+                    <div style={{
                         background: msg.sender_id === currentUserId ? '#dcf8c6' : '#e5e5ea',
                         padding: '8px 12px',
                         borderRadius: '15px',
-                        display: 'inline-block',
                         maxWidth: '70%',
-                        wordWrap: 'break-word'
+                        wordWrap: 'break-word',
+                        position: 'relative'
                     }}>
-                        {msg.content}
-                    </p>
-                    <div style={{
-                        fontSize: '0.65em',
-                        color: '#666',
-                        marginTop: '2px'
-                    }}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {msg.content && <p style={{ margin: 0 }}>{msg.content}</p>}
+                        {msg.file_url && (
+                            <div style={{ marginTop: msg.content ? '5px' : '0' }}>
+                                <a 
+                                    href={`${STATIC_FILES_URL}${msg.file_url}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    style={{ color: '#007bff', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                >
+                                    📄 {msg.file_name || 'Attached File'}
+                                </a>
+                            </div>
+                        )}
+                        <div style={{
+                            fontSize: '0.65em',
+                            color: '#666',
+                            marginTop: '2px',
+                            textAlign: msg.sender_id === currentUserId ? 'right' : 'left'
+                        }}>
+                            {msg.timestamp}
+                        </div>
                     </div>
                 </div>
               ))
             )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* NEW: Hidden file input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/jpeg,image/jpg,image/png,image/gif"
+                disabled={isSendingFile}
+            />
+            {/* NEW: Attach file button */}
+            <button
+                onClick={triggerFileInput}
+                style={{
+                    padding: '10px 12px',
+                    borderRadius: '5px',
+                    background: '#6a0dad',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    marginRight: '5px'
+                }}
+                disabled={isSendingFile}
+                title="Attach File (Docs, PDFs, Images)"
+            >
+                📎
+            </button>
             <input
                 type="text"
                 value={cardNewMessage}
@@ -330,6 +428,7 @@ const NegotiationCard = ({
                     fontSize: '0.9em'
                 }}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessageForCard()}
+                disabled={isSendingFile}
             />
             <button
                 onClick={handleSendMessageForCard}
@@ -342,6 +441,7 @@ const NegotiationCard = ({
                     cursor: 'pointer',
                     fontSize: '0.9em'
                 }}
+                disabled={isSendingFile || !cardNewMessage.trim()}
             >
                 Send
             </button>
@@ -374,7 +474,7 @@ const NegotiationCard = ({
               </div>
             )}
 
-            {negotiation.status === 'accepted' && (
+            {negotiation.status === 'accepted_awaiting_payment' && (
               <div className="agreed-actions">
                 <span className="success-text">✅ Accepted! Proceed to Payment.</span>
                 {onPayment && <button
@@ -395,7 +495,7 @@ const NegotiationCard = ({
               </div>
             )}
 
-            {negotiation.status === 'completed' && ( // NEW: Rate Transcriber button for completed jobs
+            {negotiation.status === 'completed' && (
               <div className="completed-actions">
                   <span className="success-text">🎉 Job Completed!</span>
                   <button onClick={openRateTranscriberModal} className="action-btn rate-transcriber-btn">Rate Transcriber</button>
@@ -413,7 +513,7 @@ const NegotiationCard = ({
                 <span className="error-text">❌ Negotiation was cancelled.</span>
               </div>
             )}
-            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled') && ( // Only allow delete for rejected/cancelled
+            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled') && (
                 <div className="closed-actions">
                     {onDelete && <button
                         onClick={() => onDelete(negotiation.id)}
@@ -449,7 +549,12 @@ const NegotiationCard = ({
                 </button>}
               </div>
             )}
-            {(negotiation.status === 'accepted' || negotiation.status === 'hired') && (
+            {negotiation.status === 'accepted_awaiting_payment' && (
+                <div className="transcriber-awaiting-payment-actions">
+                    <span className="info-text">⏳ Awaiting Client Payment...</span>
+                </div>
+            )}
+            {negotiation.status === 'hired' && (
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
                     {openCompleteJobModal && <button onClick={() => openCompleteJobModal(negotiation.id)} className="action-btn complete-job-btn">Mark as Complete</button>}
@@ -467,7 +572,6 @@ const NegotiationCard = ({
         )}
       </div>
 
-      {/* NEW: Rate Transcriber Modal */}
       {showRateTranscriberModal && (
           <Modal
               show={showRateTranscriberModal}
