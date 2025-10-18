@@ -42,8 +42,11 @@ const NegotiationCard = ({
   const [ratingModalLoading, setRatingModalLoading] = useState(false);
 
   const handleReceiveMessageForCard = useCallback((data) => {
-    if (data.negotiation_id === negotiationId) {
+    // CRITICAL: Check if the message is for *this specific negotiation card*
+    // And also ensure it's a negotiation message, not a direct message being caught by this listener
+    if (data.negotiation_id === negotiationId && data.negotiation_id !== null) {
       setCardMessages(prevMessages => {
+        // Deduplication: Prevent adding the same message multiple times
         if (prevMessages.some(msg => msg.id === data.id)) {
           return prevMessages;
         }
@@ -54,6 +57,9 @@ const NegotiationCard = ({
         return [...prevMessages, formattedData];
       });
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
+    } else {
+        // Log if message is not for this card, or is a direct message being caught by a negotiation card listener
+        console.log(`NegotiationCard: Received message not for this card (${negotiationId}) or is a direct message. Data:`, data);
     }
   }, [negotiationId]);
 
@@ -61,17 +67,19 @@ const NegotiationCard = ({
     const socket = getSocketInstance();
 
     if (socket) {
+      // Attach the listener
       socket.on('receiveMessage', handleReceiveMessageForCard);
       console.log(`NegotiationCard: Attached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
+      // Detach the listener when the component unmounts
       if (socket) {
         socket.off('receiveMessage', handleReceiveMessageForCard);
         console.log(`NegotiationCard: Detached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
-  }, [negotiationId, handleReceiveMessageForCard]);
+  }, [negotiationId, handleReceiveMessageForCard]); // Dependencies for useEffect
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -85,7 +93,7 @@ const NegotiationCard = ({
         const response = await fetch(`${BACKEND_API_URL}/api/messages/${negotiationId}`, {
           method: 'GET', // Explicitly set method for clarity
           headers: {
-            'Authorization': `Bearer ${token}` // CORRECTED: Removed stray backtick
+            'Authorization': `Bearer ${token}` 
           }
         });
         const data = await response.json();
@@ -128,15 +136,31 @@ const NegotiationCard = ({
     const messageData = {
       senderId: currentUserId,
       receiverId: otherPartyId,
-      negotiationId: negotiationId,
+      negotiationId: negotiationId, // Ensure negotiationId is always present for negotiation chat
       messageText: cardNewMessage,
       timestamp: new Date().toISOString(),
       senderUserType: currentUserType
     };
 
     try {
-      await sendMessage(messageData);
-      setCardNewMessage('');
+      // Send message via HTTP POST
+      const response = await sendMessage(messageData);
+      
+      // OPTIMISTIC UPDATE: Add message to local state immediately after successful HTTP send
+      // The real-time socket event will then deduplicate this message.
+      if (response.messageData) {
+        const formattedData = {
+            ...response.messageData,
+            timestamp: new Date(response.messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setCardMessages(prevMessages => {
+            if (prevMessages.some(msg => msg.id === formattedData.id)) {
+                return prevMessages; // Deduplicate if already added by real-time event
+            }
+            return [...prevMessages, formattedData];
+        });
+      }
+      setCardNewMessage(''); // Clear input field
     } catch (error) {
       showToast(error.message || 'Failed to send message.', 'error');
     }
@@ -162,7 +186,22 @@ const NegotiationCard = ({
           timestamp: new Date().toISOString(),
           senderUserType: currentUserType
         };
-        await sendMessage(messageData);
+        // Send message via HTTP POST
+        const response = await sendMessage(messageData);
+
+        // OPTIMISTIC UPDATE for file attachments
+        if (response.messageData) {
+            const formattedData = {
+                ...response.messageData,
+                timestamp: new Date(response.messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setCardMessages(prevMessages => {
+                if (prevMessages.some(msg => msg.id === formattedData.id)) {
+                    return prevMessages; // Deduplicate
+                }
+                return [...prevMessages, formattedData];
+            });
+        }
         showToast('File sent successfully!', 'success');
       } else {
         showToast('File upload failed: No URL returned.', 'error');
@@ -172,7 +211,7 @@ const NegotiationCard = ({
       showToast(error.message || 'Failed to upload and send file.', 'error');
     } finally {
       setIsSendingFile(false);
-      event.target.value = null;
+      event.target.value = null; // Clear file input
     }
   };
 
@@ -566,7 +605,7 @@ const NegotiationCard = ({
       {showRateTranscriberModal && (
           <Modal
               show={showRateTranscriberModal}
-              title={`Rate \${otherPartyName}`}
+              title={`Rate ${otherPartyName}`}
               onClose={closeRateTranscriberModal}
               onSubmit={submitTranscriberRating}
               submitText="Submit Rating"
