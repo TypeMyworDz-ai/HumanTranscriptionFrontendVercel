@@ -19,9 +19,10 @@ const NegotiationCard = ({
   openRejectCounterModal,
   openCounterBackModal, // This prop is used to open the modal in ClientNegotiations.js
   openAcceptModal,
-  openCounterModal,
+  onOpenCounterModal, // RENAMED: This is the function to open the counter modal
   openRejectModal,
-  openCompleteJobModal
+  openCompleteJobModal,
+  canCounter // NEW: Boolean prop to control if counter is allowed
 }) => {
   const negotiationId = negotiation.id;
 
@@ -47,14 +48,22 @@ const NegotiationCard = ({
     if (data.negotiation_id === negotiationId && data.negotiation_id !== null) {
       setCardMessages(prevMessages => {
         // Deduplication: Prevent adding the same message multiple times
-        if (prevMessages.some(msg => msg.id === data.id)) {
-          return prevMessages;
+        // Also check if there's an optimistic message that this server message should replace
+        const updatedMessages = prevMessages.map(m =>
+            m.isOptimistic && m.sender_id === data.sender_id && m.content === data.content &&
+            m.receiver_id === data.receiver_id && (m.file_url === data.file_url || (!m.file_url && !data.file_url))
+                ? { ...data, isOptimistic: false, timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+                : m
+        );
+
+        if (!updatedMessages.some(m => m.id === data.id && !m.isOptimistic)) {
+            const formattedData = {
+              ...data,
+              timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            return [...updatedMessages, formattedData];
         }
-        const formattedData = {
-          ...data,
-          timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        return [...prevMessages, formattedData];
+        return updatedMessages;
       });
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
     } else {
@@ -68,15 +77,15 @@ const NegotiationCard = ({
 
     if (socket) {
       // Attach the listener
-      socket.on('receiveMessage', handleReceiveMessageForCard);
-      console.log(`NegotiationCard: Attached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
+      socket.on('newChatMessage', handleReceiveMessageForCard); // Listen for newChatMessage
+      console.log(`NegotiationCard: Attached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
       // Detach the listener when the component unmounts
       if (socket) {
-        socket.off('receiveMessage', handleReceiveMessageForCard);
-        console.log(`NegotiationCard: Detached 'receiveMessage' listener for negotiationId: ${negotiationId}`);
+        socket.off('newChatMessage', handleReceiveMessageForCard);
+        console.log(`NegotiationCard: Detached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
       }
     };
   }, [negotiationId, handleReceiveMessageForCard]); // Dependencies for useEffect
@@ -143,26 +152,30 @@ const NegotiationCard = ({
     };
 
     try {
+      // Optimistic update
+      const tempMessageId = `temp-${Date.now()}`;
+      const optimisticMessage = {
+          id: tempMessageId,
+          sender_id: currentUserId,
+          receiver_id: otherPartyId,
+          negotiation_id: negotiationId,
+          content: cardNewMessage,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client, otherPartyName for transcriber
+          isOptimistic: true,
+      };
+      setCardMessages(prevMessages => [...prevMessages, optimisticMessage]);
+
+
       // Send message via HTTP POST
       const response = await sendMessage(messageData);
       
-      // OPTIMISTIC UPDATE: Add message to local state immediately after successful HTTP send
-      // The real-time socket event will then deduplicate this message.
-      if (response.messageData) {
-        const formattedData = {
-            ...response.messageData,
-            timestamp: new Date(response.messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setCardMessages(prevMessages => {
-            if (prevMessages.some(msg => msg.id === formattedData.id)) {
-                return prevMessages; // Deduplicate if already added by real-time event
-            }
-            return [...prevMessages, formattedData];
-        });
-      }
+      // No need for separate optimistic update logic here, as handleNewChatMessage will deduplicate
       setCardNewMessage(''); // Clear input field
     } catch (error) {
       showToast(error.message || 'Failed to send message.', 'error');
+      // If send fails, remove the optimistic message
+      setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
     }
   };
 
@@ -175,33 +188,38 @@ const NegotiationCard = ({
 
     try {
       const uploadResponse = await uploadChatAttachment(file);
-      if (uploadResponse.file_url) {
+      if (uploadResponse.fileUrl) {
         const messageData = {
           senderId: currentUserId,
           receiverId: otherPartyId,
           negotiationId: negotiationId,
-          messageText: `Attached file: ${uploadResponse.file_name}`,
-          file_url: uploadResponse.file_url,
-          file_name: uploadResponse.file_name,
+          messageText: `Attached file: ${uploadResponse.fileName}`, // Use uploadResponse.fileName
+          fileUrl: uploadResponse.fileUrl, // Use uploadResponse.fileUrl
+          fileName: uploadResponse.fileName, // Use uploadResponse.fileName
           timestamp: new Date().toISOString(),
           senderUserType: currentUserType
         };
+
+        // Optimistic update for file attachments
+        const tempMessageId = `temp-${Date.now()}`;
+        const optimisticMessage = {
+            id: tempMessageId,
+            sender_id: currentUserId,
+            receiver_id: otherPartyId,
+            negotiation_id: negotiationId,
+            content: messageData.messageText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
+            file_url: messageData.fileUrl,
+            file_name: messageData.fileName,
+            isOptimistic: true,
+        };
+        setCardMessages(prevMessages => [...prevMessages, optimisticMessage]);
+
         // Send message via HTTP POST
         const response = await sendMessage(messageData);
 
-        // OPTIMISTIC UPDATE for file attachments
-        if (response.messageData) {
-            const formattedData = {
-                ...response.messageData,
-                timestamp: new Date(response.messageData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            setCardMessages(prevMessages => {
-                if (prevMessages.some(msg => msg.id === formattedData.id)) {
-                    return prevMessages; // Deduplicate
-                }
-                return [...prevMessages, formattedData];
-            });
-        }
+        // No need for separate optimistic update logic here, as handleNewChatMessage will deduplicate
         showToast('File sent successfully!', 'success');
       } else {
         showToast('File upload failed: No URL returned.', 'error');
@@ -209,6 +227,8 @@ const NegotiationCard = ({
     } catch (error) {
       console.error('Error uploading or sending file:', error);
       showToast(error.message || 'Failed to upload and send file.', 'error');
+      // If send fails, remove the optimistic message
+      setCardMessages(prevMessages => prevMessages.filter(msg => !msg.isOptimistic || msg.id !== tempMessageId));
     } finally {
       setIsSendingFile(false);
       event.target.value = null; // Clear file input
@@ -280,11 +300,17 @@ const NegotiationCard = ({
   return (
     <div className="negotiation-card">
       <div className="negotiation-header">
-        <div className={`${isClientViewing ? 'transcriber-info' : 'client-info'}`}>
-          <div className={`${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}`}>
+        <div className={`
+          ${isClientViewing ? 'transcriber-info' : 'client-info'}
+        `}>
+          <div className={`
+            ${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}
+          `}>
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
-          <div className={`${isClientViewing ? 'transcriber-details' : 'client-details'}`}>
+          <div className={`
+            ${isClientViewing ? 'transcriber-details' : 'client-details'}
+          `}>
             <h3>{otherPartyName}</h3>
             {isClientViewing ? (
               <div className="transcriber-stats">
@@ -306,7 +332,9 @@ const NegotiationCard = ({
             )}
           </div>
         </div>
-        <div className={`${isClientViewing ? 'negotiation-status' : 'negotiation-status-badge'}`}>
+        <div className={`
+          ${isClientViewing ? 'negotiation-status' : 'negotiation-status-badge'}
+        `}>
           <span
             className="status-badge"
             style={{ backgroundColor: getStatusColor(negotiation.status, isClientViewing) }}
@@ -565,8 +593,8 @@ const NegotiationCard = ({
                 >
                   Accept
                 </button>}
-                {openCounterModal && <button
-                  onClick={() => openCounterModal(negotiation.id)}
+                {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
+                  onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
                   className="action-btn counter-btn"
                 >
                   Counter
@@ -594,8 +622,18 @@ const NegotiationCard = ({
                 <div className="transcriber-client-countered-actions">
                     <span className="info-text">📝 Client sent a counter-offer!</span>
                     {openAcceptModal && <button onClick={() => openAcceptModal(negotiation.id)} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
-                    {openCounterModal && <button onClick={() => openCounterModal(negotiation.id)} className="action-btn counter-client-counter-btn">Counter Back</button>}
+                    {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
+                      onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
+                      className="action-btn counter-client-counter-btn"
+                    >
+                      Counter Back
+                    </button>}
                     {openRejectModal && <button onClick={() => openRejectModal(negotiation.id)} className="action-btn reject-client-counter-btn">Reject Client Counter</button>}
+                </div>
+            )}
+            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled' || negotiation.status === 'completed') && (
+                <div className="transcriber-closed-actions">
+                    <span className="info-text">Negotiation {negotiation.status}.</span>
                 </div>
             )}
           </>

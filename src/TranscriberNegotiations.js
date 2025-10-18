@@ -514,7 +514,7 @@ const TranscriberNegotiations = () => {
 
                     <h3 className="negotiation-room-subtitle">Active Negotiations</h3>
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').map(negotiation => ( // Added accepted_awaiting_payment to filter
+                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
                                 negotiation={negotiation}
@@ -527,16 +527,11 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
-                                openCounterModal={
-                                    // Disable counter if status is accepted_awaiting_payment or hired, completed, rejected, cancelled
-                                    negotiation.status !== 'accepted_awaiting_payment' && 
-                                    negotiation.status !== 'hired' && 
-                                    negotiation.status !== 'completed' && 
-                                    negotiation.status !== 'rejected' && 
-                                    negotiation.status !== 'cancelled'
-                                        ? openCounterModal
-                                        : null // Disable counter if status is accepted_awaiting_payment or hired
+                                // Pass a boolean flag to control the Counter button's enabled/disabled state
+                                canCounter={
+                                    negotiation.status === 'pending' || negotiation.status === 'client_counter'
                                 }
+                                openCounterModal={openCounterModal} // Always pass the function
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
                             />
@@ -561,6 +556,7 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
+                                canCounter={false} // Always disable counter for accepted/hired jobs
                                 openCounterModal={openCounterModal}
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
@@ -586,6 +582,7 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
+                                canCounter={false} // Always disable counter for completed/rejected/cancelled
                                 openCounterModal={openCounterModal}
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
