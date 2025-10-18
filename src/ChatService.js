@@ -4,7 +4,8 @@ import io from 'socket.io-client';
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // Initialize Socket.IO client, but don't connect automatically
-const globalSocketInstance = io(BACKEND_API_URL, { autoConnect: false });
+// We will now pass the userId in the query during connect()
+let globalSocketInstance = null; // Initialize as null, will be created in connectSocket
 
 // State to keep track of the currently connected user ID
 let activeSocketState = {
@@ -20,6 +21,20 @@ let activeSocketState = {
  * @returns {SocketIOClient.Socket} The Socket.IO instance.
  */
 export const connectSocket = (userId) => {
+  // If globalSocketInstance is not yet created, create it
+  if (!globalSocketInstance) {
+    globalSocketInstance = io(BACKEND_API_URL, {
+      autoConnect: false,
+      // Pass userId in the query during the initial handshake
+      query: { userId: userId }
+    });
+  }
+
+  // Update the query parameter if userId has changed or it's a new connection
+  if (globalSocketInstance.io.opts.query.userId !== userId) {
+    globalSocketInstance.io.opts.query.userId = userId;
+  }
+
   // Reuse existing connection if already connected for the same user
   if (globalSocketInstance.connected && activeSocketState.userId === userId) {
     console.log(`ChatService: Socket already connected for userId: ${userId}. Reusing existing connection.`);
@@ -39,30 +54,25 @@ export const connectSocket = (userId) => {
   if (!globalSocketInstance._hasListenersSetup) {
     globalSocketInstance.on('connect', () => {
       console.log('ChatService: Connected to WebSocket server');
-      // Emit 'joinUserRoom' event once connected if userId is available
-      if (activeSocketState.userId) {
-        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId);
-        console.log(`ChatService: Sent joinUserRoom event for userId: ${activeSocketState.userId}`);
-      } else {
-        console.warn('ChatService: userId not provided in activeSocketState, cannot join user room.');
-      }
+      // The backend will now automatically join the user to their room based on the query parameter.
+      // We no longer need to emit 'joinUserRoom' explicitly from here after connect.
+      // The backend server.js 'connection' event handler will handle joining the room.
+      console.log(`ChatService: Socket connected for userId: ${activeSocketState.userId}. Room joining handled by backend.`);
     });
 
     globalSocketInstance.on('disconnect', (reason) => {
       console.log('ChatService: Disconnected from WebSocket server:', reason);
       // Attempt to reconnect if disconnection was server-initiated
       if (reason === 'io server disconnect') {
-        globalSocketInstance.connect();
+        globalSocketInstance.connect(); // This will trigger a new connection with the updated userId in query
       }
       activeSocketState.userId = null; // Clear userId on disconnect
     });
 
     globalSocketInstance.on('reconnect', (attempt) => {
       console.log('ChatService: Reconnected to WebSocket server after attempt:', attempt);
-      // Re-join room upon successful reconnection
-      if (activeSocketState.userId) {
-        globalSocketInstance.emit('joinUserRoom', activeSocketState.userId);
-      }
+      // No need to emit 'joinUserRoom' explicitly here either, backend handles it.
+      console.log(`ChatService: Reconnected for userId: ${activeSocketState.userId}. Room joining handled by backend.`);
     });
 
     // Handle potential errors received from the server
@@ -146,7 +156,7 @@ export const sendMessage = async (messageData) => {
     console.log('ChatService: Message sent successfully via HTTP POST: ', data);
     return data; // Return server response data
   } catch (error) {
-    console.error('ChatService: Network error sending message via HTTP POST:', error);
+    console.error('ChatService: Network error sending message via HTTP POST:','', error);
     throw error; // Re-throw error for handling upstream
   }
 };
@@ -193,11 +203,12 @@ export const uploadChatAttachment = async (file) => {
 
 // Disconnects the Socket.IO client
 export const disconnectSocket = () => {
-  if (globalSocketInstance.connected) {
+  if (globalSocketInstance && globalSocketInstance.connected) { // Check if instance exists before calling connected
     globalSocketInstance.disconnect();
     console.log('ChatService: Socket disconnected.');
   }
   activeSocketState.userId = null; // Clear the active user ID
+  globalSocketInstance = null; // Clear the instance on disconnect
 };
 
 // Returns the current Socket.IO instance
