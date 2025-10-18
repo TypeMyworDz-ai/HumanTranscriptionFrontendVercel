@@ -1,9 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocketInstance, sendMessage, uploadChatAttachment } from './ChatService';
 import Modal from './Modal';
+import { useAuth } from './contexts/AuthContext'; // NEW: Import useAuth
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const STATIC_FILES_URL = BACKEND_API_URL; // Base URL for static files
+
+// Helper function to format timestamp robustly for display
+const formatDisplayTimestamp = (isoTimestamp) => {
+    if (!isoTimestamp) return 'N/A';
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) { // Check if the date is invalid
+            console.warn(`Attempted to format invalid date string: ${isoTimestamp}`);
+            return 'Invalid Date';
+        }
+        // Use a consistent format for all displays: date and time
+        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+        return 'Invalid Date';
+    }
+};
 
 const NegotiationCard = ({
   negotiation,
@@ -24,6 +42,7 @@ const NegotiationCard = ({
   openCompleteJobModal,
   canCounter // NEW: Boolean prop to control if counter is allowed
 }) => {
+  const { user } = useAuth(); // NEW: Access user from AuthContext
   const negotiationId = negotiation.id;
 
   const isClientViewing = currentUserType === 'client';
@@ -52,14 +71,14 @@ const NegotiationCard = ({
         const updatedMessages = prevMessages.map(m =>
             m.isOptimistic && m.sender_id === data.sender_id && m.content === data.content &&
             m.receiver_id === data.receiver_id && (m.file_url === data.file_url || (!m.file_url && !data.file_url))
-                ? { ...data, isOptimistic: false, timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+                ? { ...data, isOptimistic: false, timestamp: formatDisplayTimestamp(data.timestamp) } // Format timestamp
                 : m
         );
 
         if (!updatedMessages.some(m => m.id === data.id && !m.isOptimistic)) {
             const formattedData = {
               ...data,
-              timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              timestamp: formatDisplayTimestamp(data.timestamp) // Format timestamp
             };
             return [...updatedMessages, formattedData];
         }
@@ -109,7 +128,7 @@ const NegotiationCard = ({
         if (response.ok) {
           const formattedMessages = (data.messages || []).map(msg => ({
             ...msg,
-            timestamp: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timestamp: formatDisplayTimestamp(msg.timestamp) // Format timestamp
           }));
           setCardMessages(formattedMessages);
           console.log(`NegotiationCard: Fetched ${formattedMessages.length} messages for ${negotiationId}`);
@@ -160,8 +179,8 @@ const NegotiationCard = ({
           receiver_id: otherPartyId,
           negotiation_id: negotiationId,
           content: cardNewMessage,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client, otherPartyName for transcriber
+          timestamp: formatDisplayTimestamp(new Date().toISOString()), // Format timestamp
+          sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client
           isOptimistic: true,
       };
       setCardMessages(prevMessages => [...prevMessages, optimisticMessage]);
@@ -193,9 +212,9 @@ const NegotiationCard = ({
           senderId: currentUserId,
           receiverId: otherPartyId,
           negotiationId: negotiationId,
-          messageText: `Attached file: ${uploadResponse.fileName}`, // Use uploadResponse.fileName
-          fileUrl: uploadResponse.fileUrl, // Use uploadResponse.fileUrl
-          fileName: uploadResponse.fileName, // Use uploadResponse.fileName
+          messageText: `Attached file: ${uploadResponse.fileName}`,
+          fileUrl: uploadResponse.fileUrl,
+          fileName: uploadResponse.fileName,
           timestamp: new Date().toISOString(),
           senderUserType: currentUserType
         };
@@ -208,8 +227,8 @@ const NegotiationCard = ({
             receiver_id: otherPartyId,
             negotiation_id: negotiationId,
             content: messageData.messageText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
+            timestamp: formatDisplayTimestamp(new Date().toISOString()), // Format timestamp
+            sender_name: currentUserType === 'client' ? user.full_name : otherPartyName, // Use user.full_name for client
             file_url: messageData.fileUrl,
             file_name: messageData.fileName,
             isOptimistic: true,

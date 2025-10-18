@@ -531,7 +531,7 @@ const TranscriberNegotiations = () => {
                                 canCounter={
                                     negotiation.status === 'pending' || negotiation.status === 'client_counter'
                                 }
-                                openCounterModal={openCounterModal} // Always pass the function
+                                onOpenCounterModal={openCounterModal} // Renamed prop
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
                             />
@@ -557,7 +557,7 @@ const TranscriberNegotiations = () => {
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
                                 canCounter={false} // Always disable counter for accepted/hired jobs
-                                openCounterModal={openCounterModal}
+                                onOpenCounterModal={openCounterModal} // Renamed prop
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
                             />
@@ -583,7 +583,7 @@ const TranscriberNegotiations = () => {
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
                                 canCounter={false} // Always disable counter for completed/rejected/cancelled
-                                openCounterModal={openCounterModal}
+                                onOpenCounterModal={openCounterModal} // Renamed prop
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
                             />
