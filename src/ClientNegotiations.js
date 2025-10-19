@@ -74,6 +74,9 @@ const ClientNegotiations = () => {
             const data = await response.json();
             if (response.ok) {
                 setNegotiations(data.negotiations);
+                // Log the fetched negotiations and their statuses for debugging
+                console.log("Fetched Negotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
+
                 if (data.negotiations.length === 0) {
                     showToast('No negotiation requests found.', 'info');
                 }
@@ -390,9 +393,9 @@ const ClientNegotiations = () => {
             'pending': '#007bff',
             'transcriber_counter': '#ffc107',
             'client_counter': '#007bff',
-            'accepted_awaiting_payment': '#28a745',
+            'accepted_awaiting_payment': '#28a745', // Green for accepted, but awaiting payment
             'rejected': '#dc3545',
-            'hired': '#007bff',
+            'hired': '#007bff', // Blue for active job
             'cancelled': '#dc3545', // Reverted to red for cancelled as it's a terminal, negative state
             'completed': '#6f42c1'
         };
@@ -479,6 +482,8 @@ const ClientNegotiations = () => {
 
                     <h3 className="negotiation-room-subtitle">Ongoing Negotiations</h3> {/* New subtitle for the consolidated list */}
                     <div className="negotiations-list">
+                        {/* This filter ensures negotiations accepted by a transcriber (awaiting payment)
+                            remain visible in the "Negotiation Room" until payment is completed. */}
                         {negotiations.filter(n =>
                             n.status === 'pending' ||
                             n.status === 'transcriber_counter' ||
@@ -513,6 +518,9 @@ const ClientNegotiations = () => {
 
                     <h3>Active Jobs</h3>
                     <div className="negotiations-list">
+                        {/* This filter ensures only jobs that have been paid for and are actively assigned
+                            (status 'hired') appear as 'Active Jobs'. Negotiations awaiting payment
+                            ('accepted_awaiting_payment') should NOT appear here. */}
                         {negotiations.filter(n => n.status === 'hired').map(negotiation => ( // Filtered for only 'hired' status
                             <NegotiationCard
                                 key={negotiation.id}

@@ -48,7 +48,9 @@ const ClientJobs = () => {
 
             if (response.ok) {
                 const fetchedNegotiations = data.negotiations || [];
-                const jobs = fetchedNegotiations.filter(n => n.status === 'accepted' || n.status === 'hired');
+                // Updated to filter for 'accepted_awaiting_payment' instead of 'accepted'
+                const jobs = fetchedNegotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired');
+                console.log("Filtered Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
                 setActiveJobs(jobs);
                 if (jobs.length === 0) {
                     showToast('No active jobs found yet.', 'info');
@@ -81,7 +83,7 @@ const ClientJobs = () => {
         const colors = {
             'pending': '#007bff',
             'transcriber_counter': '#ffc107',
-            'accepted': '#28a745',
+            'accepted_awaiting_payment': '#28a745', // Updated status color
             'rejected': '#dc3545',
             'hired': '#007bff',
             'cancelled': '#dc3545',
@@ -94,7 +96,7 @@ const ClientJobs = () => {
         const texts = {
             'pending': 'Waiting for Transcriber',
             'transcriber_counter': 'Transcriber Countered',
-            'accepted': 'Accepted - Awaiting Payment',
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', // Updated status text
             'rejected': 'Rejected',
             'hired': 'Job Active - Paid',
             'cancelled': 'Cancelled',
@@ -111,9 +113,54 @@ const ClientJobs = () => {
 
     // Placeholder for payment (should already be handled in ClientNegotiations)
     const handleProceedToPayment = useCallback((negotiation) => {
-        showToast('Payment already processed for active jobs.', 'info');
-    }, [showToast]);
+        // Check if the negotiation is in 'accepted_awaiting_payment' status
+        if (negotiation.status === 'accepted_awaiting_payment') {
+            // Redirect to payment flow or show payment modal
+            if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_kes) {
+                showToast('Missing client email or negotiation details for payment.', 'error');
+                return;
+            }
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('Authentication token missing. Please log in again.', 'error');
+                logout();
+                return;
+            }
 
+            setLoading(true);
+            
+            fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    negotiationId: negotiation.id,
+                    amount: negotiation.agreed_price_kes,
+                    email: user.email
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.data && data.data.authorization_url) {
+                    showToast('Redirecting to payment gateway...', 'info');
+                    window.location.href = data.data.authorization_url;
+                } else {
+                    showToast(data.error || 'Failed to initiate payment.', 'error');
+                    setLoading(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error initiating payment:', error);
+                showToast('Network error while initiating payment. Please try again.', 'error');
+                setLoading(false);
+            });
+        } else {
+            showToast('Payment already processed for active jobs.', 'info');
+        }
+    }, [showToast, user, logout]);
 
     if (authLoading || !isAuthenticated || !user || loading) {
         return (
@@ -159,7 +206,7 @@ const ClientJobs = () => {
                                     key={job.id}
                                     negotiation={job}
                                     onDelete={handleDeleteNegotiation} // Pass placeholder
-                                    onPayment={handleProceedToPayment} // Pass placeholder
+                                    onPayment={handleProceedToPayment} // Updated to handle payment for 'accepted_awaiting_payment'
                                     onLogout={logout}
                                     getStatusColor={getStatusColor}
                                     getStatusText={getStatusText}

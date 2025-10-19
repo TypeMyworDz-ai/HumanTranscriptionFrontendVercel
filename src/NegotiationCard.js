@@ -60,6 +60,11 @@ const NegotiationCard = ({
   const [ratingComment, setRatingComment] = useState('');
   const [ratingModalLoading, setRatingModalLoading] = useState(false);
 
+  // Log the negotiation status for debugging
+  useEffect(() => {
+    console.log(`NegotiationCard: Rendering negotiation ${negotiationId} with status: ${negotiation.status}`);
+  }, [negotiationId, negotiation.status]);
+
   const handleReceiveMessageForCard = useCallback((data) => {
     if (data.negotiation_id === negotiationId && data.negotiation_id !== null) {
       setCardMessages(prevMessages => {
