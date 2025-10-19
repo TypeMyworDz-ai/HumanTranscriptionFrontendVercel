@@ -1,10 +1,11 @@
-// frontend/client/src/AdminJobs.js - COMPLETE AND UPDATED with functionality
+// frontend/client/src/AdminJobs.js - COMPLETE AND UPDATED with functionality for admin job management
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast'; // Import Toast component
-import './AdminManagement.css';
+import Modal from './Modal'; // Import Modal component for delete confirmation
+import './AdminManagement.css'; // Assuming common admin styles
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -15,6 +16,11 @@ const AdminJobs = () => {
     const [jobs, setJobs] = useState([]); // State to store fetched jobs (negotiations)
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [jobToDeleteId, setJobToDeleteId] = useState(null);
+    const [modalLoading, setModalLoading] = useState(false);
+
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -29,18 +35,24 @@ const AdminJobs = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, { // NEW: Admin API endpoint for all jobs
+            // NEW: Admin API endpoint for all jobs, ensure it joins client and transcriber user details
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            if (response.ok && data.jobs) {
+            if (response.ok && Array.isArray(data)) { // CORRECTED: Explicitly check if data is an array
+                setJobs(data); // Assuming data is directly the array of jobs
+            } else if (response.ok && data && Array.isArray(data.jobs)) { // Fallback if backend returns { jobs: [...] }
                 setJobs(data.jobs);
-            } else {
+            }
+            else {
                 showToast(data.error || 'Failed to fetch jobs.', 'error');
+                setJobs([]); // Ensure jobs is an empty array on error
             }
         } catch (error) {
             console.error('Error fetching jobs:', error);
             showToast('Network error fetching jobs.', 'error');
+            setJobs([]); // Ensure jobs is an empty array on error
         } finally {
             setLoading(false);
         }
@@ -54,6 +66,59 @@ const AdminJobs = () => {
         }
         fetchAllJobs();
     }, [user, navigate, fetchAllJobs]);
+
+    const openDeleteModal = useCallback((jobId) => {
+        setJobToDeleteId(jobId);
+        setShowDeleteModal(true);
+    }, []);
+
+    const closeDeleteModal = useCallback(() => {
+        setJobToDeleteId(null);
+        setShowDeleteModal(false);
+        setModalLoading(false);
+    }, []);
+
+    // NEW: Handle deletion of a job by Admin
+    const handleDeleteJob = useCallback(async () => {
+        if (!jobToDeleteId) return;
+
+        setModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            logout();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${jobToDeleteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showToast(data.message || 'Job deleted successfully!', 'success');
+                closeDeleteModal();
+                fetchAllJobs(); // Refresh the list of jobs
+            } else {
+                showToast(data.error || 'Failed to delete job.', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting job:', error);
+            showToast('Network error deleting job.', 'error');
+        } finally {
+            setModalLoading(false);
+        }
+    }, [jobToDeleteId, logout, showToast, fetchAllJobs, closeDeleteModal]);
+
+    // NEW: Handle viewing job details (placeholder for now)
+    const handleViewJobDetails = useCallback((jobId) => {
+        // Implement navigation to a detailed job view page
+        navigate(`/admin/jobs/${jobId}`);
+        console.log(`Viewing details for job: ${jobId}`);
+    }, [navigate]);
 
 
     if (loading) {
@@ -84,7 +149,7 @@ const AdminJobs = () => {
                     <h2>Ongoing & Completed Jobs</h2>
                     <p>Monitor all transcription jobs across the platform.</p>
                     
-                    {jobs.length === 0 ? (
+                    {Array.isArray(jobs) && jobs.length === 0 ? ( // Corrected check for empty array
                         <p className="no-data-message">No jobs found.</p>
                     ) : (
                         <div className="jobs-list-table">
@@ -98,20 +163,33 @@ const AdminJobs = () => {
                                         <th>Deadline</th>
                                         <th>Status</th>
                                         <th>Requested On</th>
-                                        {/* Add more columns as needed */}
+                                        <th>Actions</th> {/* NEW: Actions column */}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {jobs.map(job => (
                                         <tr key={job.id}>
                                             <td>{job.id.substring(0, 8)}...</td>
-                                            <td>{job.client?.full_name || 'N/A'}</td>
-                                            <td>{job.transcriber?.full_name || 'N/A'}</td>
+                                            <td>{job.client?.full_name || 'N/A'}</td> {/* Access client.full_name */}
+                                            <td>{job.transcriber?.full_name || 'N/A'}</td> {/* Access transcriber.full_name */}
                                             <td>KES {job.agreed_price_kes?.toLocaleString() || '0.00'}</td>
                                             <td>{job.deadline_hours} hrs</td>
                                             <td><span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span></td>
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
-                                            {/* Add more cells for other job details */}
+                                            <td>
+                                                <button 
+                                                    onClick={() => handleViewJobDetails(job.id)} 
+                                                    className="action-btn view-btn"
+                                                >
+                                                    View
+                                                </button>
+                                                <button 
+                                                    onClick={() => openDeleteModal(job.id)} 
+                                                    className="action-btn delete-btn"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td> {/* NEW: Action buttons */}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -127,6 +205,21 @@ const AdminJobs = () => {
                 onClose={hideToast}
                 duration={toast.type === 'error' ? 4000 : 3000}
             />
+
+            {/* NEW: Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <Modal
+                    show={showDeleteModal}
+                    title="Confirm Delete Job"
+                    onClose={closeDeleteModal}
+                    onSubmit={handleDeleteJob}
+                    submitText="Confirm Delete"
+                    loading={modalLoading}
+                >
+                    <p>Are you sure you want to delete job ID: {jobToDeleteId?.substring(0, 8)}...? This action cannot be undone and will remove all associated data, including messages and files.</p>
+                    <p className="modal-warning">This action is irreversible.</p>
+                </Modal>
+            )}
         </div>
     );
 };

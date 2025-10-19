@@ -1,8 +1,8 @@
-// src/TranscriberPaymentHistory.js - UPDATED to display 80% Transcriber Pay
+// src/TranscriberPaymentHistory.js - UPDATED to display 80% Transcriber Pay and Upcoming Payouts
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Toast from './Toast';
+import Toast from './Toast'; // Assuming you have a Toast component
 import { useAuth } from './contexts/AuthContext';
 import './TranscriberPaymentHistory.css'; // You'll need to create this CSS file
 
@@ -13,7 +13,9 @@ const TranscriberPaymentHistory = () => {
     const navigate = useNavigate();
 
     const [payments, setPayments] = useState([]);
+    const [upcomingPayouts, setUpcomingPayouts] = useState([]); // NEW: State for upcoming payouts
     const [summary, setSummary] = useState({ totalEarnings: 0, monthlyEarnings: 0 });
+    const [totalUpcomingPayouts, setTotalUpcomingPayouts] = useState(0); // NEW: Total for upcoming payouts
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -58,9 +60,45 @@ const TranscriberPaymentHistory = () => {
             console.error('Network error fetching payment history:', error);
             showToast('Network error while fetching payment history.', 'error');
         } finally {
+            // setLoading(false); // Will be set by fetchUpcomingPayouts
+        }
+    }, [isAuthenticated, logout, showToast]);
+
+    // NEW: Function to fetch upcoming payouts
+    const fetchUpcomingPayouts = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            if (isAuthenticated) {
+                console.warn("TranscriberPaymentHistory: Token missing for upcoming payouts. Forcing logout.");
+                logout();
+            }
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/payouts/upcoming`, { // NEW API endpoint
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                setUpcomingPayouts(data.upcomingPayouts || []);
+                setTotalUpcomingPayouts(data.totalUpcomingPayouts || 0);
+            } else {
+                showToast(data.error || 'Failed to load upcoming payouts.', 'error');
+            }
+        } catch (error) {
+            console.error('Network error fetching upcoming payouts:', error);
+            showToast('Network error while fetching upcoming payouts.', 'error');
+        } finally {
             setLoading(false);
         }
     }, [isAuthenticated, logout, showToast]);
+
 
     useEffect(() => {
         if (authLoading) return;
@@ -71,8 +109,14 @@ const TranscriberPaymentHistory = () => {
             return;
         }
 
-        fetchPaymentHistory();
-    }, [isAuthenticated, authLoading, user, navigate, fetchPaymentHistory]);
+        // Fetch both payment history and upcoming payouts
+        Promise.all([
+            fetchPaymentHistory(),
+            fetchUpcomingPayouts()
+        ]).finally(() => {
+            setLoading(false);
+        });
+    }, [isAuthenticated, authLoading, user, navigate, fetchPaymentHistory, fetchUpcomingPayouts]);
 
     if (authLoading || !isAuthenticated || !user || loading) {
         return (
@@ -117,10 +161,52 @@ const TranscriberPaymentHistory = () => {
                             <h3>This Month's Earnings</h3>
                             <p className="summary-value">KES {summary.monthlyEarnings.toLocaleString()}</p>
                         </div>
-                        {/* Add more summary cards here (e.g., weekly, last 7 days) if your backend supports it */}
+                        <div className="summary-card"> {/* NEW: Card for Total Upcoming Payouts */}
+                            <h3>Total Upcoming Payouts</h3>
+                            <p className="summary-value">KES {totalUpcomingPayouts.toLocaleString()}</p>
+                        </div>
                     </div>
 
-                    <h3>All Transactions</h3>
+                    {/* NEW: Upcoming Payments Table */}
+                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString()})</h3>
+                    {upcomingPayouts.length === 0 ? (
+                        <p className="no-data-message">No upcoming payouts found.</p>
+                    ) : (
+                        <div className="upcoming-payouts-table-container payments-table-container"> {/* Reused payments-table-container for styling */}
+                            {upcomingPayouts.map(week => (
+                                <div key={week.date} className="weekly-payout-group">
+                                    <h4>Week Ending: {week.date} (Total: KES {week.totalAmount.toLocaleString()})</h4>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Job ID</th>
+                                                <th>Client</th>
+                                                <th>Requirements</th>
+                                                <th>Your Earning</th>
+                                                <th>Status</th>
+                                                <th>Created On</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {week.payouts.map(payout => (
+                                                <tr key={payout.id}>
+                                                    <td>{payout.negotiation_id.substring(0, 8)}...</td>
+                                                    <td>{payout.clientName}</td>
+                                                    <td>{payout.jobRequirements.substring(0, 50)}...</td>
+                                                    <td>KES {payout.amount.toLocaleString()}</td>
+                                                    <td><span className={`status-badge ${payout.status}`}>{payout.status}</span></td>
+                                                    <td>{payout.created_at}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+
+                    <h3 style={{ marginTop: '30px' }}>All Past Transactions</h3> {/* Adjusted margin */}
                     {payments.length === 0 ? (
                         <p className="no-data-message">No completed payment transactions found.</p>
                     ) : (
