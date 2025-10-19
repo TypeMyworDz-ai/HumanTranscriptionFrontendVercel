@@ -233,7 +233,7 @@ const TranscriberPool = () => {
       const postData = {
         transcriber_id: selectedTranscriber.id,
         requirements: negotiationData.requirements,
-        proposed_price_kes: parseFloat(negotiationData.proposedPrice),
+        proposed_price_usd: parseFloat(negotiationData.proposedPrice),
         deadline_hours: parseInt(negotiationData.deadlineHours),
         negotiation_file_url: negotiationData.uploadedFileUrl // Pass the URL, not the file object
       };
@@ -450,13 +450,13 @@ const TranscriberPool = () => {
               </div>
 
               <div className="form-group">
-                <label>Proposed Price (KES):</label>
+                <label>Proposed Price (USD):</label> {/* Changed from KES to USD */}
                 <input
                   type="number"
                   name="proposedPrice"
                   value={negotiationData.proposedPrice}
                   onChange={handleNegotiationChange}
-                  placeholder="Enter your budget in Kenyan Shillings"
+                  placeholder="Enter your budget in US Dollars" // Changed placeholder text
                   min="1"
                   required
                 />
