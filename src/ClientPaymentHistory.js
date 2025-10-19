@@ -1,4 +1,4 @@
-// src/ClientPaymentHistory.js
+// src/ClientPaymentHistory.js - UPDATED for USD currency consistency
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -111,11 +111,11 @@ const ClientPaymentHistory = () => {
                     <div className="summary-cards-grid">
                         <div className="summary-card">
                             <h3>Total Payments</h3>
-                            <p className="summary-value">KES {summary.totalPayments.toLocaleString()}</p>
+                            <p className="summary-value">USD {summary.totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
                         </div>
                         <div className="summary-card">
                             <h3>This Month's Payments</h3>
-                            <p className="summary-value">KES {summary.monthlyPayments.toLocaleString()}</p>
+                            <p className="summary-value">USD {summary.monthlyPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
                         </div>
                         {/* Add more summary cards here (e.g., weekly, last 7 days) if your backend supports it */}
                     </div>
@@ -142,7 +142,7 @@ const ClientPaymentHistory = () => {
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
                                             <td>{payment.negotiation_id.substring(0, 8)}...</td>
                                             <td>{payment.transcriber?.full_name || 'N/A'}</td>
-                                            <td>KES {payment.amount.toLocaleString()}</td>
+                                            <td>USD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
                                             <td>{payment.paystack_status}</td>
                                             <td>{payment.negotiation?.requirements?.substring(0, 50)}...</td>
                                         </tr>

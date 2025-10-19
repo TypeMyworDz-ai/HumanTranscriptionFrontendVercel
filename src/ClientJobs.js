@@ -17,13 +17,8 @@ const ClientJobs = () => {
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
-    const showToast = useCallback((message, type = 'success') => {
-        setToast({ isVisible: true, message, type });
-    }, []);
-
-    const hideToast = useCallback(() => {
-        setToast((prev) => ({ ...prev, isVisible: false }));
-    }, []);
+    const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
+    const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
     const fetchClientJobs = useCallback(async () => {
         const token = localStorage.getItem('token');
@@ -116,7 +111,7 @@ const ClientJobs = () => {
         // Check if the negotiation is in 'accepted_awaiting_payment' status
         if (negotiation.status === 'accepted_awaiting_payment') {
             // Redirect to payment flow or show payment modal
-            if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_kes) {
+            if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) { // UPDATED: Use agreed_price_usd
                 showToast('Missing client email or negotiation details for payment.', 'error');
                 return;
             }
@@ -138,7 +133,7 @@ const ClientJobs = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: negotiation.id,
-                    amount: negotiation.agreed_price_kes,
+                    amount: negotiation.agreed_price_usd, // UPDATED: Pass agreed_price_usd
                     email: user.email
                 })
             })
@@ -161,6 +156,7 @@ const ClientJobs = () => {
             showToast('Payment already processed for active jobs.', 'info');
         }
     }, [showToast, user, logout]);
+
 
     if (authLoading || !isAuthenticated || !user || loading) {
         return (

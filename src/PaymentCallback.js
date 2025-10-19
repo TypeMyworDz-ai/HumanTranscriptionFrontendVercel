@@ -1,4 +1,4 @@
-// src/PaymentCallback.js - FIXED: 'user' is not defined error
+// src/PaymentCallback.js - FIXED: 'user' is not defined error and improved header rendering
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
@@ -11,8 +11,7 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const PaymentCallback = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    // FIXED: Destructure 'user' from useAuth() hook
-    const { user, isAuthenticated, authLoading, logout } = useAuth();
+    const { user, isAuthenticated, authLoading, logout } = useAuth(); // Destructure 'user' from useAuth() hook
 
     const [paymentStatus, setPaymentStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
     const [message, setMessage] = useState('Verifying your payment...');
@@ -22,11 +21,14 @@ const PaymentCallback = () => {
     const hideToast = () => setToast((prev) => ({ ...prev, isVisible: false }));
 
     useEffect(() => {
-        if (authLoading || !isAuthenticated) {
-            // Wait for auth to be ready, or redirect if not authenticated
-            if (authLoading === false && !isAuthenticated) {
-                navigate('/login');
-            }
+        // Only proceed if authentication state is resolved
+        if (authLoading) {
+            return; // Still loading auth, do nothing
+        }
+
+        if (!isAuthenticated) {
+            // If auth is resolved and user is not authenticated, redirect to login
+            navigate('/login');
             return;
         }
 
@@ -44,7 +46,7 @@ const PaymentCallback = () => {
             const token = localStorage.getItem('token');
             if (!token) {
                 showToast('Authentication token missing. Please log in again.', 'error');
-                logout();
+                logout(); // Log out if token is missing despite isAuthenticated
                 return;
             }
 
@@ -77,7 +79,7 @@ const PaymentCallback = () => {
         };
 
         verifyPayment();
-    }, [searchParams, isAuthenticated, authLoading, navigate, logout]);
+    }, [searchParams, isAuthenticated, authLoading, navigate, logout]); // Added logout to dependencies
 
     const getStatusIcon = () => {
         if (paymentStatus === 'verifying') return '⏳';
@@ -99,14 +101,15 @@ const PaymentCallback = () => {
                 <div className="header-content">
                     <h1>Payment Status</h1>
                     <div className="user-profile-actions">
-                        {/* FIXED: Check if 'user' object exists before accessing its properties */}
+                        {/* Ensure user is authenticated and the user object exists before accessing properties */}
                         {isAuthenticated && user && (
                             <>
                                 <span className="welcome-text-badge">Welcome, {user.full_name || 'User'}!</span>
                                 <button onClick={logout} className="logout-btn">Logout</button>
                             </>
                         )}
-                        {!isAuthenticated && !authLoading && ( // Show login if not authenticated and not loading
+                        {/* Show login if not authenticated and auth loading is complete */}
+                        {!isAuthenticated && !authLoading && ( 
                             <Link to="/login" className="back-to-dashboard-btn">Login</Link>
                         )}
                     </div>

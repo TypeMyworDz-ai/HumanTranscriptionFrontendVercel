@@ -94,7 +94,13 @@ const ClientDashboard = () => {
       });
       const negotiationsData = await negotiationsResponse.json();
       if (negotiationsResponse.ok) {
-        const pendingNegotiations = negotiationsData.negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter').length; // Added client_counter
+        // UPDATED: Include 'accepted_awaiting_payment' in pendingNegotiations count
+        const pendingNegotiations = negotiationsData.negotiations.filter(n => 
+            n.status === 'pending' || 
+            n.status === 'transcriber_counter' || 
+            n.status === 'client_counter' ||
+            n.status === 'accepted_awaiting_payment' // NEW: Include this status for pending count
+        ).length; 
         const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'hired').length; // Changed to filter only 'hired'
         const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
 
@@ -320,7 +326,7 @@ const ClientDashboard = () => {
 
             <Link to="/client-payments" className="dashboard-card">
               <div className="card-icon">💳</div>
-              <h3>Payment History (KES {totalClientPayments.toLocaleString()})</h3>
+              <h3>Payment History (USD {totalClientPayments.toLocaleString()})</h3> {/* UPDATED: Changed KES to USD */}
               <p>View your transaction history and payment details.</p>
             </Link>
 

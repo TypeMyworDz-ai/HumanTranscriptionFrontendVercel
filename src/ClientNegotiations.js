@@ -28,7 +28,7 @@ const ClientNegotiations = () => {
     const [showCounterBackModal, setShowCounterBackModal] = useState(false);
     const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterBackOfferData, setCounterBackOfferData] = useState({
-        proposedPrice: '',
+        proposedPrice: '', // This will be in USD
         deadlineHours: '',
         clientResponse: '',
         counterBackFile: null // State to hold the selected file
@@ -107,7 +107,7 @@ const ClientNegotiations = () => {
 
     // MOVED: handlePaymentSuccessful to top level
     const handlePaymentSuccessful = useCallback((data) => {
-        console.log('ClientNegotiations Real-time: Payment successful event received!', data);
+        console.log('ClientNegotiations Real-time: Payment successful event received!!', data);
         showToast(data.message || `Payment for negotiation ${data.negotiationId?.substring(0, 8)}... was successful!`, 'success');
         fetchNegotiations();
     }, [fetchNegotiations, showToast]);
@@ -184,7 +184,7 @@ const ClientNegotiations = () => {
         if (currentNeg) {
             setSelectedNegotiationId(negotiationId);
             setCounterBackOfferData({
-                proposedPrice: currentNeg.agreed_price_kes?.toString() || '',
+                proposedPrice: currentNeg.agreed_price_usd?.toString() || '', // UPDATED: Use agreed_price_usd
                 deadlineHours: currentNeg.deadline_hours?.toString() || '',
                 clientResponse: '',
                 counterBackFile: null // Reset file on modal open
@@ -310,7 +310,7 @@ const ClientNegotiations = () => {
         try {
             // Use FormData for file upload
             const formData = new FormData();
-            formData.append('proposed_price_kes', parseFloat(counterBackOfferData.proposedPrice));
+            formData.append('proposed_price_usd', parseFloat(counterBackOfferData.proposedPrice)); // UPDATED: Use proposed_price_usd
             formData.append('deadline_hours', parseInt(counterBackOfferData.deadlineHours, 10));
             formData.append('client_response', counterBackOfferData.clientResponse);
             
@@ -344,7 +344,7 @@ const ClientNegotiations = () => {
     }, [selectedNegotiationId, counterBackOfferData, showToast, closeCounterBackModal, fetchNegotiations, logout]);
 
     const handleProceedToPayment = useCallback(async (negotiation) => {
-        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_kes) {
+        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) { // UPDATED: Use agreed_price_usd
             showToast('Missing client email or negotiation details for payment.', 'error');
             return;
         }
@@ -366,7 +366,7 @@ const ClientNegotiations = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: negotiation.id,
-                    amount: negotiation.agreed_price_kes,
+                    amount: negotiation.agreed_price_usd, // UPDATED: Pass agreed_price_usd
                     email: user.email
                 })
             });
@@ -619,15 +619,16 @@ const ClientNegotiations = () => {
                 >
                     <p>Propose new terms back to the transcriber:</p>
                     <div className="form-group">
-                        <label htmlFor="counterBackProposedPrice">Proposed Price (KES):</label>
+                        <label htmlFor="counterBackProposedPrice">Proposed Price (USD):</label> {/* UPDATED: Changed KES to USD */}
                         <input
                             id="counterBackProposedPrice"
                             type="number"
                             name="proposedPrice"
                             value={counterBackOfferData.proposedPrice}
                             onChange={handleCounterBackOfferChange}
-                            placeholder="Enter your counter-offer in KES"
+                            placeholder="Enter your counter-offer in USD" // UPDATED: Changed KES to USD
                             min="1"
+                            step="0.01" // Allow for cents
                             required
                         />
                     </div>
@@ -662,7 +663,7 @@ const ClientNegotiations = () => {
                             name="clientResponse"
                             value={counterBackOfferData.clientResponse}
                             onChange={handleCounterBackOfferChange}
-                            placeholder="e.g., 'I can offer KES 1200 for 4 hours.'"
+                            placeholder="e.g., 'I can offer USD 12.00 for 4 hours.'" // UPDATED: Changed KES to USD
                             rows="3"
                         ></textarea>
                     </div>

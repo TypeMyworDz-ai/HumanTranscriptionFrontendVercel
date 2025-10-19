@@ -1,4 +1,4 @@
-// src/ClientDirectUpload.js
+// src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -14,19 +14,20 @@ const ClientDirectUpload = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [loading, setLoading] = useState(false);
-    const [fileLoading, setFileLoading] = useState(false); // For file processing/upload
+    const [loading, setLoading] = useState(false); // Overall loading for job creation/payment
     const [quoteLoading, setQuoteLoading] = useState(false); // For quote calculation
     const [showQuoteModal, setShowQuoteModal] = useState(false);
-    const [quoteDetails, setQuoteDetails] = useState(null);
+    const [quoteDetails, setQuoteDetails] = useState(null); // Will now contain quote_amount_usd, price_per_minute_usd, etc.
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     // Form data states
     const [audioVideoFile, setAudioVideoFile] = useState(null);
     const [instructionFiles, setInstructionFiles] = useState([]);
     const [clientInstructions, setClientInstructions] = useState('');
-    const [qualityParam, setQualityParam] = useState('standard'); // 'standard', 'premium', 'basic'
-    const [deadlineParam, setDeadlineParam] = useState('normal'); // 'normal', 'rush', 'extended'
+    // UPDATED: Renamed to audioQualityParam and values adjusted
+    const [audioQualityParam, setAudioQualityParam] = useState('standard'); // 'excellent', 'good', 'standard', 'difficult'
+    // UPDATED: Renamed to deadlineTypeParam, values: 'flexible', 'standard', 'urgent'
+    const [deadlineTypeParam, setDeadlineTypeParam] = useState('standard'); 
     const [specialRequirements, setSpecialRequirements] = useState([]); // Array of selected special requirements
 
     const fileInputRef = useRef(null);
@@ -51,12 +52,14 @@ const ClientDirectUpload = () => {
         }
     }, [isAuthenticated, authLoading, user, navigate]);
 
+
     // --- File Handling ---
     const handleAudioVideoFileChange = useCallback((e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 200 * 1024 * 1024) { // 200MB limit
-                showToast('Audio/Video file must be smaller than 200MB', 'error');
+            // UPDATED: File size limit to 500MB
+            if (file.size > 500 * 1024 * 1024) { 
+                showToast('Main audio/video file must be smaller than 500MB', 'error');
                 e.target.value = null; // Clear input
                 setAudioVideoFile(null);
                 return;
@@ -108,23 +111,23 @@ const ClientDirectUpload = () => {
         setQuoteLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
-            logout();
+            showToast('Authentication token missing. Please log in again.', 'error');
             return;
         }
 
         const formData = new FormData();
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
-        formData.append('qualityParam', qualityParam);
-        formData.append('deadlineParam', deadlineParam);
+        formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
+        formData.append('deadlineTypeParam', deadlineTypeParam); 
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
         
-        instructionFiles.forEach((file, index) => {
+        instructionFiles.forEach((file) => {
             formData.append(`instructionFiles`, file);
         });
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/direct-upload/job/quote`, { // NEW: Dedicated quote endpoint
+            const response = await fetch(`${BACKEND_API_URL}/api/direct-upload/job/quote`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -135,6 +138,7 @@ const ClientDirectUpload = () => {
 
             if (response.ok) {
                 setQuoteDetails(data.quoteDetails);
+                console.log("Quote Details received:", data.quoteDetails); // Debugging log
                 setShowQuoteModal(true);
             } else {
                 showToast(data.error || 'Failed to calculate quote.', 'error');
@@ -145,7 +149,8 @@ const ClientDirectUpload = () => {
         } finally {
             setQuoteLoading(false);
         }
-    }, [audioVideoFile, clientInstructions, qualityParam, deadlineParam, specialRequirements, instructionFiles, logout, showToast]);
+    }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, showToast]);
+
 
     const closeQuoteModal = useCallback(() => {
         setShowQuoteModal(false);
@@ -156,7 +161,12 @@ const ClientDirectUpload = () => {
     // --- Job Creation & Payment ---
     const createAndPayForJob = useCallback(async () => {
         if (!quoteDetails || !audioVideoFile) {
-            showToast('Quote not calculated or file missing.', 'error');
+            showToast('Quote not calculated or file missing. Please re-calculate quote.', 'error');
+            return;
+        }
+        // Ensure quoteDetails has the USD amount
+        if (typeof quoteDetails.quote_amount_usd !== 'number' || quoteDetails.quote_amount_usd <= 0) {
+            showToast('Invalid quote amount for payment. Please re-calculate quote.', 'error');
             return;
         }
         if (!user?.email || !PAYSTACK_PUBLIC_KEY) {
@@ -172,18 +182,19 @@ const ClientDirectUpload = () => {
         const formData = new FormData();
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
-        formData.append('qualityParam', qualityParam);
-        formData.append('deadlineParam', deadlineParam);
+        formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
+        formData.append('deadlineTypeParam', deadlineTypeParam); 
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
-        formData.append('quoteAmount', quoteDetails.quote); // Pass the calculated quote
+        formData.append('quoteAmountUsd', quoteDetails.quote_amount_usd); // Pass the calculated USD quote
+        formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); // Pass price per minute
         formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); // Pass the calculated deadline
 
-        instructionFiles.forEach((file, index) => {
+        instructionFiles.forEach((file) => {
             formData.append(`instructionFiles`, file);
         });
 
         try {
-            const createJobResponse = await fetch(`${BACKEND_API_URL}/api/direct-upload/job`, { // NEW: Job creation endpoint
+            const createJobResponse = await fetch(`${BACKEND_API_URL}/api/direct-upload/job`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -193,7 +204,7 @@ const ClientDirectUpload = () => {
             const createJobData = await createJobResponse.json();
 
             if (!createJobResponse.ok || !createJobData.job) {
-                showToast(createJobData.error || 'Failed to create job entry.', 'error');
+                showToast(createJobData.error || 'Failed to create job entry. Please try again.', 'error');
                 setLoading(false);
                 return;
             }
@@ -209,7 +220,7 @@ const ClientDirectUpload = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: jobId, // Use the new jobId as negotiationId for payment
-                    amount: quoteDetails.quote,
+                    amount: quoteDetails.quote_amount_usd, // Pass USD amount for payment
                     email: user.email
                 })
             });
@@ -219,9 +230,7 @@ const ClientDirectUpload = () => {
                 showToast('Job created. Redirecting to payment...', 'info');
                 window.location.href = initializePaymentData.data.authorization_url; // Redirect to Paystack
             } else {
-                showToast(initializePaymentData.error || 'Failed to initiate payment for job.', 'error');
-                // If payment initiation fails after job creation, you might want to mark the job as cancelled or pending payment.
-                // For now, it remains 'pending_review' or could be updated to 'payment_failed' via another API call.
+                showToast(initializePaymentData.error || 'Failed to initiate payment for job. Please try again.', 'error');
                 setLoading(false);
             }
 
@@ -232,7 +241,7 @@ const ClientDirectUpload = () => {
         } finally {
             closeQuoteModal(); // Close quote modal regardless
         }
-    }, [audioVideoFile, clientInstructions, qualityParam, deadlineParam, specialRequirements, instructionFiles, quoteDetails, user, logout, showToast, closeQuoteModal]);
+    }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, quoteDetails, user, showToast, closeQuoteModal]);
 
 
     if (authLoading || !isAuthenticated || !user) {
@@ -294,7 +303,7 @@ const ClientDirectUpload = () => {
                                     <button type="button" onClick={removeAudioVideoFile} className="remove-file-btn">✕</button>
                                 </div>
                             )}
-                            <small className="help-text">Mandatory: Max 200MB. Supported formats: MP3, WAV, MP4, etc.</small>
+                            <small className="help-text">Mandatory: Max 500MB. Supported formats: MP3, WAV, MP4, etc.</small>
                         </div>
 
                         <div className="form-group">
@@ -333,30 +342,35 @@ const ClientDirectUpload = () => {
                             <small className="help-text">Optional: Max 5 files, 10MB each. For guidelines, terminology, images.</small>
                         </div>
 
+                        {/* UPDATED: Audio Quality Selection */}
                         <div className="form-group">
-                            <label htmlFor="qualityParam">Transcription Quality:</label>
-                            <select id="qualityParam" name="qualityParam" value={qualityParam} onChange={(e) => setQualityParam(e.target.value)}>
-                                <option value="basic">Basic (Lower Cost)</option>
-                                <option value="standard">Standard (Recommended)</option>
-                                <option value="premium">Premium (Higher Accuracy)</option>
+                            <label htmlFor="audioQualityParam">Audio Quality:</label>
+                            <select id="audioQualityParam" name="audioQualityParam" value={audioQualityParam} onChange={(e) => setAudioQualityParam(e.target.value)}>
+                                <option value="excellent">Excellent (Clear, no background noise)</option>
+                                <option value="good">Good (Minor background noise, clear voices)</option>
+                                <option value="standard">Standard (Some background noise, audible voices)</option>
+                                <option value="difficult">Difficult (Heavy background noise, faint/overlapping voices)</option>
                             </select>
+                            <small className="help-text">Select the overall clarity of your audio. Higher quality audio typically results in faster and more accurate transcription.</small>
                         </div>
 
+                        {/* UPDATED: Deadline Preference Selection with Timeframes */}
                         <div className="form-group">
-                            <label htmlFor="deadlineParam">Deadline Preference:</label>
-                            <select id="deadlineParam" name="deadlineParam" value={deadlineParam} onChange={(e) => setDeadlineParam(e.target.value)}>
-                                <option value="extended">Extended (Lower Cost)</option>
-                                <option value="normal">Normal</option>
-                                <option value="rush">Rush (Higher Cost)</option>
+                            <label htmlFor="deadlineTypeParam">Deadline Preference:</label>
+                            <select id="deadlineTypeParam" name="deadlineTypeParam" value={deadlineTypeParam} onChange={(e) => setDeadlineTypeParam(e.target.value)}>
+                                <option value="flexible">Flexible (Est. 24-72 hours)</option>
+                                <option value="standard">Standard (Est. 12-24 hours)</option>
+                                <option value="urgent">Urgent (Est. 2-12 hours)</option>
                             </select>
+                            <small className="help-text">Impacts pricing significantly. 'Urgent' for fastest delivery, 'Flexible' for lower cost.</small>
                         </div>
 
                         <div className="form-group special-requirements-group">
-                            <label>Special Requirements:</label>
+                            <label>Special Requirements (may affect quote):</label>
                             <div className="checkbox-group">
                                 <label>
                                     <input type="checkbox" name="timestamps" value="timestamps" checked={specialRequirements.includes('timestamps')} onChange={handleSpecialRequirementsChange} />
-                                    Timestamps
+                                    Timestamps (e.g., [00:01:23] Speaker: Text)
                                 </label>
                                 <label>
                                     <input type="checkbox" name="full_verbatim" value="full_verbatim" checked={specialRequirements.includes('full_verbatim')} onChange={handleSpecialRequirementsChange} />
@@ -364,13 +378,14 @@ const ClientDirectUpload = () => {
                                 </label>
                                 <label>
                                     <input type="checkbox" name="speaker_identification" value="speaker_identification" checked={specialRequirements.includes('speaker_identification')} onChange={handleSpecialRequirementsChange} />
-                                    Speaker Identification
+                                    Speaker Identification (e.g., Speaker 1: Text)
                                 </label>
                                 <label>
                                     <input type="checkbox" name="clean_verbatim" value="clean_verbatim" checked={specialRequirements.includes('clean_verbatim')} onChange={handleSpecialRequirementsChange} />
                                     Clean Verbatim (remove filler words)
                                 </label>
                             </div>
+                            <small className="help-text">Select additional services like timestamps or specific verbatim styles.</small>
                         </div>
 
                         <button type="submit" className="get-quote-btn" disabled={quoteLoading || !audioVideoFile}>
@@ -387,7 +402,7 @@ const ClientDirectUpload = () => {
                     title="Your Instant Quote"
                     onClose={closeQuoteModal}
                     onSubmit={createAndPayForJob}
-                    submitText={`Proceed to Payment (KES ${quoteDetails.quote.toLocaleString()})`}
+                    submitText={`Proceed to Payment (USD ${quoteDetails.quote_amount_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     loading={loading} // Use overall loading for payment
                 >
                     <p>Based on your selections, here's your instant quote:</p>
@@ -397,20 +412,20 @@ const ClientDirectUpload = () => {
                             <strong>{quoteDetails.audio_length_minutes?.toFixed(1)} minutes</strong>
                         </div>
                         <div className="quote-item">
-                            <span>Service Quality:</span>
-                            <strong>{quoteDetails.quality_param}</strong>
+                            <span>Audio Quality Selected:</span>
+                            <strong>{quoteDetails.audio_quality_param}</strong>
                         </div>
                         <div className="quote-item">
                             <span>Deadline Preference:</span>
-                            <strong>{quoteDetails.deadline_param}</strong>
+                            <strong>{quoteDetails.deadline_type_param}</strong>
                         </div>
                         <div className="quote-item">
                             <span>Special Requirements:</span>
-                            <strong>{quoteDetails.special_requirements?.length > 0 ? quoteDetails.special_requirements.join(', ') : 'None'}</strong>
+                            <strong>{quoteDetails.special_requirements?.length > 0 ? quoteDetails.special_requirements.join(', ') : 'None'}&nbsp;</strong>
                         </div>
                         <div className="quote-item total-quote">
                             <span>Total Quote:</span>
-                            <strong>KES {quoteDetails.quote.toLocaleString()}</strong>
+                            <strong>USD {quoteDetails.quote_amount_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                         </div>
                         <div className="quote-item total-quote">
                             <span>Estimated Delivery:</span>

@@ -199,7 +199,7 @@ const NegotiationCard = ({
     if (!file) return;
 
     setIsSendingFile(true);
-    showToast('Uploading file...', 'info');
+    showToast('Uploading file...!', 'info'); // Added ! for consistency
 
     let tempMessageId; 
     try {
@@ -322,9 +322,8 @@ const NegotiationCard = ({
           `}>
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
-          <div className={`
-            ${isClientViewing ? 'transcriber-details' : 'client-details'}
-          `}>
+          {/* SYNTAX FIX: Corrected className to use template literal correctly */}
+          <div className={`${isClientViewing ? 'transcriber-details' : 'client-details'}`}>
             <h3>{otherPartyName}</h3>
             {isClientViewing ? (
               <div className="transcriber-stats">
@@ -380,7 +379,7 @@ const NegotiationCard = ({
         )}
         <div className="detail-row">
           <span className="label">Agreed Price:</span>
-          <span className="value price">KES {negotiation.agreed_price_kes?.toLocaleString()}</span>
+          <span className="value price">USD {negotiation.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>

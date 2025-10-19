@@ -1,4 +1,4 @@
-// src/TranscriberPaymentHistory.js - UPDATED to display 80% Transcriber Pay and Upcoming Payouts
+// src/TranscriberPaymentHistory.js - UPDATED to display USD currency and Upcoming Payouts
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -155,27 +155,27 @@ const TranscriberPaymentHistory = () => {
                     <div className="summary-cards-grid">
                         <div className="summary-card">
                             <h3>Total Earnings</h3>
-                            <p className="summary-value">KES {summary.totalEarnings.toLocaleString()}</p>
+                            <p className="summary-value">USD {summary.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
                         </div>
                         <div className="summary-card">
                             <h3>This Month's Earnings</h3>
-                            <p className="summary-value">KES {summary.monthlyEarnings.toLocaleString()}</p>
+                            <p className="summary-value">USD {summary.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
                         </div>
                         <div className="summary-card"> {/* NEW: Card for Total Upcoming Payouts */}
                             <h3>Total Upcoming Payouts</h3>
-                            <p className="summary-value">KES {totalUpcomingPayouts.toLocaleString()}</p>
+                            <p className="summary-value">USD {totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
                         </div>
                     </div>
 
                     {/* NEW: Upcoming Payments Table */}
-                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString()})</h3>
+                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h3> {/* UPDATED: KES to USD in count display */}
                     {upcomingPayouts.length === 0 ? (
                         <p className="no-data-message">No upcoming payouts found.</p>
                     ) : (
                         <div className="upcoming-payouts-table-container payments-table-container"> {/* Reused payments-table-container for styling */}
                             {upcomingPayouts.map(week => (
                                 <div key={week.date} className="weekly-payout-group">
-                                    <h4>Week Ending: {week.date} (Total: KES {week.totalAmount.toLocaleString()})</h4>
+                                    <h4>Week Ending: {week.date} (Total: USD {week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4> {/* UPDATED: KES to USD, added formatting */}
                                     <table>
                                         <thead>
                                             <tr>
@@ -193,7 +193,7 @@ const TranscriberPaymentHistory = () => {
                                                     <td>{payout.negotiation_id.substring(0, 8)}...</td>
                                                     <td>{payout.clientName}</td>
                                                     <td>{payout.jobRequirements.substring(0, 50)}...</td>
-                                                    <td>KES {payout.amount.toLocaleString()}</td>
+                                                    <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
                                                     <td><span className={`status-badge ${payout.status}`}>{payout.status}</span></td>
                                                     <td>{payout.created_at}</td>
                                                 </tr>
@@ -228,7 +228,7 @@ const TranscriberPaymentHistory = () => {
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
                                             <td>{payment.negotiation_id.substring(0, 8)}...</td>
                                             <td>{payment.client?.full_name || 'N/A'}</td>
-                                            <td>KES {payment.transcriber_earning.toLocaleString()}</td> {/* UPDATED: Display transcriber_earning */}
+                                            <td>USD {payment.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
                                             <td>{payment.paystack_status}</td>
                                             <td>{payment.negotiation?.requirements?.substring(0, 50)}...</td>
                                         </tr>

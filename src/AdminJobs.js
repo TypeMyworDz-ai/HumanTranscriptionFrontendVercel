@@ -25,6 +25,30 @@ const AdminJobs = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
+    // Helper function to format status for display
+    const formatStatusDisplay = useCallback((status) => {
+        switch (status) {
+            case 'accepted_awaiting_payment':
+                return 'Accepted - Awaiting Payment';
+            case 'transcriber_counter':
+                return 'Transcriber Countered';
+            case 'client_counter':
+                return 'Client Countered';
+            case 'pending':
+                return 'Pending';
+            case 'hired':
+                return 'Hired';
+            case 'completed':
+                return 'Completed';
+            case 'rejected':
+                return 'Rejected';
+            case 'cancelled':
+                return 'Cancelled';
+            default:
+                return status.replace(/_/g, ' '); // Fallback for other statuses
+        }
+    }, []);
+
     // Function to fetch all jobs (negotiations) for admin
     const fetchAllJobs = useCallback(async () => {
         setLoading(true);
@@ -174,7 +198,8 @@ const AdminJobs = () => {
                                             <td>{job.transcriber?.full_name || 'N/A'}</td> {/* Access transcriber.full_name */}
                                             <td>KES {job.agreed_price_kes?.toLocaleString() || '0.00'}</td>
                                             <td>{job.deadline_hours} hrs</td>
-                                            <td><span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span></td>
+                                            {/* UPDATED: Use formatStatusDisplay helper */}
+                                            <td><span className={`status-badge ${job.status}`}>{formatStatusDisplay(job.status)}</span></td>
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
                                             <td>
                                                 <button 

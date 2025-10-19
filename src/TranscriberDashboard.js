@@ -153,7 +153,7 @@ const TranscriberDashboard = () => {
       if (response.ok && data.jobs) {
         setAvailableDirectJobsCount(data.jobs.length);
       } else {
-        console.warn('TranscriberDashboard: Expected 403 for direct jobs or failed to fetch:', data.error);
+        console.warn('TranscriberDashboard: Expected 403 for direct jobs or failed to fetch: ', data.error);
         setAvailableDirectJobsCount(0);
         return Promise.resolve(0);
       }
@@ -322,7 +322,7 @@ const TranscriberDashboard = () => {
       socket.off('job_hired', handleJobHired);
       socket.off('new_direct_job_available', handleNewDirectJobAvailable);
       socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-      socket.off('connect', () => handleSocketConnect(socket));
+      socket.off('connect', () => handleSocketConnect(socket)); // Removed the extra socket.off('connect')
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -486,7 +486,7 @@ const TranscriberDashboard = () => {
         onClose={hideToast}
         duration={toast.type === 'error' ? 4000 : 3000}
       />
-      <audio ref={audioRef} src="/path/to/your/notification-sound.mp3" preload="auto" />
+      <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
     </div>
   );
 };

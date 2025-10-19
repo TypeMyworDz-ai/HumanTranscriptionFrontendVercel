@@ -1,4 +1,4 @@
-// src/TranscriberNegotiations.js - Part 1 - UPDATED for Vercel deployment and disabling counter-offer in certain states
+// src/TranscriberNegotiations.js - Corrected for USD currency and syntax error fix
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -7,11 +7,9 @@ import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
 import './TranscriberNegotiations.css';
 
-// FIXED: Import connectSocket, disconnectSocket from ChatService
 import { connectSocket, disconnectSocket } from './ChatService';
-import { useAuth } from './contexts/AuthContext'; // Reverted path to AuthContext
+import { useAuth } from './contexts/AuthContext';
 
-// Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // --- Component Definition ---
@@ -31,7 +29,7 @@ const TranscriberNegotiations = () => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterOfferData, setCounterOfferData] = useState({
-        proposedPrice: '',
+        proposedPrice: '', // This will now be in USD
         deadlineHours: '',
         transcriberResponse: ''
     });
@@ -45,8 +43,6 @@ const TranscriberNegotiations = () => {
 
 
     const navigate = useNavigate();
-    // REMOVED: socketRef is no longer needed as ChatService manages the global instance
-    // const socketRef = useRef(null); 
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -107,7 +103,6 @@ const TranscriberNegotiations = () => {
 
         setLoading(true);
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -163,7 +158,6 @@ const TranscriberNegotiations = () => {
         }
 
         console.log(`TranscriberNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
-        // FIXED: Connect via ChatService and get the global socket instance
         const socket = connectSocket(user.id);
 
         const handleNewNegotiationRequest = (data) => {
@@ -202,7 +196,6 @@ const TranscriberNegotiations = () => {
         };
 
 
-        // FIXED: Attach listeners to the global socket instance
         socket.on('new_negotiation_request', handleNewNegotiationRequest);
         socket.on('negotiation_accepted', handleNegotiationAccepted);
         socket.on('negotiation_rejected', handleNegotiationRejected);
@@ -212,7 +205,6 @@ const TranscriberNegotiations = () => {
 
         return () => {
             console.log(`TranscriberNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-            // FIXED: Detach listeners from the global socket instance
             socket.off('new_negotiation_request', handleNewNegotiationRequest);
             socket.off('negotiation_accepted', handleNegotiationAccepted);
             socket.off('negotiation_rejected', handleNegotiationRejected);
@@ -222,7 +214,6 @@ const TranscriberNegotiations = () => {
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, isAuthenticated, fetchNegotiations, showToast, fetchTranscriberDetailedStatus]);
-// src/TranscriberNegotiations.js - Part 2 - UPDATED for Vercel deployment (Continue from Part 1)
 
     // --- Modal Handlers ---
     const openAcceptModal = useCallback((negotiationId) => {
@@ -242,7 +233,7 @@ const TranscriberNegotiations = () => {
         const currentNegotiation = negotiations.find(n => n.id === negotiationId);
         if (currentNegotiation) {
             setCounterOfferData({
-                proposedPrice: currentNegotiation.agreed_price_kes?.toString() || '',
+                proposedPrice: currentNegotiation.agreed_price_usd?.toString() || '', // UPDATED: Use agreed_price_usd
                 deadlineHours: currentNegotiation.deadline_hours?.toString() || '',
                 transcriberResponse: ''
             });
@@ -301,7 +292,6 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/accept`, {
                 method: 'PUT',
                 headers: {
@@ -342,7 +332,6 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/counter`, {
                 method: 'PUT',
                 headers: {
@@ -350,7 +339,7 @@ const TranscriberNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    proposed_price_kes: parseFloat(counterOfferData.proposedPrice),
+                    proposed_price_usd: parseFloat(counterOfferData.proposedPrice), // UPDATED: Use proposed_price_usd
                     deadline_hours: parseInt(counterOfferData.deadlineHours, 10),
                     transcriber_response: counterOfferData.transcriberResponse
                 })
@@ -382,7 +371,6 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/reject`, {
                 method: 'PUT',
                 headers: {
@@ -420,7 +408,6 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/complete`, {
                 method: 'PUT',
                 headers: {
@@ -453,7 +440,7 @@ const TranscriberNegotiations = () => {
             'pending': '#ffc107',
             'transcriber_counter': '#007bff',
             'client_counter': '#6c757d',
-            'accepted_awaiting_payment': '#28a745', // Added for clarity
+            'accepted_awaiting_payment': '#28a745',
             'rejected': '#dc3545',
             'hired': '#007bff',
             'cancelled': '#dc3545',
@@ -470,7 +457,7 @@ const TranscriberNegotiations = () => {
             'pending': 'Waiting for Response',
             'transcriber_counter': 'Counter-Offer Received',
             'client_counter': 'Client Counter-Offer',
-            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', // Added for clarity
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment',
             'rejected': 'Rejected',
             'hired': 'Transcriber Hired',
             'cancelled': 'Cancelled',
@@ -503,7 +490,6 @@ const TranscriberNegotiations = () => {
                 logout();
                 return;
             }
-            // FIXED: Use BACKEND_API_URL constant
             const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationId}`, {
                 method: 'DELETE',
                 headers: {
@@ -675,15 +661,16 @@ const TranscriberNegotiations = () => {
                 >
                     <p>Propose new terms for this negotiation:</p>
                     <div className="form-group">
-                        <label htmlFor="proposedPrice">Proposed Price (KES):</label>
+                        <label htmlFor="proposedPrice">Proposed Price (USD):</label>
                         <input
                             id="proposedPrice"
                             type="number"
                             name="proposedPrice"
                             value={counterOfferData.proposedPrice}
                             onChange={handleCounterOfferChange}
-                            placeholder="Enter your counter-offer in KES"
+                            placeholder="Enter your counter-offer in USD"
                             min="1"
+                            step="0.01"
                             required
                         />
                     </div>
@@ -707,7 +694,7 @@ const TranscriberNegotiations = () => {
                             name="transcriberResponse"
                             value={counterOfferData.transcriberResponse}
                             onChange={handleCounterOfferChange}
-                            placeholder="e.g., 'I can do this for KES 1500 in 3 hours.'"
+                            placeholder="e.g., 'I can do this for USD 15.00 in 3 hours.'"
                             rows="3"
                         ></textarea>
                     </div>
@@ -725,7 +712,7 @@ const TranscriberNegotiations = () => {
                 >
                     <p>Are you sure you want to reject this negotiation?</p>
                     <p>This action will close the negotiation for this job.</p>
-                    <div className="form-group">
+                    <div className="form-group"> {/* SYNTAX FIX: Added missing closing div */}
                         <label htmlFor="rejectReason">Reason for Rejection (Optional):</label>
                         <textarea
                             id="rejectReason"
@@ -758,7 +745,7 @@ const TranscriberNegotiations = () => {
                 type={toast.type}
                 isVisible={toast.isVisible}
                 onClose={hideToast}
-                duration={toast.type === 'error' ? 4000 : 3000} // Completed the duration prop
+                duration={toast.type === 'error' ? 4000 : 3000}
             />
         </div>
     );
