@@ -67,7 +67,7 @@ const TranscriberDashboard = () => {
       console.error('Network error fetching transcriber status:', error);
       return Promise.reject(error);
     }
-  }, [user]);
+  }, [user?.id, setIsAvailable, setCurrentJobId]); // Correct dependencies
 
   const fetchUnreadMessageCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -86,7 +86,7 @@ const TranscriberDashboard = () => {
     } catch (error) {
       console.error('Network error fetching unread message count:', error);
     }
-  }, [user]);
+  }, [user?.id]); // Correct dependencies
 
   const fetchNegotiationsData = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -98,6 +98,7 @@ const TranscriberDashboard = () => {
       return Promise.reject(new Error('Authentication token missing.'));
     }
 
+    setLoading(true);
     try {
       const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
         headers: {
@@ -108,7 +109,7 @@ const TranscriberDashboard = () => {
       if (response.ok) {
         setNegotiations(data.negotiations);
       } else {
-        console.error('Failed to load negotiations:', data.error);
+        console.error('Error in fetchNegotiationsData:', data.error);
         showToast(data.error || 'Failed to load negotiations.', 'error');
         return Promise.reject(new Error(data.error || 'Failed to load negotiations.'));
       }
@@ -116,8 +117,10 @@ const TranscriberDashboard = () => {
       console.error('Network error while fetching negotiations.', error);
       showToast('Network error while fetching negotiations.', 'error');
       return Promise.reject(error);
+    } finally {
+        setLoading(false); // Ensure loading is reset even if fetchTranscriberPaymentHistory fails
     }
-  }, [isAuthenticated, logout, showToast]);
+  }, [isAuthenticated, logout, showToast, setNegotiations]); // Correct dependencies
 
   const fetchTranscriberPaymentHistory = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -129,8 +132,7 @@ const TranscriberDashboard = () => {
       });
       const data = await response.json();
       if (response.ok && data.summary) {
-        // We still fetch it, but don't set a state for totalEarnings directly on the dashboard
-        // If this data is needed elsewhere, it should be passed or fetched in that component.
+        // Data fetched, but not directly used in this component's state
       } else {
         console.error('Failed to fetch transcriber payment history:', data.error);
         return Promise.reject(new Error(data.error || 'Failed to fetch transcriber payment history.'));
@@ -139,7 +141,7 @@ const TranscriberDashboard = () => {
       console.error('Network error fetching transcriber payment history:', error);
       return Promise.reject(error);
     }
-  }, [user]);
+  }, [user?.id]); // Correct dependencies
 
   const fetchAvailableDirectJobsCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -162,7 +164,7 @@ const TranscriberDashboard = () => {
       setAvailableDirectJobsCount(0);
       return Promise.resolve(0);
     }
-  }, [user]);
+  }, [user?.id, setAvailableDirectJobsCount]); // Correct dependencies
 
 
   const handleSocketConnect = useCallback((socketInstance) => {
@@ -174,6 +176,7 @@ const TranscriberDashboard = () => {
     }
   }, [user?.id]);
 
+  // CRITICAL: handleNegotiationUpdate defined correctly here, outside useEffect
   const handleNegotiationUpdate = useCallback((data) => {
     console.log('TranscriberDashboard Real-time: Negotiation update received!', data);
     showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
@@ -193,7 +196,7 @@ const TranscriberDashboard = () => {
               playNotificationSound();
           }
       }
-  }, [user, showToast, playNotificationSound]);
+  }, [user?.id, showToast, playNotificationSound, setUnreadMessageCount]); // Correct dependencies
 
   const handleNewChatMessage = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: New chat message received!', data);
@@ -202,7 +205,7 @@ const TranscriberDashboard = () => {
           fetchUnreadMessageCount();
           playNotificationSound();
       }
-  }, [user, showToast, fetchUnreadMessageCount, playNotificationSound]);
+  }, [user?.id, showToast, fetchUnreadMessageCount, playNotificationSound]); // Correct dependencies
 
   const handleJobCompleted = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Job completed!', data);
@@ -254,7 +257,7 @@ const TranscriberDashboard = () => {
     const userLevel = user.user_level || '';
     const transcriberRating = user.average_rating || 0;
 
-    const hasActiveTranscriberStatus = userStatus === 'active_transcriber' || userLevel === 'proofreader';
+    const hasActiveTranscriberStatus = isTranscriber && (userStatus === 'active_transcriber' || userLevel === 'proofreader');
 
     if (!isTranscriber || !hasActiveTranscriberStatus) {
         console.warn(`TranscriberDashboard: Unauthorized access attempt by user_type: ${user.user_type}, status: ${userStatus}, level: ${userLevel}. Redirecting.`);
@@ -322,11 +325,11 @@ const TranscriberDashboard = () => {
       socket.off('job_hired', handleJobHired);
       socket.off('new_direct_job_available', handleNewDirectJobAvailable);
       socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-      socket.off('connect', () => handleSocketConnect(socket)); // Removed the extra socket.off('connect')
+      socket.off('connect', () => handleSocketConnect(socket));
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound]);
+  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate, handleSocketConnect]);
 
 
   const handleLogout = useCallback(async () => {
@@ -366,7 +369,7 @@ const TranscriberDashboard = () => {
       console.error('Error toggling availability status:', error);
       showToast('Network error. Please try again.', 'error');
     }
-  }, [isAvailable, user, showToast, currentJobId]);
+  }, [isAvailable, user, showToast, currentJobId, setIsAvailable]);
 
   if (!isAuthenticated || !user) {
     return <div>Not authenticated. Redirecting...</div>;
@@ -386,7 +389,7 @@ const TranscriberDashboard = () => {
     );
   }
 
-  const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'accepted_awaiting_payment' || n.status === 'client_counter').length;
+  const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length;
   const activeCount = negotiations.filter(n => n.status === 'hired').length;
   const completedCount = negotiations.filter(n => n.status === 'completed').length;
   const transcriberRating = user.average_rating || 0;
@@ -398,97 +401,97 @@ const TranscriberDashboard = () => {
       <header className="transcriber-dashboard-header">
         <div className="header-content">
           <h1>Transcriber Dashboard</h1>
-          <div className="profile-section">
-            {/* UPDATED: Profile link with avatar, welcome text, and settings gear icon */}
-            <Link to={`/transcriber-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
-                <div className="profile-avatar">
-                    {firstLetter}
+          <div className="user-profile-actions">
+                        {/* FIX: Used firstLetter in avatar display */}
+                        <Link to={`/transcriber-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
+                            <div className="profile-avatar">
+                                {firstLetter}
+                            </div>
+                            <span className="welcome-text">Welcome, {user.full_name}!</span>
+                            <span className="profile-icon">⚙️</span>
+                        </Link>
+                        <button onClick={handleLogout} className="logout-btn">
+                            Logout
+                        </button>
+                    </div>
                 </div>
-                <span className="welcome-text">Welcome, {user.full_name}!</span>
-                <span className="profile-icon">⚙️</span> {/* Added a small gear icon */}
-            </Link>
-            <button onClick={handleLogout} className="logout-btn">
-              Logout
-            </button>
-          </div>
+            </header>
+
+            <main className="transcriber-dashboard-main">
+                <div className="transcriber-dashboard-content">
+                    <div className="dashboard-overview">
+                        <h2 className="dashboard-title">Your Work Hub</h2>
+                        <p className="dashboard-description">Manage your profile, view negotiation requests, and track your transcription jobs.</p>
+                    </div>
+
+                    <div className="status-toggles">
+                        <button
+                            onClick={toggleAvailability}
+                            className={`status-toggle-btn ${isAvailable ? 'available' : 'busy'}`}
+                            disabled={!!currentJobId}
+                        >
+                            {isAvailable ? 'Set Busy' : 'Set Available'}
+                        </button>
+                    </div>
+
+                    <div className="dashboard-sections-grid">
+                        <Link to="/transcriber-negotiations" className="dashboard-card">
+                            <div className="card-icon">👋</div>
+                            <h3>Negotiation Room ({pendingCount})</h3>
+                            <p>Review and manage all ongoing negotiation offers from clients.</p>
+                        </Link>
+
+                        <Link to={`/transcriber/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card">
+                            <div className="card-icon">💬</div>
+                            <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
+                            <p>View and manage your direct messages.</p>
+                        </Link>
+
+                        <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
+                            <div className="card-icon">📝</div>
+                            <h3>My Active Jobs ({activeCount})</h3>
+                            <p>See jobs you're currently working on.</p>
+                        </Link>
+
+                        <Link to="/transcriber-negotiations?status=completed" className="dashboard-card">
+                            <div className="card-icon">✅</div>
+                            <h3>My Completed Jobs ({completedCount})</h3>
+                            <p>View your finished projects and earnings.</p>
+                        </Link>
+
+                        <Link to={`/transcriber-profile/${user.id}`} className="dashboard-card">
+                            <div className="card-icon">⭐</div>
+                            <h3>Profile & Ratings</h3>
+                            <p>Update your profile and check client feedback.</p>
+                        </Link>
+
+                        <Link to="/transcriber-payments" className="dashboard-card">
+                            <div className="card-icon">💰</div>
+                            <h3>Payment History</h3>
+                            <p>Review your past transactions and earnings.</p>
+                        </Link>
+
+                        {transcriberRating >= 4 && (
+                            <Link to="/transcriber-other-jobs" className="dashboard-card">
+                            <div className="card-icon">💼</div>
+                            <h3>Other Jobs ({availableDirectJobsCount})</h3>
+                            <p>Browse and take direct upload jobs from clients.</p>
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </main>
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={hideToast}
+                duration={toast.type === 'error' ? 4000 : 3000}
+            />
+            <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
         </div>
-      </header>
-
-      <main className="transcriber-dashboard-main">
-        <div className="transcriber-dashboard-content">
-          <div className="dashboard-overview">
-            <h2 className="dashboard-title">Your Work Hub</h2>
-            <p className="dashboard-description">Manage your profile, view negotiation requests, and track your transcription jobs.</p>
-          </div>
-
-          <div className="status-toggles">
-            <button
-              onClick={toggleAvailability}
-              className={`status-toggle-btn ${isAvailable ? 'available' : 'busy'}`}
-              disabled={!!currentJobId}
-            >
-              {isAvailable ? 'Set Busy' : 'Set Available'}
-            </button>
-          </div>
-
-          <div className="dashboard-sections-grid">
-            <Link to="/transcriber-negotiations" className="dashboard-card">
-              <div className="card-icon">👋</div>
-              <h3>Negotiation Room ({pendingCount})</h3>
-              <p>Review and manage all ongoing negotiation offers from clients.</p>
-            </Link>
-
-            <Link to={`/transcriber/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card">
-              <div className="card-icon">💬</div>
-              <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
-              <p>View and manage your direct messages.</p>
-            </Link>
-
-            <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
-              <div className="card-icon">📝</div>
-              <h3>My Active Jobs ({activeCount})</h3>
-              <p>See jobs you're currently working on.</p>
-            </Link>
-
-            <Link to="/transcriber-negotiations?status=completed" className="dashboard-card">
-              <div className="card-icon">✅</div>
-              <h3>My Completed Jobs ({completedCount})</h3>
-              <p>View your finished projects and earnings.</p>
-            </Link>
-
-            <Link to={`/transcriber-profile/${user.id}`} className="dashboard-card">
-              <div className="card-icon">⭐</div>
-              <h3>Profile & Ratings</h3>
-              <p>Update your profile and check client feedback.</p>
-            </Link>
-
-            <Link to="/transcriber-payments" className="dashboard-card">
-              <div className="card-icon">💰</div>
-              <h3>Payment History</h3>
-              <p>Review your past transactions and earnings.</p>
-            </Link>
-
-            {transcriberRating >= 4 && (
-                <Link to="/transcriber-other-jobs" className="dashboard-card">
-                <div className="card-icon">💼</div>
-                <h3>Other Jobs ({availableDirectJobsCount})</h3>
-                <p>Browse and take direct upload jobs from clients.</p>
-                </Link>
-            )}
-          </div>
-        </div>
-      </main>
-
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        duration={toast.type === 'error' ? 4000 : 3000}
-      />
-      <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
-    </div>
-  );
+    );
 };
 
 export default TranscriberDashboard;

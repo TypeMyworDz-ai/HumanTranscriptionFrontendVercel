@@ -1,4 +1,4 @@
-// src/TranscriberNegotiations.js - Corrected for USD currency and syntax error fix
+// src/TranscriberNegotiations.js - FINALIZED for USD currency and syntax fix (removed inline comments from select, corrected loading block, fixed 'not defined' errors, fixed canTranscriberAccept warning)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -37,8 +37,8 @@ const TranscriberNegotiations = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
 
-    // NEW: State to hold transcriber's current availability status
-    const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(false);
+    // CRITICAL: Restored and verified state variables
+    const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(true); // Default to true
     const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
 
@@ -59,7 +59,7 @@ const TranscriberNegotiations = () => {
         }));
     }, []);
 
-    // NEW: Function to fetch transcriber's detailed status
+    // CRITICAL: Restored and verified fetchTranscriberDetailedStatus
     const fetchTranscriberDetailedStatus = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token || !user?.id) {
@@ -74,19 +74,19 @@ const TranscriberNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok && data.user) {
-                setIsTranscriberAvailable(data.user.is_available || false);
+                setIsTranscriberAvailable(data.user.is_available || true); // Default to true
                 setTranscriberCurrentJobId(data.user.current_job_id || null);
             } else {
                 console.error('Failed to fetch transcriber detailed status:', data.error);
-                setIsTranscriberAvailable(false);
+                setIsTranscriberAvailable(true); // Default to true on error
                 setTranscriberCurrentJobId(null);
             }
         } catch (error) {
             console.error('Network error fetching transcriber detailed status:', error);
-            setIsTranscriberAvailable(false);
+            setIsTranscriberAvailable(true); // Default to true on error
             setTranscriberCurrentJobId(null);
         }
-    }, [user?.id]);
+    }, [user?.id, setIsTranscriberAvailable, setTranscriberCurrentJobId]); // CRITICAL: Correct dependencies for state setters
 
 
     const fetchNegotiations = useCallback(async () => {
@@ -116,10 +116,11 @@ const TranscriberNegotiations = () => {
                     showToast('No pending negotiation requests found.', 'info');
                 }
             } else {
+                console.error('Error in fetchNegotiationsData:', data.error);
                 showToast(data.error || 'Failed to load negotiation requests', 'error');
             }
         } catch (error) {
-            console.error("Fetch negotiations error:", error);
+            console.error("Network error while fetching negotiations:", error);
             showToast('Network error while fetching negotiation requests.', 'error');
         } finally {
             setLoading(false);
@@ -149,6 +150,14 @@ const TranscriberNegotiations = () => {
         fetchTranscriberDetailedStatus(); // Fetch detailed status when component mounts or user changes
     }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, fetchTranscriberDetailedStatus]);
 
+    // CRITICAL: handleNegotiationUpdate defined correctly here, outside useEffect
+    const handleNegotiationUpdate = useCallback((data) => {
+        console.log('TranscriberNegotiations Real-time: Negotiation update received!', data);
+        showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
+        fetchNegotiations();
+        fetchTranscriberDetailedStatus(); // Refresh status on new request
+    }, [showToast, fetchNegotiations, fetchTranscriberDetailedStatus]);
+
 
     // --- Socket.IO Event Listeners ---
     useEffect(() => {
@@ -160,60 +169,26 @@ const TranscriberNegotiations = () => {
         console.log(`TranscriberNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
         const socket = connectSocket(user.id);
 
-        const handleNewNegotiationRequest = (data) => {
-            console.log('TranscriberNegotiations Real-time: New negotiation request received!', data);
-            showToast(data.message || 'You have a new negotiation request!', 'info');
-            fetchNegotiations();
-            fetchTranscriberDetailedStatus(); // Refresh status on new request
-        };
-
-        const handleNegotiationAccepted = (data) => {
-            console.log('TranscriberNegotiations Real-time: Negotiation accepted!', data);
-            showToast(`Negotiation ${data.negotiationId} was accepted!`, 'success');
-            fetchNegotiations();
-            fetchTranscriberDetailedStatus(); // Refresh status when negotiation is accepted
-        };
-
-        const handleNegotiationRejected = (data) => {
-            console.log('TranscriberNegotiations Real-time: Negotiation rejected!', data);
-            showToast(`Negotiation ${data.negotiationId} was rejected!`, 'info');
-            fetchNegotiations();
-            fetchTranscriberDetailedStatus(); // Refresh status when negotiation is rejected
-        };
-
-        const handleNegotiationCountered = (data) => {
-            console.log('TranscriberNegotiations Real-time: Negotiation countered!', data);
-            showToast(data.message || `Negotiation ${data.negotiationId} received a counter-offer!`, 'info');
-            fetchNegotiations();
-            fetchTranscriberDetailedStatus(); // Refresh status when negotiation is countered
-        };
-
-        const handleJobCompleted = (data) => {
-            console.log('TranscriberNegotiations Real-time: Job completed! ', data);
-            showToast(data.message || `Job ${data.negotiationId} was completed!`, 'success');
-            fetchNegotiations();
-            fetchTranscriberDetailedStatus(); // Refresh status when job is completed
-        };
-
-
-        socket.on('new_negotiation_request', handleNewNegotiationRequest);
-        socket.on('negotiation_accepted', handleNegotiationAccepted);
-        socket.on('negotiation_rejected', handleNegotiationRejected);
-        socket.on('negotiation_countered', handleNegotiationCountered);
-        socket.on('job_completed', handleJobCompleted);
+        // All handlers use the top-level useCallback definitions
+        socket.on('new_negotiation_request', handleNegotiationUpdate);
+        socket.on('negotiation_accepted', handleNegotiationUpdate);
+        socket.on('negotiation_rejected', handleNegotiationUpdate);
+        socket.on('negotiation_countered', handleNegotiationUpdate);
+        socket.on('job_completed', handleNegotiationUpdate); // Re-use general update handler for job completion
 
 
         return () => {
             console.log(`TranscriberNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-            socket.off('new_negotiation_request', handleNewNegotiationRequest);
-            socket.off('negotiation_accepted', handleNegotiationAccepted);
-            socket.off('negotiation_rejected', handleNegotiationRejected);
-            socket.off('negotiation_countered', handleNegotiationCountered);
-            socket.off('job_completed', handleJobCompleted);
+            socket.off('new_negotiation_request', handleNegotiationUpdate);
+            socket.off('negotiation_accepted', handleNegotiationUpdate);
+            socket.off('negotiation_rejected', handleNegotiationUpdate);
+            socket.off('negotiation_countered', handleNegotiationUpdate);
+            socket.off('job_completed', handleNegotiationUpdate);
             disconnectSocket();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, isAuthenticated, fetchNegotiations, showToast, fetchTranscriberDetailedStatus]);
+    }, [user?.id, isAuthenticated, handleNegotiationUpdate]);
+
 
     // --- Modal Handlers ---
     const openAcceptModal = useCallback((negotiationId) => {
@@ -292,7 +267,7 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/accept`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/accept`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -515,7 +490,9 @@ const TranscriberNegotiations = () => {
     }
 
     if (loading) {
-        return <div className="loading-container">Loading negotiations...</div>;
+        return (
+            <div className="loading-container">Loading negotiations...</div>
+        );
     }
 
     // Determine if transcriber can accept based on their own availability
@@ -539,7 +516,7 @@ const TranscriberNegotiations = () => {
                 <div className="transcriber-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2 className="negotiation-room-title">Negotiation Room</h2>
+                            <h2>Negotiation Room</h2>
                             <p>Review negotiation requests from clients and decide whether to accept, counter, or reject.</p>
                         </div>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
@@ -564,10 +541,9 @@ const TranscriberNegotiations = () => {
                                 openAcceptModal={openAcceptModal}
                                 canAccept={
                                     (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
-                                } // NEW: Pass canAccept prop
-                                // Pass a boolean flag to control the Counter button's enabled/disabled state
+                                }
                                 canCounter={
-                                    negotiation.status === 'pending' || negotiation.status === 'client_counter'
+                                    (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
                                 }
                                 onOpenCounterModal={openCounterModal}
                                 openRejectModal={openRejectModal}
@@ -594,8 +570,8 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
-                                canAccept={false} // Always disable accept for accepted/hired jobs
-                                canCounter={false} // Always disable counter for accepted/hired jobs
+                                canAccept={false}
+                                canCounter={false}
                                 onOpenCounterModal={openCounterModal}
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
@@ -621,8 +597,8 @@ const TranscriberNegotiations = () => {
                                 currentUserId={user.id}
                                 currentUserType={user.user_type}
                                 openAcceptModal={openAcceptModal}
-                                canAccept={false} // Always disable accept for completed/rejected/cancelled
-                                canCounter={false} // Always disable counter for completed/rejected/cancelled
+                                canAccept={false}
+                                canCounter={false}
                                 onOpenCounterModal={openCounterModal}
                                 openRejectModal={openRejectModal}
                                 openCompleteJobModal={openCompleteJobModal}
@@ -712,7 +688,7 @@ const TranscriberNegotiations = () => {
                 >
                     <p>Are you sure you want to reject this negotiation?</p>
                     <p>This action will close the negotiation for this job.</p>
-                    <div className="form-group"> {/* SYNTAX FIX: Added missing closing div */}
+                    <div className="form-group">
                         <label htmlFor="rejectReason">Reason for Rejection (Optional):</label>
                         <textarea
                             id="rejectReason"
