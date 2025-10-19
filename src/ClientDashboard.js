@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import Toast from './Toast';
+import Toast from './Toast'; // Assuming you have a Toast component
 import './ClientDashboard.css'; // Ensure this CSS file exists and has styles for .profile-link, .profile-avatar, .profile-icon
 
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket, disconnectSocket } from './ChatService';
+import { connectSocket, disconnectSocket } from './ChatService'; // Removed getSocketInstance
 import { BACKEND_API_URL } from './config';
 
 // --- Component Definition ---
@@ -178,13 +178,16 @@ const ClientDashboard = () => {
         setLoading(false);
     });
 
+    // --- Socket.IO Connection and Listener Setup ---
     console.log(`ClientDashboard: Attempting to connect socket via ChatService for user ID: ${user.id}`);
-    const socket = connectSocket(user.id);
+    const socket = connectSocket(user.id); // Connect or get existing socket instance
 
+    // Define handlers for Socket.IO events within the useEffect to ensure they have fresh state/props
     const handleNegotiationUpdate = (data) => {
         console.log('ClientDashboard Real-time: Negotiation update received!', data);
         showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
-        fetchClientStats(user.id, localStorage.getItem('token'));
+        // Use the current user ID and token from closure, or re-fetch token if necessary
+        fetchClientStats(user.id, localStorage.getItem('token')); 
         fetchClientPaymentHistory();
     };
 
@@ -201,9 +204,9 @@ const ClientDashboard = () => {
 
     const handleNewChatMessage = (data) => {
         console.log('ClientDashboard Real-time: New chat message received!', data);
-        if (data.sender_id !== user.id) {
+        if (data.sender_id !== user.id) { // Only show toast/play sound if message is from someone else
             showToast(`New message from ${data.sender_name || 'Admin'}!`, 'info');
-            fetchUnreadMessageCount();
+            fetchUnreadMessageCount(); // Re-fetch unread count to update badge
             playNotificationSound();
         }
     };
@@ -215,40 +218,33 @@ const ClientDashboard = () => {
         fetchClientPaymentHistory();
     };
 
-    const handleSocketConnect = () => {
-        socket.emit('joinUserRoom', user.id);
-    };
-
-    if (!socket.connected) {
-        socket.on('connect', handleSocketConnect);
-    } else {
-        handleSocketConnect();
-    }
-
-
+    // Attach listeners directly to the socket instance
     socket.on('negotiation_accepted', handleNegotiationUpdate);
     socket.on('negotiation_rejected', handleNegotiationUpdate);
     socket.on('negotiation_countered', handleNegotiationUpdate);
     socket.on('negotiation_cancelled', handleNegotiationUpdate);
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-    socket.on('newChatMessage', handleNewChatMessage);
+    socket.on('newChatMessage', handleNewChatMessage); // This is crucial for real-time chat messages
     socket.on('payment_successful', handlePaymentSuccessful);
+    // Removed socket.on('connect', handleSocketConnect) as ChatService now handles room joining on connect.
 
 
     return () => {
-        console.log(`ClientDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-        socket.off('negotiation_accepted', handleNegotiationUpdate);
-        socket.off('negotiation_rejected', handleNegotiationUpdate);
-        socket.off('negotiation_countered', handleNegotiationUpdate);
-        socket.off('negotiation_cancelled', handleNegotiationUpdate);
-        socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-        socket.off('newChatMessage', handleNewChatMessage);
-        socket.off('payment_successful', handlePaymentSuccessful);
-        socket.off('connect', handleSocketConnect);
-        disconnectSocket();
+      console.log(`ClientDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
+      // Detach all listeners explicitly
+      socket.off('negotiation_accepted', handleNegotiationUpdate);
+      socket.off('negotiation_rejected', handleNegotiationUpdate);
+      socket.off('negotiation_countered', handleNegotiationUpdate);
+      socket.off('negotiation_cancelled', handleNegotiationUpdate);
+      socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
+      socket.off('newChatMessage', handleNewChatMessage);
+      socket.off('payment_successful', handlePaymentSuccessful);
+      // Ensure disconnectSocket is called only when the component unmounts and the user is logging out
+      // or if we're sure this is the last component holding the socket.
+      disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound, isAuthReady]);
+  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
 
 
   // Display a loading indicator if client-specific data is still being fetched.

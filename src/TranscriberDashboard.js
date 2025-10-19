@@ -11,8 +11,8 @@ const TranscriberDashboard = () => {
   const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [currentJobId, setCurrentJobId] = useState(null);
+  // Removed isAvailable state as it will be derived
+  const [currentJobId, setCurrentJobId] = useState(null); // Keep currentJobId to derive availability
   const [negotiations, setNegotiations] = useState([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [availableDirectJobsCount, setAvailableDirectJobsCount] = useState(0);
@@ -57,7 +57,7 @@ const TranscriberDashboard = () => {
       });
       const data = await response.json();
       if (response.ok && data.user) {
-        setIsAvailable(data.user.is_available || true);
+        // Only update currentJobId, isAvailable is now derived from user.is_online and currentJobId
         setCurrentJobId(data.user.current_job_id || null);
       } else {
         console.error('Failed to fetch transcriber status:', data.error);
@@ -67,7 +67,7 @@ const TranscriberDashboard = () => {
       console.error('Network error fetching transcriber status:', error);
       return Promise.reject(error);
     }
-  }, [user?.id, setIsAvailable, setCurrentJobId]); // Correct dependencies
+  }, [user?.id, setCurrentJobId]); // Removed setIsAvailable from dependencies
 
   const fetchUnreadMessageCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -86,7 +86,7 @@ const TranscriberDashboard = () => {
     } catch (error) {
       console.error('Network error fetching unread message count:', error);
     }
-  }, [user?.id]); // Correct dependencies
+  }, [user?.id]);
 
   const fetchNegotiationsData = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -120,7 +120,7 @@ const TranscriberDashboard = () => {
     } finally {
         setLoading(false); // Ensure loading is reset even if fetchTranscriberPaymentHistory fails
     }
-  }, [isAuthenticated, logout, showToast, setNegotiations]); // Correct dependencies
+  }, [isAuthenticated, logout, showToast, setNegotiations]);
 
   const fetchTranscriberPaymentHistory = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -141,7 +141,7 @@ const TranscriberDashboard = () => {
       console.error('Network error fetching transcriber payment history:', error);
       return Promise.reject(error);
     }
-  }, [user?.id]); // Correct dependencies
+  }, [user?.id]);
 
   const fetchAvailableDirectJobsCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -164,7 +164,7 @@ const TranscriberDashboard = () => {
       setAvailableDirectJobsCount(0);
       return Promise.resolve(0);
     }
-  }, [user?.id, setAvailableDirectJobsCount]); // Correct dependencies
+  }, [user?.id, setAvailableDirectJobsCount]);
 
 
   const handleSocketConnect = useCallback((socketInstance) => {
@@ -176,7 +176,6 @@ const TranscriberDashboard = () => {
     }
   }, [user?.id]);
 
-  // CRITICAL: handleNegotiationUpdate defined correctly here, outside useEffect
   const handleNegotiationUpdate = useCallback((data) => {
     console.log('TranscriberDashboard Real-time: Negotiation update received!', data);
     showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
@@ -196,7 +195,7 @@ const TranscriberDashboard = () => {
               playNotificationSound();
           }
       }
-  }, [user?.id, showToast, playNotificationSound, setUnreadMessageCount]); // Correct dependencies
+  }, [user?.id, showToast, playNotificationSound, setUnreadMessageCount]);
 
   const handleNewChatMessage = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: New chat message received!', data);
@@ -205,7 +204,7 @@ const TranscriberDashboard = () => {
           fetchUnreadMessageCount();
           playNotificationSound();
       }
-  }, [user?.id, showToast, fetchUnreadMessageCount, playNotificationSound]); // Correct dependencies
+  }, [user?.id, showToast, fetchUnreadMessageCount, playNotificationSound]);
 
   const handleJobCompleted = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Job completed!', data);
@@ -325,7 +324,7 @@ const TranscriberDashboard = () => {
       socket.off('job_hired', handleJobHired);
       socket.off('new_direct_job_available', handleNewDirectJobAvailable);
       socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-      socket.off('connect', () => handleSocketConnect(socket));
+      socket.off('connect', handleSocketConnect);
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -337,39 +336,12 @@ const TranscriberDashboard = () => {
     disconnectSocket();
   }, [logout]);
 
-  const toggleAvailability = useCallback(async () => {
-    const newAvailability = !isAvailable;
-    const token = localStorage.getItem('token');
-    if (!user?.id || !token) {
-      showToast('User not logged in.', 'error');
-      return;
-    }
-    if (newAvailability && currentJobId) {
-        showToast('You must complete your current job before becoming available for new ones.', 'error');
-        return;
-    }
+  // Removed toggleAvailability function as availability is now derived
+  // Removed isAvailable state as it's no longer manually set
 
-    try {
-      const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}/availability-status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_available: newAvailability })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setIsAvailable(newAvailability);
-        showToast(`You are now ${newAvailability ? 'available' : 'busy'} for new jobs`, 'info');
-      } else {
-        showToast(data.error || 'Failed to update availability status', 'error');
-      }
-    } catch (error) {
-      console.error('Error toggling availability status:', error);
-      showToast('Network error. Please try again.', 'error');
-    }
-  }, [isAvailable, user, showToast, currentJobId, setIsAvailable]);
+  // Derived state for availability display
+  // Transcriber is available if they are online (user.is_online) AND not currently assigned a job (currentJobId is null)
+  const isCurrentlyAvailable = user?.is_online && !currentJobId; 
 
   if (!isAuthenticated || !user) {
     return <div>Not authenticated. Redirecting...</div>;
@@ -424,14 +396,17 @@ const TranscriberDashboard = () => {
                         <p className="dashboard-description">Manage your profile, view negotiation requests, and track your transcription jobs.</p>
                     </div>
 
-                    <div className="status-toggles">
-                        <button
-                            onClick={toggleAvailability}
-                            className={`status-toggle-btn ${isAvailable ? 'available' : 'busy'}`}
-                            disabled={!!currentJobId}
-                        >
-                            {isAvailable ? 'Set Busy' : 'Set Available'}
-                        </button>
+                    {/* UPDATED: Derived Status Display, centered */}
+                    <div className="status-display-container">
+                        <span className={`status-pill ${isCurrentlyAvailable ? 'status-available' : 'status-busy'}`}>
+                            {isCurrentlyAvailable ? 'Available' : 'Busy'}
+                        </span>
+                        {currentJobId && (
+                            <span className="job-id-display"> (Job ID: {currentJobId.substring(0, 8)}...)</span>
+                        )}
+                        {!user?.is_online && (
+                             <span className="offline-indicator"> (Offline)</span>
+                        )}
                     </div>
 
                     <div className="dashboard-sections-grid">

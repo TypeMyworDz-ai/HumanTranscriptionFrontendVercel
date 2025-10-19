@@ -75,7 +75,7 @@ const ClientNegotiations = () => {
             if (response.ok) {
                 setNegotiations(data.negotiations);
                 // Log the fetched negotiations and their statuses for debugging
-                console.log("Fetched Negotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
+                console.log("Fetched Negotiations for ClientNegotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
 
                 if (data.negotiations.length === 0) {
                     showToast('No negotiation requests found.', 'info');
@@ -436,15 +436,16 @@ const ClientNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Negotiation cancelled successfully!', 'success');
+                showToast('Negotiation cancelled successfully! Redirecting to dashboard.', 'success'); // Updated message
                 fetchNegotiations();
+                navigate('/client-dashboard'); // Redirect to dashboard
             } else {
                 showToast(data.error || 'Failed to cancel negotiation', 'error');
             }
         } catch (error) {
             showToast('Network error. Please try again.', 'error');
         }
-    }, [showToast, fetchNegotiations, logout]);
+    }, [showToast, fetchNegotiations, logout, navigate]);
 
     if (authLoading || !isAuthenticated || !user) {
         return <div className="loading-container">Loading authentication...</div>;
@@ -473,7 +474,14 @@ const ClientNegotiations = () => {
                     <div className="page-header">
                         <div className="header-text">
                             <h2 className="negotiation-room-title">Negotiation Room</h2> {/* Changed heading */}
-                            <p>Manage all ongoing offers, counter-offers, and awaiting payment statuses for your transcription jobs.</p> {/* Updated description */}
+                            {/* UPDATED: New descriptive text for chat guidelines with red, all-caps NOTE */}
+                            <p>
+                                <span style={{ color: 'red', textTransform: 'uppercase', fontWeight: 'bold' }}>Note:</span>
+                                <ol>
+                                    <li>Manage all ongoing offers, counter-offers, and awaiting payment statuses for your transcription jobs.</li>
+                                    <li>Exhaust job prerequisites and details here. My Active Jobs room is for transcripts uploads ONLY and is limited to minimal chats.</li>
+                                </ol>
+                            </p>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
@@ -483,12 +491,14 @@ const ClientNegotiations = () => {
                     <h3 className="negotiation-room-subtitle">Ongoing Negotiations</h3> {/* New subtitle for the consolidated list */}
                     <div className="negotiations-list">
                         {/* This filter ensures negotiations accepted by a transcriber (awaiting payment)
-                            remain visible in the "Negotiation Room" until payment is completed. */}
+                            remain visible in the "Negotiation Room" until payment is completed,
+                            but EXCLUDES 'hired' jobs. */}
                         {negotiations.filter(n =>
-                            n.status === 'pending' ||
+                            (n.status === 'pending' ||
                             n.status === 'transcriber_counter' ||
                             n.status === 'client_counter' ||
-                            n.status === 'accepted_awaiting_payment'
+                            n.status === 'accepted_awaiting_payment') &&
+                            n.status !== 'hired' // EXCLUDE 'hired' jobs from Negotiation Room
                         ).map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
@@ -507,43 +517,18 @@ const ClientNegotiations = () => {
                             />
                         ))}
                         {negotiations.filter(n =>
-                            n.status === 'pending' ||
+                            (n.status === 'pending' ||
                             n.status === 'transcriber_counter' ||
                             n.status === 'client_counter' ||
-                            n.status === 'accepted_awaiting_payment'
+                            n.status === 'accepted_awaiting_payment') &&
+                            n.status !== 'hired'
                         ).length === 0 && (
                             <p>No ongoing negotiations in the Negotiation Room.</p>
                         )}
                     </div>
 
-                    <h3>Active Jobs</h3>
-                    <div className="negotiations-list">
-                        {/* This filter ensures only jobs that have been paid for and are actively assigned
-                            (status 'hired') appear as 'Active Jobs'. Negotiations awaiting payment
-                            ('accepted_awaiting_payment') should NOT appear here. */}
-                        {negotiations.filter(n => n.status === 'hired').map(negotiation => ( // Filtered for only 'hired' status
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptCounterModal={openAcceptCounterModal}
-                                openRejectCounterModal={openRejectCounterModal}
-                                openCounterBackModal={openCounterBackModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'hired').length === 0 && ( // Updated empty state message
-                            <p>No active jobs.</p>
-                        )}
-                    </div>
-
-                    <h3>Closed Negotiations</h3>
+                    {/* Removed "Closed Negotiations" section from here entirely */}
+                    {/* <h3 className="negotiation-room-subtitle">Closed Negotiations</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
                             <NegotiationCard
@@ -565,7 +550,7 @@ const ClientNegotiations = () => {
                         {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 && (
                             <p>No closed negotiations.</p>
                         )}
-                    </div>
+                    </div> */}
                 </div>
             </main>
 

@@ -1,7 +1,7 @@
 // src/TranscriberNegotiations.js - FINALIZED for USD currency and syntax fix (removed inline comments from select, corrected loading block, fixed 'not defined' errors, fixed canTranscriberAccept warning)
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom'; // Import useLocation
 import Toast from './Toast';
 import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
@@ -15,6 +15,8 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 // --- Component Definition ---
 const TranscriberNegotiations = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
+    const location = useLocation(); // Get current URL location
+    const navigate = useNavigate();
 
     const [negotiations, setNegotiations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,8 +43,6 @@ const TranscriberNegotiations = () => {
     const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(true); // Default to true
     const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
-
-    const navigate = useNavigate();
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -112,6 +112,8 @@ const TranscriberNegotiations = () => {
             const data = await response.json();
             if (response.ok) {
                 setNegotiations(data.negotiations);
+                // Log fetched negotiations for debugging
+                console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
                 if (data.negotiations.length === 0) {
                     showToast('No pending negotiation requests found.', 'info');
                 }
@@ -498,11 +500,48 @@ const TranscriberNegotiations = () => {
     // Determine if transcriber can accept based on their own availability
     const canTranscriberAccept = isTranscriberAvailable && !transcriberCurrentJobId;
 
+    // Filter negotiations based on URL query parameter
+    const query = new URLSearchParams(location.search);
+    const statusFilter = query.get('status'); // 'active', 'completed', etc.
+
+    let displayedNegotiations = [];
+    let pageTitle = "Negotiation Room";
+    let pageDescription = "Review negotiation requests from clients and decide whether to accept, counter, or reject.";
+    let listSubtitle = "Active Negotiations";
+    let emptyMessage = "No active negotiations.";
+
+    if (statusFilter === 'active') {
+        displayedNegotiations = negotiations.filter(n => n.status === 'hired');
+        pageTitle = "My Active Jobs";
+        pageDescription = "Track the progress of your assigned transcription jobs and communicate with clients.";
+        listSubtitle = "Currently Assigned Jobs";
+        emptyMessage = "No active jobs assigned to you.";
+    } else if (statusFilter === 'completed') {
+        displayedNegotiations = negotiations.filter(n => n.status === 'completed');
+        pageTitle = "My Completed Jobs";
+        pageDescription = "Review your finished transcription projects and earnings.";
+        listSubtitle = "Completed Jobs";
+        emptyMessage = "No completed jobs yet.";
+    } else { // Default view: Negotiation Room
+        displayedNegotiations = negotiations.filter(n =>
+            (n.status === 'pending' ||
+            n.status === 'transcriber_counter' ||
+            n.status === 'client_counter' ||
+            n.status === 'accepted_awaiting_payment') &&
+            n.status !== 'hired' // Exclude 'hired' from Negotiation Room
+        );
+        pageTitle = "Negotiation Room";
+        pageDescription = "Review negotiation requests from clients and decide whether to accept, counter, or reject.";
+        listSubtitle = "Ongoing Negotiations";
+        emptyMessage = "No ongoing negotiations.";
+    }
+
+
     return (
         <div className="transcriber-negotiations-container">
             <header className="transcriber-negotiations-header">
                 <div className="header-content">
-                    <h1>Pending Negotiations</h1>
+                    <h1>{pageTitle}</h1> {/* Dynamic page title */}
                     <div className="user-profile-actions">
                         <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">
@@ -516,96 +555,43 @@ const TranscriberNegotiations = () => {
                 <div className="transcriber-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>Negotiation Room</h2>
-                            <p>Review negotiation requests from clients and decide whether to accept, counter, or reject.</p>
+                            <h2>{pageTitle}</h2> {/* Dynamic heading */}
+                            <p>{pageDescription}</p> {/* Dynamic description */}
                         </div>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
                         </Link>
                     </div>
 
-                    <h3 className="negotiation-room-subtitle">Active Negotiations</h3>
+                    <h3 className="negotiation-room-subtitle">{listSubtitle}</h3> {/* Dynamic list subtitle */}
                     <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={proceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptModal={openAcceptModal}
-                                canAccept={
-                                    (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
-                                }
-                                canCounter={
-                                    (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
-                                }
-                                onOpenCounterModal={openCounterModal}
-                                openRejectModal={openRejectModal}
-                                openCompleteJobModal={openCompleteJobModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length === 0 && (
-                            <p>No active negotiations.</p>
-                        )}
-                    </div>
-
-                    <h3>Accepted Jobs</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'hired').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={proceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptModal={openAcceptModal}
-                                canAccept={false}
-                                canCounter={false}
-                                onOpenCounterModal={openCounterModal}
-                                openRejectModal={openRejectModal}
-                                openCompleteJobModal={openCompleteJobModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'hired').length === 0 && (
-                            <p>No accepted jobs yet.</p>
-                        )}
-                    </div>
-
-                    <h3>Completed or Rejected</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={proceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptModal={openAcceptModal}
-                                canAccept={false}
-                                canCounter={false}
-                                onOpenCounterModal={openCounterModal}
-                                openRejectModal={openRejectModal}
-                                openCompleteJobModal={openCompleteJobModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 && (
-                            <p>No completed or rejected negotiations.</p>
+                        {displayedNegotiations.length === 0 ? (
+                            <p>{emptyMessage}</p>
+                        ) : (
+                            displayedNegotiations.map(negotiation => (
+                                <NegotiationCard
+                                    key={negotiation.id}
+                                    negotiation={negotiation}
+                                    onDelete={handleDeleteNegotiation}
+                                    onPayment={proceedToPayment}
+                                    onLogout={logout}
+                                    getStatusColor={getStatusColor}
+                                    getStatusText={getStatusText}
+                                    showToast={showToast}
+                                    currentUserId={user.id}
+                                    currentUserType={user.user_type}
+                                    openAcceptModal={openAcceptModal}
+                                    canAccept={
+                                        (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
+                                    }
+                                    canCounter={
+                                        (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
+                                    }
+                                    onOpenCounterModal={openCounterModal}
+                                    openRejectModal={openRejectModal}
+                                    openCompleteJobModal={openCompleteJobModal}
+                                />
+                            ))
                         )}
                     </div>
                 </div>

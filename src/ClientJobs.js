@@ -43,9 +43,10 @@ const ClientJobs = () => {
 
             if (response.ok) {
                 const fetchedNegotiations = data.negotiations || [];
-                // Updated to filter for 'accepted_awaiting_payment' instead of 'accepted'
-                const jobs = fetchedNegotiations.filter(n => n.status === 'accepted_awaiting_payment' || n.status === 'hired');
-                console.log("Filtered Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
+                // UPDATED: Filter for only 'hired' status for Active Jobs.
+                // 'accepted_awaiting_payment' jobs should remain in the Negotiation Room.
+                const jobs = fetchedNegotiations.filter(n => n.status === 'hired');
+                console.log("Filtered Active Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
                 setActiveJobs(jobs);
                 if (jobs.length === 0) {
                     showToast('No active jobs found yet.', 'info');
@@ -185,7 +186,15 @@ const ClientJobs = () => {
                     <div className="page-header">
                         <div className="header-text">
                             <h2>Your Current Transcription Projects</h2>
-                            <p>Track the progress of your jobs and communicate with your transcribers.</p>
+                            {/* UPDATED: New descriptive text for chat guidelines with red, all-caps NOTE */}
+                            <p>
+                                <span style={{ color: 'red', textTransform: 'uppercase', fontWeight: 'bold' }}>Note:</span>
+                                <ol>
+                                    <li>Track the progress of your job here. Client can ask about progress of their job or clarify something. This chat is solely dedicated for the transcriber to upload transcripts ONLY when they finish the job.</li>
+                                    <li>Exchange of personal information is highly discouraged. The chat in 'My Active Jobs' has been made unresponsive intentionally to discourage that.</li>
+                                    <li>This Chat is moderated. For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
+                                </ol>
+                            </p>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
