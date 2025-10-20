@@ -1,10 +1,9 @@
-// src/ClientJobs.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
 import NegotiationCard from './NegotiationCard'; // To display individual job details
 import { useAuth } from './contexts/AuthContext';
+import { connectSocket } from './ChatService'; // Removed disconnectSocket and getSocketInstance
 import './ClientJobs.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -43,8 +42,7 @@ const ClientJobs = () => {
 
             if (response.ok) {
                 const fetchedNegotiations = data.negotiations || [];
-                // UPDATED: Filter for only 'hired' status for Active Jobs.
-                // 'accepted_awaiting_payment' jobs should remain in the Negotiation Room.
+                // Filter for only 'hired' status for Active Jobs.
                 const jobs = fetchedNegotiations.filter(n => n.status === 'hired');
                 console.log("Filtered Active Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
                 setActiveJobs(jobs);
@@ -62,6 +60,38 @@ const ClientJobs = () => {
         }
     }, [isAuthenticated, logout, showToast]);
 
+    // Function to handle job status updates received via Socket.IO
+    const handleJobUpdate = useCallback((data) => {
+        console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
+        showToast(`Job status updated for ID: ${data.negotiation_id?.substring(0, 8)}.`, 'info');
+        fetchClientJobs(); 
+    }, [showToast, fetchClientJobs]);
+
+    // FIX APPLIED: Removed 'activeJobs' from dependency array by using functional state update form.
+    const handleNewChatMessageForActiveJobs = useCallback((data) => {
+        console.log('ClientJobs Real-time: New chat message received!', data);
+        const receivedNegotiationId = data.negotiation_id;
+        
+        setActiveJobs(prevJobs => {
+            const isForActiveJob = prevJobs.some(job => job.id === receivedNegotiationId);
+
+            if (!isForActiveJob) return prevJobs; 
+
+            return prevJobs.map(job => {
+                if (job.id === receivedNegotiationId) {
+                    return {
+                        ...job,
+                        last_message_text: data.message || 'New file uploaded.', 
+                        last_message_timestamp: new Date().toISOString(),
+                    };
+                }
+                return job;
+            });
+        });
+
+        showToast(`New message for job ${receivedNegotiationId} from ${data.sender_name || 'Transcriber'}!`, 'info');
+    }, [showToast]);
+
     useEffect(() => {
         if (authLoading) return;
 
@@ -72,7 +102,29 @@ const ClientJobs = () => {
         }
 
         fetchClientJobs();
-    }, [isAuthenticated, authLoading, user, navigate, fetchClientJobs]);
+
+        // Socket.IO setup for this component
+        const socket = connectSocket(user.id);
+        if (socket) {
+            // Listen for events relevant to active jobs (completion/cancellation)
+            socket.on('job_completed', handleJobUpdate);
+            socket.on('negotiation_cancelled', handleJobUpdate);
+            // Listen for job-specific chat messages
+            socket.on('newChatMessage', handleNewChatMessageForActiveJobs); 
+
+            console.log('ClientJobs: Socket listeners attached for active jobs.');
+        }
+
+        return () => {
+            if (socket) {
+                console.log(`ClientJobs: Cleaning up socket listeners for user ID: ${user.id}`);
+                socket.off('job_completed', handleJobUpdate);
+                socket.off('negotiation_cancelled', handleJobUpdate);
+                socket.off('newChatMessage', handleNewChatMessageForActiveJobs); 
+            }
+        };
+
+    }, [isAuthenticated, authLoading, user, navigate, fetchClientJobs, handleJobUpdate, handleNewChatMessageForActiveJobs]);
 
     // Utility functions for NegotiationCard (can be shared or defined here)
     const getStatusColor = useCallback((status, isClientViewing) => {
@@ -186,13 +238,12 @@ const ClientJobs = () => {
                     <div className="page-header">
                         <div className="header-text">
                             <h2>Your Current Transcription Projects</h2>
-                            {/* UPDATED: New descriptive text for chat guidelines with red, all-caps NOTE */}
                             <p>
                                 <span style={{ color: 'red', textTransform: 'uppercase', fontWeight: 'bold' }}>Note:</span>
                                 <ol>
                                     <li>Track the progress of your job here. Client can ask about progress of their job or clarify something. This chat is solely dedicated for the transcriber to upload transcripts ONLY when they finish the job.</li>
-                                    <li>Exchange of personal information is highly discouraged. The chat in 'My Active Jobs' has been made unresponsive intentionally to discourage that.</li>
-                                    <li>This Chat is moderated. For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
+                                    <li>This Chat is moderated. Exchange of personal information is highly discouraged.</li>
+                                    <li>For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
                                 </ol>
                             </p>
                         </div>

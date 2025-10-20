@@ -219,9 +219,10 @@
 .dashboard-cards-grid .dashboard-card:nth-child(1) .card-icon { color: #28a745; } /* Browse Transcribers (👥) - Green */
 .dashboard-cards-grid .dashboard-card:nth-child(2) .card-icon { color: #667eea; } /* Direct Upload (⬆️) - Primary Blue */
 .dashboard-cards-grid .dashboard-card:nth-child(3) .card-icon { color: #dc3545; } /* My Active Jobs (📝) - Red */
-.dashboard-cards-grid .dashboard-card:nth-child(4) .card-icon { color: #ffc107; } /* Negotiations History (🤝) - Yellow */
-.dashboard-cards-grid .dashboard-card:nth-child(5) .card-icon { color: #6f42c1; } /* Payment History (💳) - Purple */
-.dashboard-cards-grid .dashboard-card:nth-child(6) .card-icon { color: #17a2b8; } /* Messages (💬) - Teal/Info */
+.dashboard-cards-grid .dashboard-card:nth-child(4) .card-icon { color: #ffc107; } /* Negotiation Room (🤝) - Yellow */
+.dashboard-cards-grid .dashboard-card:nth-child(5) .card-icon { color: #6f42c1; } /* My Completed Jobs (✅) - Purple */
+.dashboard-cards-grid .dashboard-card:nth-child(6) .card-icon { color: #007bff; } /* Payment History (💳) - Blue */
+.dashboard-cards-grid .dashboard-card:nth-child(7) .card-icon { color: #17a2b8; } /* Messages (💬) - Teal/Info */
 
 
 /* Coming Soon Tag */
@@ -484,5 +485,11 @@
   }
   .stat-item .stat-value {
     font-size: 1.8rem;
+  }
+  .stat-item .rating-stars {
+    font-size: 1.4rem;
+  }
+  .stat-item .rating-stars span {
+    font-size: 1.0rem;
   }
 }

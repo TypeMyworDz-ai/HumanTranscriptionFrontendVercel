@@ -86,7 +86,7 @@ const TranscriberNegotiations = () => {
             setIsTranscriberAvailable(true); // Default to true on error
             setTranscriberCurrentJobId(null);
         }
-    }, [user?.id, setIsTranscriberAvailable, setTranscriberCurrentJobId]); // CRITICAL: Correct dependencies for state setters
+    }, [user?.id, setIsTranscriberAvailable, setTranscriberCurrentJobId]);
 
 
     const fetchNegotiations = useCallback(async () => {
@@ -511,18 +511,21 @@ const TranscriberNegotiations = () => {
     let emptyMessage = "No active negotiations.";
 
     if (statusFilter === 'active') {
+        // UPDATED: When status is 'active', show only 'hired' jobs
         displayedNegotiations = negotiations.filter(n => n.status === 'hired');
         pageTitle = "My Active Jobs";
         pageDescription = "Track the progress of your assigned transcription jobs and communicate with clients.";
         listSubtitle = "Currently Assigned Jobs";
         emptyMessage = "No active jobs assigned to you.";
     } else if (statusFilter === 'completed') {
+        // When status is 'completed', show only 'completed' jobs
         displayedNegotiations = negotiations.filter(n => n.status === 'completed');
         pageTitle = "My Completed Jobs";
         pageDescription = "Review your finished transcription projects and earnings.";
         listSubtitle = "Completed Jobs";
         emptyMessage = "No completed jobs yet.";
     } else { // Default view: Negotiation Room
+        // UPDATED: Exclude 'hired' jobs from the default Negotiation Room view
         displayedNegotiations = negotiations.filter(n =>
             (n.status === 'pending' ||
             n.status === 'transcriber_counter' ||
@@ -587,6 +590,35 @@ const TranscriberNegotiations = () => {
                                     canCounter={
                                         (negotiation.status === 'pending' || negotiation.status === 'client_counter') && canTranscriberAccept
                                     }
+                                    onOpenCounterModal={openCounterModal}
+                                    openRejectModal={openRejectModal}
+                                    openCompleteJobModal={openCompleteJobModal}
+                                />
+                            ))
+                        )}
+                    </div>
+
+                    {/* This section (Completed or Rejected) is now managed by statusFilter === 'completed' */}
+                    <h3 className="negotiation-room-subtitle">Closed Negotiations</h3>
+                    <div className="negotiations-list">
+                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 ? (
+                            <p>No closed negotiations.</p>
+                        ) : (
+                             negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
+                                <NegotiationCard
+                                    key={negotiation.id}
+                                    negotiation={negotiation}
+                                    onDelete={handleDeleteNegotiation}
+                                    onPayment={proceedToPayment}
+                                    onLogout={logout}
+                                    getStatusColor={getStatusColor}
+                                    getStatusText={getStatusText}
+                                    showToast={showToast}
+                                    currentUserId={user.id}
+                                    currentUserType={user.user_type}
+                                    openAcceptModal={openAcceptModal}
+                                    canAccept={false}
+                                    canCounter={false}
                                     onOpenCounterModal={openCounterModal}
                                     openRejectModal={openRejectModal}
                                     openCompleteJobModal={openCompleteJobModal}

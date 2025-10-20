@@ -211,6 +211,13 @@ const ClientDashboard = () => {
         }
     };
 
+    const handleJobCompleted = (data) => {
+        console.log('ClientDashboard Real-time: Job completed event received!', data);
+        showToast(data.message || `Job ${data.negotiationId} was completed!`, 'success');
+        fetchClientStats(user.id, localStorage.getItem('token')); // Refresh stats to update completed jobs count
+        fetchClientPaymentHistory();
+    };
+
     const handlePaymentSuccessful = (data) => {
         console.log('ClientDashboard Real-time: Payment successful event received!', data);
         showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
@@ -225,6 +232,7 @@ const ClientDashboard = () => {
     socket.on('negotiation_cancelled', handleNegotiationUpdate);
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
     socket.on('newChatMessage', handleNewChatMessage); // This is crucial for real-time chat messages
+    socket.on('job_completed', handleJobCompleted); // Listen for job completion event
     socket.on('payment_successful', handlePaymentSuccessful);
     // Removed socket.on('connect', handleSocketConnect) as ChatService now handles room joining on connect.
 
@@ -238,13 +246,14 @@ const ClientDashboard = () => {
       socket.off('negotiation_cancelled', handleNegotiationUpdate);
       socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
       socket.off('newChatMessage', handleNewChatMessage);
+      socket.off('job_completed', handleJobCompleted); // Detach job completion listener
       socket.off('payment_successful', handlePaymentSuccessful);
       // Ensure disconnectSocket is called only when the component unmounts and the user is logging out
       // or if we're sure this is the last component holding the socket.
       disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound]);
+  }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound, isAuthenticated]);
 
 
   // Display a loading indicator if client-specific data is still being fetched.
@@ -320,6 +329,13 @@ const ClientDashboard = () => {
               <p>View all ongoing negotiation offers and statuses.</p>
             </Link>
 
+            {/* NEW CARD: My Completed Jobs */}
+            <Link to="/client-completed-jobs" className="dashboard-card">
+              <div className="card-icon">✅</div>
+              <h3>My Completed Jobs ({clientStats.completedJobs})</h3>
+              <p>Review your finished projects and provide feedback.</p>
+            </Link>
+
             <Link to="/client-payments" className="dashboard-card">
               <div className="card-icon">💳</div>
               <h3>Payment History (USD {totalClientPayments.toLocaleString()})</h3> {/* UPDATED: Changed KES to USD */}
@@ -329,7 +345,7 @@ const ClientDashboard = () => {
             <Link to={`/client/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card"> {/* Assuming 'admin' is a fixed ID for chat with admin */}
               <div className="card-icon">💬</div>
               <h3>Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
-              <p>Chat with transcribers or support.</p>
+              <p>Chat with Support.</p>
             </Link>
           </div>
 

@@ -526,31 +526,6 @@ const ClientNegotiations = () => {
                             <p>No ongoing negotiations in the Negotiation Room.</p>
                         )}
                     </div>
-
-                    {/* Removed "Closed Negotiations" section from here entirely */}
-                    {/* <h3 className="negotiation-room-subtitle">Closed Negotiations</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
-                            <NegotiationCard
-                                key={negotiation.id}
-                                negotiation={negotiation}
-                                onDelete={handleDeleteNegotiation}
-                                onPayment={handleProceedToPayment}
-                                onLogout={logout}
-                                getStatusColor={getStatusColor}
-                                getStatusText={getStatusText}
-                                showToast={showToast}
-                                currentUserId={user.id}
-                                currentUserType={user.user_type}
-                                openAcceptCounterModal={openAcceptCounterModal}
-                                openRejectCounterModal={openRejectCounterModal}
-                                openCounterBackModal={openCounterBackModal}
-                            />
-                        ))}
-                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 && (
-                            <p>No closed negotiations.</p>
-                        )}
-                    </div> */}
                 </div>
             </main>
 

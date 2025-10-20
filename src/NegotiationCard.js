@@ -22,7 +22,86 @@ const formatDisplayTimestamp = (isoTimestamp) => {
     }
 };
 
-const NegotiationCard = ({
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps, nextProps) => {
+    // Compare negotiation prop deeply
+    if (JSON.stringify(prevProps.negotiation) !== JSON.stringify(nextProps.negotiation)) {
+        console.log(`NegotiationCard: Props changed - negotiation. Prev:`, prevProps.negotiation, `Next:`, nextProps.negotiation);
+        return false;
+    }
+
+    // Compare simple props
+    if (prevProps.onDelete !== nextProps.onDelete) {
+        console.log(`NegotiationCard: Props changed - onDelete.`);
+        return false;
+    }
+    if (prevProps.onPayment !== nextProps.onPayment) {
+        console.log(`NegotiationCard: Props changed - onPayment.`);
+        return false;
+    }
+    if (prevProps.onLogout !== nextProps.onLogout) {
+        console.log(`NegotiationCard: Props changed - onLogout.`);
+        return false;
+    }
+    if (prevProps.getStatusColor !== nextProps.getStatusColor) {
+        console.log(`NegotiationCard: Props changed - getStatusColor.`);
+        return false;
+    }
+    if (prevProps.getStatusText !== nextProps.getStatusText) {
+        console.log(`NegotiationCard: Props changed - getStatusText.`);
+        return false;
+    }
+    if (prevProps.showToast !== nextProps.showToast) {
+        console.log(`NegotiationCard: Props changed - showToast.`);
+        return false;
+    }
+    if (prevProps.currentUserId !== nextProps.currentUserId) {
+        console.log(`NegotiationCard: Props changed - currentUserId.`);
+        return false;
+    }
+    if (prevProps.currentUserType !== nextProps.currentUserType) {
+        console.log(`NegotiationCard: Props changed - currentUserType.`);
+        return false;
+    }
+    if (prevProps.openAcceptCounterModal !== nextProps.openAcceptCounterModal) {
+        console.log(`NegotiationCard: Props changed - openAcceptCounterModal.`);
+        return false;
+    }
+    if (prevProps.openRejectCounterModal !== nextProps.openRejectCounterModal) {
+        console.log(`NegotiationCard: Props changed - openRejectCounterModal.`);
+        return false;
+    }
+    if (prevProps.openCounterBackModal !== nextProps.openCounterBackModal) {
+        console.log(`NegotiationCard: Props changed - openCounterBackModal.`);
+        return false;
+    }
+    if (prevProps.openAcceptModal !== nextProps.openAcceptModal) {
+        console.log(`NegotiationCard: Props changed - openAcceptModal.`);
+        return false;
+    }
+    if (prevProps.onOpenCounterModal !== nextProps.onOpenCounterModal) {
+        console.log(`NegotiationCard: Props changed - onOpenCounterModal.`);
+        return false;
+    }
+    if (prevProps.openRejectModal !== nextProps.openRejectModal) {
+        console.log(`NegotiationCard: Props changed - openRejectModal.`);
+        return false;
+    }
+    if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) {
+        console.log(`NegotiationCard: Props changed - openCompleteJobModal.`);
+        return false;
+    }
+    if (prevProps.canCounter !== nextProps.canCounter) {
+        console.log(`NegotiationCard: Props changed - canCounter.`);
+        return false;
+    }
+
+    // If all checked props are equal, prevent re-render
+    return true;
+};
+
+
+const NegotiationCard = React.memo(({ 
   negotiation,
   onDelete,
   onPayment,
@@ -36,11 +115,11 @@ const NegotiationCard = ({
   openRejectCounterModal,
   openCounterBackModal, 
   openAcceptModal,
-  onOpenCounterModal, // RENAMED: This is the function to open the counter modal
+  onOpenCounterModal, 
   openRejectModal,
   openCompleteJobModal,
-  canCounter // NEW: Boolean prop to control if counter is allowed
-}) => {
+  canCounter 
+}, arePropsEqual) => { // Pass the custom comparison function to React.memo
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
 
@@ -65,9 +144,17 @@ const NegotiationCard = ({
     console.log(`NegotiationCard: Rendering negotiation ${negotiationId} with status: ${negotiation.status}`);
   }, [negotiationId, negotiation.status]);
 
+  // NEW: Effect to monitor the showRateTranscriberModal state
+  useEffect(() => {
+      console.log(`NegotiationCard ${negotiationId}: showRateTranscriberModal is now ${showRateTranscriberModal}`);
+  }, [showRateTranscriberModal, negotiationId]);
+
+
   const handleReceiveMessageForCard = useCallback((data) => {
+    // Only process the message if it belongs to this negotiation card
     if (data.negotiation_id === negotiationId && data.negotiation_id !== null) {
       setCardMessages(prevMessages => {
+        // Attempt to replace an optimistic message
         const updatedMessages = prevMessages.map(m =>
             m.isOptimistic && m.sender_id === data.sender_id && m.content === data.content &&
             m.receiver_id === data.receiver_id && (m.file_url === data.file_url || (!m.file_url && !data.file_url))
@@ -75,13 +162,18 @@ const NegotiationCard = ({
                 : m
         );
 
+        // If the message wasn't an optimistic replacement or it's genuinely new, append it
         if (!updatedMessages.some(m => m.id === data.id && !m.isOptimistic)) {
             const formattedData = {
-              ...data,
-              timestamp: formatDisplayTimestamp(data.timestamp)
+                ...data,
+                timestamp: formatDisplayTimestamp(data.timestamp)
             };
-            return [...updatedMessages, formattedData];
+            // Ensure no duplicates are added if message IDs are reliable
+            if (!prevMessages.find(m => m.id === data.id && !m.isOptimistic)) {
+                 return [...updatedMessages, formattedData];
+            }
         }
+        // If it was already in the list (or replaced), return the updated list
         return updatedMessages;
       });
       console.log(`NegotiationCard: Message for ${negotiationId} received:`, data);
@@ -94,12 +186,14 @@ const NegotiationCard = ({
     const socket = getSocketInstance();
 
     if (socket) {
+      // Attach the listener
       socket.on('newChatMessage', handleReceiveMessageForCard);
       console.log(`NegotiationCard: Attached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
     }
 
     return () => {
       if (socket) {
+        // Detach the listener when the component unmounts
         socket.off('newChatMessage', handleReceiveMessageForCard);
         console.log(`NegotiationCard: Detached 'newChatMessage' listener for negotiationId: ${negotiationId}`);
       }
@@ -254,12 +348,14 @@ const NegotiationCard = ({
   };
 
   const openRateTranscriberModal = useCallback(() => {
+      console.log('Attempting to open rate transcriber modal.');
       setShowRateTranscriberModal(true);
       setRatingScore(5);
       setRatingComment('');
   }, []);
 
   const closeRateTranscriberModal = useCallback(() => {
+      console.log('Attempting to close rate transcriber modal.');
       setShowRateTranscriberModal(false);
       setRatingModalLoading(false);
   }, []);
@@ -317,14 +413,39 @@ const NegotiationCard = ({
         <div className={`
           ${isClientViewing ? 'transcriber-info' : 'client-info'}
         `}>
-          <div className={`
-            ${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}
-          `}>
+          <div className={`${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}`}>
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
-          {/* SYNTAX FIX: Corrected className to use template literal correctly */}
           <div className={`${isClientViewing ? 'transcriber-details' : 'client-details'}`}>
-            <h3>{otherPartyName}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}> {/* New flex container */}
+              <h3>{otherPartyName}</h3>
+              {isClientViewing && negotiation.status === 'completed' && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        openRateTranscriberModal();
+                    }}
+                    style={{
+                        padding: '5px 10px',
+                        borderRadius: '15px',
+                        background: '#6f42c1', // Purple color
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.85em',
+                        fontWeight: '600',
+                        whiteSpace: 'nowrap', // Prevent text wrap
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                        transition: 'background 0.2s ease, transform 0.2s ease'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#5a349c'} // Darker purple on hover
+                    onMouseLeave={e => e.currentTarget.style.background = '#6f42c1'}
+                    title="Rate Transcriber"
+                >
+                    Rate
+                </button>
+              )}
+            </div>
             {isClientViewing ? (
               <div className="transcriber-stats">
                 <span className="rating">
@@ -560,16 +681,14 @@ const NegotiationCard = ({
             {negotiation.status === 'hired' && (
               <div className="hired-actions">
                 <span className="info-text">🎉 Job Active! Transcriber hired.</span>
-                <button className="upload-btn">
-                  Upload Audio Files
-                </button>
+                {/* REMOVED BUTTON: Upload Audio Files removed for client view, as requested by the user. */}
               </div>
             )}
 
+            {/* Removed the completed-actions div, as the button is moved */}
             {negotiation.status === 'completed' && (
-              <div className="completed-actions">
+              <div className="completed-status-message">
                   <span className="success-text">🎉 Job Completed!</span>
-                  <button onClick={openRateTranscriberModal} className="action-btn rate-transcriber-btn">Rate Transcriber</button>
               </div>
             )}
 
@@ -628,6 +747,7 @@ const NegotiationCard = ({
             {negotiation.status === 'hired' && (
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
+                    {/* BUTTON KEPT: This button is intended for the transcriber to submit the final transcript. */}
                     {openCompleteJobModal && <button onClick={() => openCompleteJobModal(negotiation.id)} className="action-btn complete-job-btn">Mark as Complete</button>}
                 </div>
             )}
@@ -694,6 +814,6 @@ const NegotiationCard = ({
       )}
     </div>
   );
-};
+}, arePropsEqual); // Pass the custom comparison function to React.memo
 
 export default NegotiationCard;

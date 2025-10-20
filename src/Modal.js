@@ -14,7 +14,6 @@ const Modal = ({
     loading = false,
     type = 'info' // New prop for modal type (info, success, error)
 }) => {
-    
     // Use an effect to handle body scroll lock when the modal is open
     useEffect(() => {
         if (show) {
@@ -33,13 +32,20 @@ const Modal = ({
         e.stopPropagation();
     };
 
+    // Handle overlay click, ensuring it only closes if the overlay itself was clicked
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) { // Ensure click was directly on the overlay
+            onClose();
+        }
+    };
+
     if (!show) {
         return null;
     }
 
     return (
         // The overlay applies the 'show' class based on the prop for CSS transitions
-        <div className={`modal-overlay ${show ? 'show' : ''}`} onClick={onClose}>
+        <div className={`modal-overlay ${show ? 'show' : ''}`} onClick={handleOverlayClick}>
             {/* The content area uses the handleContentClick to stop closure when clicking inside */}
             <div className={`modal-content ${type}`} onClick={handleContentClick}>
                 <div className="modal-header">

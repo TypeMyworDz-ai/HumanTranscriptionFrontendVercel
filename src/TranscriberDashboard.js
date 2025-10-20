@@ -422,7 +422,7 @@ const TranscriberDashboard = () => {
                             <p>View and manage your direct messages.</p>
                         </Link>
 
-                        <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
+                        <Link to="/transcriber-jobs" className="dashboard-card"> {/* UPDATED: Link to TranscriberJobs.js */}
                             <div className="card-icon">📝</div>
                             <h3>My Active Jobs ({activeCount})</h3>
                             <p>See jobs you're currently working on.</p>
