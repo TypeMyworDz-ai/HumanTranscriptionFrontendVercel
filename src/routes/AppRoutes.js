@@ -9,7 +9,7 @@ import ProtectedRoute from './ProtectedRoute';
 import LandingPage from '../LandingPage';
 import Login from '../Login';
 import ClientRegister from '../ClientRegister';
-import WorkerRegister from '../WorkerRegister';
+import WorkerRegister from '../WorkerRegister'; 
 import ClientDashboard from '../ClientDashboard';
 import ClientNegotiations from '../ClientNegotiations';
 import TranscriberDashboard from '../TranscriberDashboard';
@@ -37,19 +37,21 @@ import PaymentCallback from '../PaymentCallback';
 import ClientPaymentHistory from '../ClientPaymentHistory';
 import ClientJobs from '../ClientJobs';
 // NEW: Import ClientCompletedJobs
-import ClientCompletedJobs from '../ClientCompletedJobs'; // NEW: Import ClientCompletedJobs
+import ClientCompletedJobs from '../ClientCompletedJobs'; 
+// REMOVED: Import ClientRateTranscriberPage
+// import ClientRateTranscriberPage from '../ClientRateTranscriberPage'; 
 // NEW: Import Profile-related components
 import ClientProfile from '../ClientProfile';
 import TranscriberProfile from '../TranscriberProfile';
 // NEW: Import Direct Upload-related components
-import ClientDirectUpload from '../ClientDirectUpload'; // NEW: Client Direct Upload
-import TranscriberOtherJobs from '../TranscriberOtherJobs'; // NEW: Transcriber Other Jobs
-import TranscriberJobs from '../TranscriberJobs'; // NEW: Dedicated component for Transcriber Active Jobs
+import ClientDirectUpload from '../ClientDirectUpload'; // CORRECTED PATH
+import TranscriberOtherJobs from '../TranscriberOtherJobs'; 
+import TranscriberJobs from '../TranscriberJobs'; 
 
 // NEW: Import Admin Oversight components
-import AdminPaymentHistory from '../AdminPaymentHistory'; // NEW: Admin Payment History
-import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; // NEW: Admin Direct Upload Jobs
-import AdminJobDetails from '../AdminJobDetails'; // NEW: Import AdminJobDetails
+import AdminPaymentHistory from '../AdminPaymentHistory'; 
+import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; 
+import AdminJobDetails from '../AdminJobDetails'; 
 
 const AppRoutes = () => {
     return (
@@ -58,7 +60,7 @@ const AppRoutes = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/client-register" element={<ClientRegister />} />
-            <Route path="/worker-register" element={<WorkerRegister />} />
+            <Route path="/worker-register" element={<WorkerRegister />} /> 
             {/* NEW: Public Route for Reset Password */}
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* NEW: Public Route for Paystack Payment Callback */}
@@ -75,9 +77,11 @@ const AppRoutes = () => {
                 <Route path="/client/chat/:chatId" element={<UserChat />} />
                 <Route path="/client-payments" element={<ClientPaymentHistory />} />
                 <Route path="/client-jobs" element={<ClientJobs />} />
-                <Route path="/client-completed-jobs" element={<ClientCompletedJobs />} /> {/* NEW: Client Completed Jobs Route */}
+                <Route path="/client-completed-jobs" element={<ClientCompletedJobs />} /> 
+                {/* REMOVED: Client Rate Transcriber Page Route */}
+                {/* <Route path="/client-rate-transcriber/:negotiationId" element={<ClientRateTranscriberPage />} /> */}
                 <Route path="/client-profile/:clientId" element={<ClientProfile />} />
-                <Route path="/client-direct-upload" element={<ClientDirectUpload />} /> {/* NEW: Client Direct Upload Route */}
+                <Route path="/client-direct-upload" element={<ClientDirectUpload />} /> 
 
 
                 {/* Transcriber Routes */}
@@ -88,8 +92,8 @@ const AppRoutes = () => {
                 <Route path="/transcriber/chat/:chatId" element={<UserChat />} />
                 <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
                 <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} />
-                <Route path="/transcriber-other-jobs" element={<TranscriberOtherJobs />} /> {/* NEW: Transcriber Other Jobs Route */}
-                <Route path="/transcriber-jobs" element={<TranscriberJobs />} /> {/* FIX: New route for Transcriber Active Jobs */}
+                <Route path="/transcriber-other-jobs" element={<TranscriberOtherJobs />} /> 
+                <Route path="/transcriber-jobs" element={<TranscriberJobs />} /> 
 
 
                 {/* Admin Routes */}
@@ -99,15 +103,15 @@ const AppRoutes = () => {
                 <Route path="/admin/transcriber-tests/:submissionId" element={<AdminTranscriberTestDetails />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/jobs" element={<AdminJobs />} />
-                <Route path="/admin/jobs/:jobId" element={<AdminJobDetails />} /> {/* NEW: Admin Job Details Route */}
+                <Route path="/admin/jobs/:jobId" element={<AdminJobDetails />} /> 
                 <Route path="/admin/disputes" element={<AdminDisputes />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 {/* Admin Chat Routes */}
                 <Route path="/admin/chat" element={<AdminMessageList />} />
                 <Route path="/admin/chat/:userId" element={<AdminChat />} />
                 {/* NEW: Admin Oversight Routes */}
-                <Route path="/admin/payments" element={<AdminPaymentHistory />} /> {/* NEW: Admin Payment History Route */}
-                <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> {/* NEW: Admin Direct Upload Jobs Route */}
+                <Route path="/admin/payments" element={<AdminPaymentHistory />} /> 
+                <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> 
 
 
             </Route>

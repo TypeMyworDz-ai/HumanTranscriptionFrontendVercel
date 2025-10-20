@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import NegotiationCard from './NegotiationCard';
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket } from './ChatService'; // Removed disconnectSocket as it's not used
+import { connectSocket } from './ChatService';
 import './ClientCompletedJobs.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -49,8 +49,10 @@ const ClientCompletedJobs = () => {
                 // Use functional update for setCompletedJobs with deep comparison
                 setCompletedJobs(prevJobs => {
                     if (JSON.stringify(jobs) !== JSON.stringify(prevJobs)) {
+                        console.log("ClientCompletedJobs: Updating completedJobs state. New data differs from previous.");
                         return jobs;
                     }
+                    console.log("ClientCompletedJobs: Not updating completedJobs state. Data is identical.");
                     return prevJobs; // No change, return previous state
                 });
 
@@ -66,7 +68,7 @@ const ClientCompletedJobs = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast]);
+    }, [isAuthenticated, logout, showToast]); // Removed 'completedJobs' from dependencies
 
 
     const handleJobUpdate = useCallback((data) => {
@@ -205,6 +207,7 @@ const ClientCompletedJobs = () => {
                             <p className="no-data-message">You currently have no completed jobs.</p>
                         ) : (
                             completedJobs.map((job) => {
+                                console.log(`ClientCompletedJobs: Rendering NegotiationCard for job ID: ${job.id}.`);
                                 return (
                                     <NegotiationCard
                                         key={job.id}

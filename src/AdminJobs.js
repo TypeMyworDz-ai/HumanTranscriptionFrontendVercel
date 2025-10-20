@@ -203,13 +203,19 @@ const AdminJobs = () => {
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
                                             <td>
                                                 <button 
-                                                    onClick={() => handleViewJobDetails(job.id)} 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent event bubbling
+                                                        handleViewJobDetails(job.id);
+                                                    }} 
                                                     className="action-btn view-btn"
                                                 >
                                                     View
                                                 </button>
                                                 <button 
-                                                    onClick={() => openDeleteModal(job.id)} 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent event bubbling
+                                                        openDeleteModal(job.id);
+                                                    }} 
                                                     className="action-btn delete-btn"
                                                 >
                                                     Delete

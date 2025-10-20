@@ -113,7 +113,12 @@ const TranscriberNegotiations = () => {
             if (response.ok) {
                 setNegotiations(data.negotiations);
                 // Log fetched negotiations for debugging
-                console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
+                console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ 
+                    id: n.id, 
+                    status: n.status, 
+                    clientRating: n.client_info?.client_rating, 
+                    dueDate: n.due_date 
+                })));
                 if (data.negotiations.length === 0) {
                     showToast('No pending negotiation requests found.', 'info');
                 }
@@ -309,7 +314,7 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/counter`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/counter`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -348,7 +353,7 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/reject`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/reject`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -507,8 +512,8 @@ const TranscriberNegotiations = () => {
     let displayedNegotiations = [];
     let pageTitle = "Negotiation Room";
     let pageDescription = "Review negotiation requests from clients and decide whether to accept, counter, or reject.";
-    let listSubtitle = "Active Negotiations";
-    let emptyMessage = "No active negotiations.";
+    let listSubtitle = "Ongoing Negotiations";
+    let emptyMessage = "No ongoing negotiations.";
 
     if (statusFilter === 'active') {
         // UPDATED: When status is 'active', show only 'hired' jobs
@@ -525,13 +530,12 @@ const TranscriberNegotiations = () => {
         listSubtitle = "Completed Jobs";
         emptyMessage = "No completed jobs yet.";
     } else { // Default view: Negotiation Room
-        // UPDATED: Exclude 'hired' jobs from the default Negotiation Room view
+        // FIX: Only show truly ongoing negotiations in the default Negotiation Room view
         displayedNegotiations = negotiations.filter(n =>
-            (n.status === 'pending' ||
+            n.status === 'pending' ||
             n.status === 'transcriber_counter' ||
             n.status === 'client_counter' ||
-            n.status === 'accepted_awaiting_payment') &&
-            n.status !== 'hired' // Exclude 'hired' from Negotiation Room
+            n.status === 'accepted_awaiting_payment'
         );
         pageTitle = "Negotiation Room";
         pageDescription = "Review negotiation requests from clients and decide whether to accept, counter, or reject.";
@@ -598,7 +602,8 @@ const TranscriberNegotiations = () => {
                         )}
                     </div>
 
-                    {/* This section (Completed or Rejected) is now managed by statusFilter === 'completed' */}
+                    {/* REMOVED: The 'Closed Negotiations' section to declutter the default view */}
+                    {/*
                     <h3 className="negotiation-room-subtitle">Closed Negotiations</h3>
                     <div className="negotiations-list">
                         {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 ? (
@@ -626,6 +631,7 @@ const TranscriberNegotiations = () => {
                             ))
                         )}
                     </div>
+                    */}
                 </div>
             </main>
 

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'; // Removed useRef
+import React, { useState, useEffect, useCallback } from 'react'; 
 import { Link, useNavigate } from 'react-router-dom';
-import Toast from './Toast'; // Assuming you have a Toast component
-import NegotiationCard from './NegotiationCard'; // To display individual job details
+import Toast from './Toast'; 
+import NegotiationCard from './NegotiationCard'; 
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket } from './ChatService'; // Removed disconnectSocket and getSocketInstance
-import './TranscriberJobs.css'; // You'll need to create this CSS file
+import { connectSocket } from './ChatService'; 
+import './TranscriberJobs.css'; 
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -15,9 +15,6 @@ const TranscriberJobs = () => {
     const [activeJobs, setActiveJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
-
-    // Removed messageHandlersRef as it's no longer used
-    // const messageHandlersRef = useRef({}); 
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -76,52 +73,6 @@ const TranscriberJobs = () => {
         // A full re-fetch is necessary here to remove completed jobs from the 'activeJobs' filter
         fetchTranscriberJobs(); 
     }, [showToast, fetchTranscriberJobs]);
-
-
-    // Handle job completion directly from API call
-    const handleCompleteJob = useCallback(async (negotiationId) => {
-        setLoading(true); // Or a specific modalLoading state
-        const token = localStorage.getItem('token');
-        if (!token) {
-            logout();
-            return;
-        }
-
-        try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations/${negotiationId}/complete`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showToast(data.message || 'Job marked as complete!', 'success');
-                // The socket listener for 'job_completed' will call fetchTranscriberJobs, but we call it here as a fallback/to ensure quick UI update
-                fetchTranscriberJobs(); 
-            } else {
-                showToast(data.error || 'Failed to mark job as complete.', 'error');
-            }
-        } catch (error) {
-            console.error('Error completing job:', error);
-            // This toast handles the case where the server returns a non-JSON (like a 404 HTML page)
-            showToast('Network error while completing job.', 'error'); 
-        } finally {
-            setLoading(false);
-        }
-    }, [showToast, logout, fetchTranscriberJobs]);
-
-    // Handle job completion from NegotiationCard
-    const openCompleteJobModal = useCallback((negotiationId) => {
-        // NOTE: Replaced window.confirm with a custom modal logic placeholder
-        // In a real app, open a Modal.js component here to confirm job completion
-        if (window.confirm('Are you sure you want to mark this job as complete?')) { // Re-added window.confirm for simplicity
-            handleCompleteJob(negotiationId);
-        }
-    }, [handleCompleteJob]); // Added handleCompleteJob to dependencies
-
 
     // --- Real-time Message Handling for Active Jobs (Job-specific Messages) ---
     const handleNewChatMessageForActiveJobs = useCallback((data) => {
@@ -283,7 +234,7 @@ const TranscriberJobs = () => {
                                     canCounter={false} // Transcriber cannot counter an already hired job
                                     onOpenCounterModal={onOpenCounterModal}
                                     openRejectModal={openRejectModal}
-                                    openCompleteJobModal={openCompleteJobModal} // Pass the completion handler
+                                    // Removed openCompleteJobModal as 'Mark Complete' is now client-side
                                 />
                             ))
                         )}

@@ -75,7 +75,13 @@ const ClientNegotiations = () => {
             if (response.ok) {
                 setNegotiations(data.negotiations);
                 // Log the fetched negotiations and their statuses for debugging
-                console.log("Fetched Negotiations for ClientNegotiations:", data.negotiations.map(n => ({ id: n.id, status: n.status })));
+                console.log("Fetched Negotiations for ClientNegotiations:", data.negotiations.map(n => ({ 
+                    id: n.id, 
+                    status: n.status, 
+                    transcriberRating: n.users?.average_rating, 
+                    transcriberJobs: n.users?.completed_jobs, 
+                    dueDate: n.due_date 
+                })));
 
                 if (data.negotiations.length === 0) {
                     showToast('No negotiation requests found.', 'info');

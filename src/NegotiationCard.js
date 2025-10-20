@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocketInstance, sendMessage, uploadChatAttachment } from './ChatService';
-import Modal from './Modal';
 import { useAuth } from './contexts/AuthContext'; 
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -119,11 +118,12 @@ const NegotiationCard = React.memo(({
   openRejectModal,
   openCompleteJobModal,
   canCounter 
-}, arePropsEqual) => { // Pass the custom comparison function to React.memo
+}) => { 
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
 
   const isClientViewing = currentUserType === 'client';
+  // Determine if otherParty is transcriber (for client view) or client (for transcriber view)
   const otherParty = isClientViewing ? negotiation.users : negotiation.client_info;
   const otherPartyId = otherParty?.id;
   const otherPartyName = otherParty?.full_name || 'Unknown User';
@@ -134,20 +134,15 @@ const NegotiationCard = React.memo(({
   const fileInputRef = useRef(null);
   const chatWindowRef = useRef(null);
 
-  const [showRateTranscriberModal, setShowRateTranscriberModal] = useState(false);
-  const [ratingScore, setRatingScore] = useState(5);
-  const [ratingComment, setRatingComment] = useState('');
-  const [ratingModalLoading, setRatingModalLoading] = useState(false);
-
   // Log the negotiation status for debugging
   useEffect(() => {
-    console.log(`NegotiationCard: Rendering negotiation ${negotiationId} with status: ${negotiation.status}`);
-  }, [negotiationId, negotiation.status]);
+    console.log(`NegotiationCard: Rendering negotiation ${negotiationId} with status: ${negotiation.status}. Due Date: ${negotiation.due_date}`);
+    // NEW LOG: Log the full otherParty object to inspect ratings and job counts
+    console.log(`NegotiationCard: Other Party Data for ${otherPartyName} (ID: ${otherPartyId}):`, otherParty);
+  }, [negotiationId, negotiation.status, negotiation.due_date, otherParty, otherPartyId, otherPartyName]);
 
-  // NEW: Effect to monitor the showRateTranscriberModal state
-  useEffect(() => {
-      console.log(`NegotiationCard ${negotiationId}: showRateTranscriberModal is now ${showRateTranscriberModal}`);
-  }, [showRateTranscriberModal, negotiationId]);
+  // NEW: Calculate and check overdue status
+  const isOverdue = negotiation.due_date && new Date(negotiation.due_date) < new Date();
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
@@ -347,66 +342,6 @@ const NegotiationCard = React.memo(({
     fileInputRef.current.click();
   };
 
-  const openRateTranscriberModal = useCallback(() => {
-      console.log('Attempting to open rate transcriber modal.');
-      setShowRateTranscriberModal(true);
-      setRatingScore(5);
-      setRatingComment('');
-  }, []);
-
-  const closeRateTranscriberModal = useCallback(() => {
-      console.log('Attempting to close rate transcriber modal.');
-      setShowRateTranscriberModal(false);
-      setRatingModalLoading(false);
-  }, []);
-
-  const handleRatingChange = useCallback((e) => {
-      setRatingScore(parseInt(e.target.value, 10));
-  }, []);
-
-  const handleCommentChange = useCallback((e) => {
-      setRatingComment(e.target.value);
-  }, []);
-
-  const submitTranscriberRating = useCallback(async () => {
-      setRatingModalLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) {
-          showToast('Authentication token missing. Please log in again.', 'error');
-          onLogout();
-          return;
-      }
-
-      try {
-          const response = await fetch(`${BACKEND_API_URL}/api/ratings/transcriber`, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                  negotiationId: negotiationId,
-                  score: ratingScore,
-                  comment: ratingComment
-              })
-          });
-          const data = await response.json();
-
-          if (response.ok) {
-              showToast(data.message || 'Transcriber rated successfully!', 'success');
-              closeRateTranscriberModal();
-          } else {
-              showToast(data.error || 'Failed to submit rating.', 'error');
-          }
-      } catch (error) {
-          console.error('Error submitting transcriber rating:', error);
-          showToast('Network error while submitting rating.', 'error');
-      } finally {
-          setRatingModalLoading(false);
-      }
-  }, [negotiationId, ratingScore, ratingComment, showToast, onLogout, closeRateTranscriberModal]);
-
-
   return (
     <div className="negotiation-card">
       <div className="negotiation-header">
@@ -416,35 +351,9 @@ const NegotiationCard = React.memo(({
           <div className={`${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}`}>
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
-          <div className={`${isClientViewing ? 'transcriber-details' : 'client-details'}`}>
+          <div className="client-details">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}> {/* New flex container */}
               <h3>{otherPartyName}</h3>
-              {isClientViewing && negotiation.status === 'completed' && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        openRateTranscriberModal();
-                    }}
-                    style={{
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        background: '#6f42c1', // Purple color
-                        color: 'white',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.85em',
-                        fontWeight: '600',
-                        whiteSpace: 'nowrap', // Prevent text wrap
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                        transition: 'background 0.2s ease, transform 0.2s ease'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#5a349c'} // Darker purple on hover
-                    onMouseLeave={e => e.currentTarget.style.background = '#6f42c1'}
-                    title="Rate Transcriber"
-                >
-                    Rate
-                </button>
-              )}
             </div>
             {isClientViewing ? (
               <div className="transcriber-stats">
@@ -504,7 +413,16 @@ const NegotiationCard = React.memo(({
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>
-          <span className="value">{negotiation.deadline_hours} hours</span>
+          <span className="value">
+            {negotiation.deadline_hours} hours
+            {/* NEW: Display due_date and Overdue status */}
+            {negotiation.due_date && (
+                <span className="due-date-display" style={{ marginLeft: '10px' }}>
+                    (Due: {new Date(negotiation.due_date).toLocaleString()}
+                    {isOverdue && <span style={{ color: 'red', fontWeight: 'bold' }}> - OVERDUE</span>})
+                </span>
+            )}
+          </span>
         </div>
         <div className="detail-row">
           <span className="label">Requested:</span>
@@ -526,8 +444,9 @@ const NegotiationCard = React.memo(({
       )}
 
       {/* --- CHAT INTEGRATION FOR THIS CARD --- */}
+      {negotiation.status !== 'completed' && (
       <div className="chat-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-        <h4>Chat with {otherPartyName}</h4>
+        <h4 style={{ marginBottom: '10px' }}>Chat with {otherPartyName}</h4>
         <div ref={chatWindowRef} className="chat-window-content" style={{
             height: '200px',
             overflowY: 'auto',
@@ -639,6 +558,7 @@ const NegotiationCard = React.memo(({
             </button>
         </div>
       </div>
+      )}
 
       {/* Action Buttons (Conditional rendering based on user type and status) */}
       <div className="negotiation-actions">
@@ -660,9 +580,9 @@ const NegotiationCard = React.memo(({
             {negotiation.status === 'transcriber_counter' && (
               <div className="countered-actions">
                   <span className="info-text">📝 Transcriber sent a counter-offer!</span>
-                  {openAcceptCounterModal && <button onClick={() => openAcceptCounterModal(negotiation.id)} className="action-btn accept-counter-btn">Accept Counter</button>}
-                  {openCounterBackModal && <button onClick={() => openCounterBackModal(negotiation.id)} className="action-btn counter-back-btn">Counter Back</button>}
-                  {openRejectCounterModal && <button onClick={() => openRejectCounterModal(negotiation.id)} className="action-btn reject-counter-btn">Reject Counter</button>}
+                  {openAcceptCounterModal && <button onClick={(e) => { e.stopPropagation(); openAcceptCounterModal(negotiation.id); }} className="action-btn accept-counter-btn">Accept Counter</button>}
+                  {openCounterBackModal && <button onClick={(e) => { e.stopPropagation(); openCounterBackModal(negotiation.id); }} className="action-btn counter-back-btn">Counter Back</button>}
+                  {openRejectCounterModal && <button onClick={(e) => { e.stopPropagation(); openRejectCounterModal(negotiation.id); }} className="action-btn reject-counter-btn">Reject Counter</button>}
               </div>
             )}
 
@@ -670,7 +590,7 @@ const NegotiationCard = React.memo(({
               <div className="agreed-actions">
                 <span className="success-text">✅ Accepted! Proceed to Payment.</span>
                 {onPayment && <button
-                  onClick={() => onPayment(negotiation)}
+                  onClick={(e) => { e.stopPropagation(); onPayment(negotiation); }}
                   className="payment-btn"
                 >
                   Proceed to Payment
@@ -682,6 +602,7 @@ const NegotiationCard = React.memo(({
               <div className="hired-actions">
                 <span className="info-text">🎉 Job Active! Transcriber hired.</span>
                 {/* REMOVED BUTTON: Upload Audio Files removed for client view, as requested by the user. */}
+                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation.id); }} className="action-btn complete-job-btn">Mark as Complete</button>}
               </div>
             )}
 
@@ -706,7 +627,7 @@ const NegotiationCard = React.memo(({
             {(negotiation.status === 'rejected' || negotiation.status === 'cancelled') && (
                 <div className="closed-actions">
                     {onDelete && <button
-                        onClick={() => onDelete(negotiation.id)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(negotiation.id); }}
                         className="action-btn delete-closed-btn"
                     >
                         Delete from List
@@ -720,19 +641,19 @@ const NegotiationCard = React.memo(({
             {negotiation.status === 'pending' && (
               <div className="transcriber-pending-actions" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
                 {openAcceptModal && <button
-                  onClick={() => openAcceptModal(negotiation.id)}
+                  onClick={(e) => { e.stopPropagation(); openAcceptModal(negotiation.id); }}
                   className="action-btn accept-btn"
                 >
                   Accept
                 </button>}
                 {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
-                  onClick={() => onOpenCounterModal(negotiation.id)} // Renamed prop
+                  onClick={(e) => { e.stopPropagation(); onOpenCounterModal(negotiation.id); }} // Renamed prop
                   className="action-btn counter-btn"
                 >
                   Counter
                 </button>}
                 {openRejectModal && <button
-                  onClick={() => openRejectModal(negotiation.id)}
+                  onClick={(e) => { e.stopPropagation(); openRejectModal(negotiation.id); }}
                   className="action-btn reject-btn"
                 >
                 Reject
@@ -748,20 +669,19 @@ const NegotiationCard = React.memo(({
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
                     {/* BUTTON KEPT: This button is intended for the transcriber to submit the final transcript. */}
-                    {openCompleteJobModal && <button onClick={() => openCompleteJobModal(negotiation.id)} className="action-btn complete-job-btn">Mark as Complete</button>}
                 </div>
             )}
             {negotiation.status === 'client_counter' && (
                 <div className="transcriber-client-countered-actions">
                     <span className="info-text">📝 Client sent a counter-offer!</span>
-                    {openAcceptModal && <button onClick={() => openAcceptModal(negotiation.id)} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
+                    {openAcceptModal && <button onClick={(e) => { e.stopPropagation(); openAcceptModal(negotiation.id); }} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
                     {canCounter && onOpenCounterModal && <button 
-                      onClick={() => onOpenCounterModal(negotiation.id)} 
+                      onClick={(e) => { e.stopPropagation(); onOpenCounterModal(negotiation.id); }} 
                       className="action-btn counter-client-counter-btn"
                     >
                       Counter Back
                     </button>}
-                    {openRejectModal && <button onClick={() => openRejectModal(negotiation.id)} className="action-btn reject-client-counter-btn">Reject Client Counter</button>}
+                    {openRejectModal && <button onClick={(e) => { e.stopPropagation(); openRejectModal(negotiation.id); }} className="action-btn reject-client-counter-btn">Reject Client Counter</button>}
                 </div>
             )}
             {(negotiation.status === 'rejected' || negotiation.status === 'cancelled' || negotiation.status === 'completed') && (
@@ -773,45 +693,6 @@ const NegotiationCard = React.memo(({
         )}
       </div>
 
-      {showRateTranscriberModal && (
-          <Modal
-              show={showRateTranscriberModal}
-              title={`Rate ${otherPartyName}`}
-              onClose={closeRateTranscriberModal}
-              onSubmit={submitTranscriberRating}
-              submitText="Submit Rating"
-              loading={ratingModalLoading}
-          >
-              <p>How would you rate the transcriber's performance for this job?</p>
-              <div className="form-group">
-                  <label htmlFor="ratingScore">Score (1-5 Stars):</label>
-                  <select
-                      id="ratingScore"
-                      name="ratingScore"
-                      value={ratingScore}
-                      onChange={handleRatingChange}
-                      required
-                  >
-                      <option value="5">5 Stars - Excellent</option>
-                      <option value="4">4 Stars - Very Good</option>
-                      <option value="3">3 Stars - Good</option>
-                      <option value="2">2 Stars - Fair</option>
-                      <option value="1">1 Star - Poor</option>
-                  </select>
-              </div>
-              <div className="form-group">
-                  <label htmlFor="ratingComment">Comments (Optional):</label>
-                  <textarea
-                      id="ratingComment"
-                      name="ratingComment"
-                      value={ratingComment}
-                      onChange={handleCommentChange}
-                      placeholder="Share your feedback..."
-                      rows="3"
-                  ></textarea>
-              </div>
-          </Modal>
-      )}
     </div>
   );
 }, arePropsEqual); // Pass the custom comparison function to React.memo

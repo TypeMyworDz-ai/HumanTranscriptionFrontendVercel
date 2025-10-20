@@ -221,7 +221,7 @@ const ClientProfile = () => {
                     <div className="profile-details-card">
                         <div className="card-header-with-button">
                         <h3>Client Information</h3>
-                        {user?.id === profileId && (
+                        {(user?.id === profileId || user?.user_type === 'admin') && ( // Allow admin to edit profile
                             <button onClick={openEditProfileModal} className="edit-profile-btn">Edit Profile</button>
                         )}
                         </div>

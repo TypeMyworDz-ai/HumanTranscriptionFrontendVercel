@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
-import Modal from './Modal'; // NEW: Import Modal for rating
+import Modal from './Modal'; // Import Modal component for rating
 import './AdminManagement.css';
 
 // Define the backend URL constant for API calls within this component
@@ -18,9 +18,9 @@ const AdminUsers = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
-    // NEW: State for Client Rating Modal
-    const [showRateClientModal, setShowRateClientModal] = useState(false);
-    const [selectedClientForRating, setSelectedClientForRating] = useState(null);
+    // UPDATED: State for Generic User Rating Modal
+    const [showRateUserModal, setShowRateUserModal] = useState(false);
+    const [selectedUserForRating, setSelectedUserForRating] = useState(null);
     const [ratingScore, setRatingScore] = useState(5); // Default to 5 stars
     const [ratingComment, setRatingComment] = useState('');
     const [ratingModalLoading, setRatingModalLoading] = useState(false);
@@ -44,13 +44,13 @@ const AdminUsers = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Map the users to include client_rating if available
-                const formattedUsers = data.users.map(u => ({
-                    ...u,
-                    client_rating: u.clients?.[0]?.average_rating || 0 // Safely get average_rating from client profile
-                }));
-                setUsers(formattedUsers);
+                // The backend now sends 'average_rating' directly on the user object
+                setUsers(data.users); 
+                // NEW LOG: Check what data is received by the frontend
+                console.log('[AdminUsers.js] Users data received from backend:', data.users.map(u => ({ id: u.id, name: u.full_name, type: u.user_type, rating: u.average_rating })));
             } else {
+                // NEW LOG: Log error data if response is not ok
+                console.error('[AdminUsers.js] Error data received from backend:', data);
                 showToast(data.error || 'Failed to fetch users.', 'error');
             }
         } catch (error) {
@@ -81,17 +81,17 @@ const AdminUsers = () => {
         showToast(`Opening chat with ${userName}...`, 'info');
     };
 
-    // NEW: Rating Modal Handlers
-    const openRateClientModal = useCallback((clientUser) => {
-        setSelectedClientForRating(clientUser);
-        setRatingScore(clientUser.client_rating || 5); // Pre-fill with current rating or default
+    // UPDATED: Generic Rating Modal Handlers
+    const openRateUserModal = useCallback((userToRate) => {
+        setSelectedUserForRating(userToRate);
+        setRatingScore(userToRate.average_rating || 5); // Pre-fill with current rating or default
         setRatingComment(''); // Clear comment
-        setShowRateClientModal(true);
+        setShowRateUserModal(true);
     }, []);
 
-    const closeRateClientModal = useCallback(() => {
-        setShowRateClientModal(false);
-        setSelectedClientForRating(null);
+    const closeRateUserModal = useCallback(() => {
+        setShowRateUserModal(false);
+        setSelectedUserForRating(null);
         setRatingModalLoading(false);
     }, []);
 
@@ -103,9 +103,9 @@ const AdminUsers = () => {
         setRatingComment(e.target.value);
     }, []);
 
-    const submitClientRating = useCallback(async () => {
-        if (!selectedClientForRating?.id || !ratingScore) {
-            showToast('Missing client or rating score.', 'error');
+    const submitUserRating = useCallback(async () => {
+        if (!selectedUserForRating?.id || !selectedUserForRating?.user_type || !ratingScore) {
+            showToast('Missing user information or rating score.', 'error');
             return;
         }
 
@@ -118,14 +118,15 @@ const AdminUsers = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/ratings/client`, {
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/ratings`, { // UPDATED: New generic admin rating endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    clientId: selectedClientForRating.id,
+                    ratedUserId: selectedUserForRating.id, // Use generic ratedUserId
+                    ratedUserType: selectedUserForRating.user_type, // Send user type
                     score: ratingScore,
                     comment: ratingComment
                 })
@@ -133,19 +134,19 @@ const AdminUsers = () => {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(data.message || 'Client rated successfully!', 'success');
-                closeRateClientModal();
+                showToast(data.message || `${selectedUserForRating.user_type} rated successfully!`, 'success');
+                closeRateUserModal();
                 fetchUsers(searchTerm); // Refresh user list to show updated rating
             } else {
                 showToast(data.error || 'Failed to submit rating.', 'error');
             }
         } catch (error) {
-            console.error('Error submitting client rating:', error);
+            console.error('Error submitting user rating:', error);
             showToast('Network error while submitting rating.', 'error');
         } finally {
             setRatingModalLoading(false);
         }
-    }, [selectedClientForRating, ratingScore, ratingComment, showToast, logout, closeRateClientModal, fetchUsers, searchTerm]);
+    }, [selectedUserForRating, ratingScore, ratingComment, showToast, logout, closeRateUserModal, fetchUsers, searchTerm]);
 
 
     if (loading) {
@@ -174,7 +175,7 @@ const AdminUsers = () => {
 
                 <div className="admin-content-section">
                     <h2>All Clients & Transcribers</h2>
-                    <p>View, search, or initiate chats with platform users. Admins can also rate clients here.</p>
+                    <p>View, search, or initiate chats with platform users. Admins can also rate clients and transcribers here.</p> {/* UPDATED text */}
 
                     <div className="search-bar">
                         <input
@@ -216,19 +217,15 @@ const AdminUsers = () => {
                                             <td>{u.email}</td>
                                             <td><span className={`status-badge ${u.user_type}`}>{u.user_type.replace('_', ' ')}</span></td>
                                             <td>
-                                                {u.user_type === 'client' ? (
+                                                {/* UPDATED: Display Rating for both client and transcriber */}
+                                                {(u.user_type === 'client' || u.user_type === 'transcriber') && (
                                                     <div className="rating-display">
-                                                        {'★'.repeat(Math.floor(u.client_rating || 0))}
-                                                        {'☆'.repeat(5 - Math.floor(u.client_rating || 0))}
-                                                        <span className="rating-number">({(u.client_rating || 0).toFixed(1)})</span>
+                                                        {'★'.repeat(Math.floor(u.average_rating || 0))}
+                                                        {'☆'.repeat(5 - Math.floor(u.average_rating || 0))}
+                                                        <span className="rating-number">({(u.average_rating || 0).toFixed(1)})</span>
                                                     </div>
-                                                ) : u.user_type === 'transcriber' ? (
-                                                    <div className="rating-display">
-                                                        {'★'.repeat(Math.floor(u.transcribers?.[0]?.average_rating || 0))}
-                                                        {'☆'.repeat(5 - Math.floor(u.transcribers?.[0]?.average_rating || 0))}
-                                                        <span className="rating-number">({(u.transcribers?.[0]?.average_rating || 0).toFixed(1)})</span>
-                                                    </div>
-                                                ) : 'N/A'}
+                                                )}
+                                                {u.user_type === 'admin' && 'N/A'}
                                             </td> {/* NEW: Display Rating */}
                                             <td>{new Date(u.created_at).toLocaleDateString()}</td>
                                             <td>
@@ -238,13 +235,16 @@ const AdminUsers = () => {
                                                 >
                                                     Chat
                                                 </button>
-                                                {u.user_type === 'client' && ( // NEW: Rate Client button
+                                                {(u.user_type === 'client' || u.user_type === 'transcriber') && ( // NEW: Rate button for both clients and transcribers
                                                     <button
-                                                        onClick={() => openRateClientModal(u)}
+                                                        onClick={(e) => { // Added e.stopPropagation()
+                                                            e.stopPropagation();
+                                                            openRateUserModal(u);
+                                                        }} 
                                                         className="rate-btn"
                                                         style={{ marginLeft: '10px' }}
                                                     >
-                                                        Rate Client
+                                                        Rate {u.user_type === 'client' ? 'Client' : 'Transcriber'}
                                                     </button>
                                                 )}
                                                 {/* Add other actions like Edit/Delete here if needed */}
@@ -258,17 +258,17 @@ const AdminUsers = () => {
                 </div>
             </main>
 
-            {/* NEW: Rate Client Modal */}
-            {showRateClientModal && selectedClientForRating && (
+            {/* UPDATED: Generic Rate User Modal */}
+            {showRateUserModal && selectedUserForRating && (
                 <Modal
-                    show={showRateClientModal}
-                    title={`Rate ${selectedClientForRating.full_name}`}
-                    onClose={closeRateClientModal}
-                    onSubmit={submitClientRating}
+                    show={showRateUserModal}
+                    title={`Rate ${selectedUserForRating.full_name} (${selectedUserForRating.user_type})`} // Dynamic title
+                    onClose={closeRateUserModal}
+                    onSubmit={submitUserRating}
                     submitText="Submit Rating"
                     loading={ratingModalLoading}
                 >
-                    <p>How would you rate this client's reliability and cooperation?</p>
+                    <p>How would you rate this {selectedUserForRating.user_type}'s performance and reliability?</p> {/* Dynamic text */}
                     <div className="form-group">
                         <label htmlFor="ratingScore">Score (1-5 Stars):</label>
                         <select
@@ -292,7 +292,7 @@ const AdminUsers = () => {
                             name="ratingComment"
                             value={ratingComment}
                             onChange={handleCommentChange}
-                            placeholder="e.g., 'Always pays on time', 'Clear communication.'"
+                            placeholder={`e.g., 'Always pays on time', 'Clear communication.' (for client) or 'Delivered high-quality transcript.' (for transcriber)`}
                             rows="3"
                         ></textarea>
                     </div>

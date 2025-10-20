@@ -144,6 +144,7 @@ const ClientJobs = () => {
         const texts = {
             'pending': 'Waiting for Transcriber',
             'transcriber_counter': 'Transcriber Countered',
+            'client_counter': 'Client Countered',
             'accepted_awaiting_payment': 'Accepted - Awaiting Payment', // Updated status text
             'rejected': 'Rejected',
             'hired': 'Job Active - Paid',
@@ -158,6 +159,42 @@ const ClientJobs = () => {
         // Implement deletion logic if needed
         showToast('Deletion not implemented for active jobs in this view.', 'info');
     }, [showToast]);
+
+    // Function to handle marking a job as complete (client-side)
+    const handleMarkJobComplete = useCallback(async (negotiationId) => {
+        if (!window.confirm('Are you sure you want to mark this job as complete? This action will finalize the job.')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                logout();
+                return;
+            }
+            setLoading(true);
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationId}/complete`, {
+                method: 'PUT', // Or POST, depending on your API design
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showToast('Job marked as complete successfully!', 'success');
+                fetchClientJobs(); // Re-fetch jobs to update the list
+            } else {
+                showToast(data.error || 'Failed to mark job as complete', 'error');
+            }
+        } catch (error) {
+            console.error('Network error marking job as complete:', error);
+            showToast('Network error while marking job as complete. Please try again.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, [showToast, logout, fetchClientJobs]);
+
 
     // Placeholder for payment (should already be handled in ClientNegotiations)
     const handleProceedToPayment = useCallback((negotiation) => {
@@ -269,6 +306,7 @@ const ClientJobs = () => {
                                     showToast={showToast}
                                     currentUserId={user.id}
                                     currentUserType={user.user_type}
+                                    openCompleteJobModal={handleMarkJobComplete} // Pass the mark complete function
                                     // No modals needed here for active jobs typically
                                 />
                             ))

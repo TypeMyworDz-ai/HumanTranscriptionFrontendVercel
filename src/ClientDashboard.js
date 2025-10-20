@@ -305,28 +305,31 @@ const ClientDashboard = () => {
           <p className="dashboard-description">Manage your projects, track negotiations, and connect with transcribers.</p>
 
           <div className="dashboard-cards-grid">
+            {/* FIRST CARD: Browse Transcribers */}
             <Link to="/transcriber-pool" className="dashboard-card">
               <div className="card-icon">👥</div>
               <h3>Browse Transcribers</h3>
               <p>Find and negotiate with professional transcribers.</p>
             </Link>
 
-            <Link to="/client-direct-upload" className="dashboard-card">
-              <div className="card-icon">⬆️</div>
-              <h3>Direct Upload & Quote</h3>
-              <p>Get instant quotes for your audio/video uploads.</p>
-            </Link>
-
-            <Link to="/client-jobs" className="dashboard-card"> {/* Corrected class to dashboard-card */}
-              <div className="card-icon">📝</div>
-              <h3>My Active Jobs ({clientStats.activeJobs})</h3>
-              <p>Track the progress of your active transcription jobs.</p>
-            </Link>
-
-            <Link to="/client-negotiations" className="dashboard-card"> {/* Removed duplicate className */}
+            {/* SECOND CARD: Negotiation Room */}
+            <Link to="/client-negotiations" className="dashboard-card">
               <div className="card-icon">🤝</div>
               <h3>Negotiation Room ({clientStats.pendingNegotiations})</h3>
               <p>View all ongoing negotiation offers and statuses.</p>
+            </Link>
+
+            {/* THIRD CARD: Direct Upload & Quote */}
+            <Link to="/client-direct-upload" className="dashboard-card">
+              <div className="card-icon">⬆️</div>
+              <h3>Direct Upload & Quote</h3>
+              <p>Don't have time for negotiations, get instant quote.</p>
+            </Link>
+
+            <Link to="/client-jobs" className="dashboard-card">
+              <div className="card-icon">📝</div>
+              <h3>My Active Jobs ({clientStats.activeJobs})</h3>
+              <p>Track the progress of your active transcription jobs.</p>
             </Link>
 
             {/* NEW CARD: My Completed Jobs */}
