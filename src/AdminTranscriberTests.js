@@ -178,13 +178,16 @@ const AdminTranscriberTests = () => {
                 <Modal
                     show={showApproveModal}
                     title="Approve Transcriber Test"
-                    onClose={() => setShowApproveModal(false)}
-                    onSubmit={approveSubmission}
+                    onClose={() => setShowApproveModal(false)} // FIX: Simplified, Modal handles stopPropagation
+                    onSubmit={approveSubmission} // FIX: Simplified, Modal handles stopPropagation
                     submitText="Confirm Approval"
                     loading={modalLoading}
                 >
-                    <p>Are you sure you want to approve the test for <strong>{selectedSubmission.users?.full_name}</strong>?</p>
-                    <p>This will set their status to 'active_transcriber'.</p>
+                    {/* FIX: Removed redundant onClick handler, Modal handles its own event bubbling */}
+                    <div>
+                        <p>Are you sure you want to approve the test for <strong>{selectedSubmission.users?.full_name}</strong>?</p>
+                        <p>This will set their status to 'active_transcriber'.</p>
+                    </div>
                 </Modal>
             )}
 
@@ -193,22 +196,25 @@ const AdminTranscriberTests = () => {
                 <Modal
                     show={showRejectModal}
                     title="Reject Transcriber Test"
-                    onClose={() => setShowRejectModal(false)}
-                    onSubmit={rejectSubmission}
+                    onClose={() => setShowRejectModal(false)} // FIX: Simplified, Modal handles stopPropagation
+                    onSubmit={rejectSubmission} // FIX: Simplified, Modal handles stopPropagation
                     submitText="Confirm Rejection"
                     loading={modalLoading}
                 >
-                    <p>Are you sure you want to reject the test for <strong>{selectedSubmission.users?.full_name}</strong>?</p>
-                    <p>This will set their status to 'rejected'.</p>
-                    <div className="form-group">
-                        <label htmlFor="rejectionReason">Reason for Rejection (Optional):</label>
-                        <textarea
-                            id="rejectionReason"
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                            rows="3"
-                            placeholder="e.g., 'Low grammar score' or 'Poor transcription quality'"
-                        ></textarea>
+                    {/* FIX: Removed redundant onClick handler, Modal handles its own event bubbling */}
+                    <div>
+                        <p>Are you sure you want to reject the test for <strong>{selectedSubmission.users?.full_name}</strong>?</p>
+                        <p>This will set their status to 'rejected'.</p>
+                        <div className="form-group">
+                            <label htmlFor="rejectionReason">Reason for Rejection (Optional):</label>
+                            <textarea
+                                id="rejectionReason"
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                rows="3"
+                                placeholder="e.g., 'Low grammar score' or 'Poor transcription quality'"
+                            ></textarea>
+                        </div>
                     </div>
                 </Modal>
             )}

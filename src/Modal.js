@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from 'react'; 
+import React, { useEffect, useRef } from 'react';
 import './Modal.css';
 
-const Modal = ({ 
-    show, 
-    title, 
-    children, 
-    onClose, 
-    onSubmit, 
-    submitText = 'Submit', 
-    showCancel = true, 
+const Modal = ({
+    show,
+    title,
+    children,
+    onClose,
+    onSubmit,
+    submitText = 'Submit',
+    showCancel = true,
     loading = false,
     type = 'info' // New prop for modal type (info, success, error)
 }) => {
@@ -30,44 +30,38 @@ const Modal = ({
     // Effect for handling click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // Log for debugging (can be removed once fixed)
-            console.log(`Modal '${title}': Global event listener triggered. Event type: ${event.type}. Target:`, event.target);
-
             // If the modal is shown and the click is outside of its content
+            // We ensure modalContentRef.current exists before checking contains()
             if (show && modalContentRef.current && !modalContentRef.current.contains(event.target)) {
-                console.log(`Modal '${title}': Click detected OUTSIDE modal content. Closing.`);
-                onClose();
-            } else if (show) {
-                console.log(`Modal '${title}': Click detected INSIDE modal content. Not closing.`);
+                onClose(); // Close the modal if click is outside its content
             }
         };
 
         // Attach the event listener when the modal is shown
         if (show) {
-            // Change to 'click' instead of 'mouseup' to require a complete click action
-            document.addEventListener('click', handleClickOutside);
-            console.log(`Modal '${title}': Click listener attached.`);
+            // Using 'mousedown' is often preferred for click-outside as it fires before 'click'
+            document.addEventListener('mousedown', handleClickOutside);
         }
 
         // Clean up the event listener
         return () => {
-            document.removeEventListener('click', handleClickOutside);
-            console.log(`Modal '${title}': Click listener detached.`);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [show, onClose, title]); // Dependencies: show, onClose (stable ref), title for logging
+    }, [show, onClose]); // Dependencies: show, onClose
 
     if (!show) {
         return null;
     }
 
     return (
-        // The overlay applies the 'show' class based on the prop for CSS transitions
+        // The modal-overlay is the full-screen backdrop
         <div className={`modal-overlay ${show ? 'show' : ''}`}>
             {/* Attach the ref to the modal-content div */}
             <div ref={modalContentRef} className={`modal-content ${type}`}>
                 <div className="modal-header">
                     <h2>{title}</h2>
-                    <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
+                    {/* FIX: Add e.stopPropagation() to prevent clicks from bubbling up */}
+                    <button className="modal-close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close modal">
                         &times;
                     </button>
                 </div>
@@ -76,15 +70,17 @@ const Modal = ({
                 </div>
                 <div className="modal-footer">
                     {showCancel && (
-                        <button className="modal-cancel-btn" onClick={onClose} disabled={loading}>
+                        // FIX: Add e.stopPropagation() to prevent clicks from bubbling up
+                        <button className="modal-cancel-btn" onClick={(e) => { e.stopPropagation(); onClose(); }} disabled={loading}>
                             Cancel
                         </button>
                     )}
                     {onSubmit && (
-                        <button 
-                            type="button" 
-                            className="modal-submit-btn" 
-                            onClick={onSubmit} 
+                        // FIX: Add e.stopPropagation() to prevent clicks from bubbling up
+                        <button
+                            type="button"
+                            className="modal-submit-btn"
+                            onClick={(e) => { e.stopPropagation(); onSubmit(); }}
                             disabled={loading}
                         >
                             {loading ? 'Processing...' : submitText}
