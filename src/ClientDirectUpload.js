@@ -17,7 +17,8 @@ const ClientDirectUpload = () => {
     const [loading, setLoading] = useState(false); // Overall loading for job creation/payment
     const [quoteLoading, setQuoteLoading] = useState(false); // For quote calculation
     const [showQuoteModal, setShowQuoteModal] = useState(false);
-    const [quoteDetails, setQuoteDetails] = useState(null); // Will now contain quote_amount_usd, price_per_minute_usd, etc.
+    // FIX: quoteDetails will now contain quote_amount, price_per_minute_usd, etc.
+    const [quoteDetails, setQuoteDetails] = useState(null); 
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     // Form data states
@@ -164,8 +165,8 @@ const ClientDirectUpload = () => {
             showToast('Quote not calculated or file missing. Please re-calculate quote.', 'error');
             return;
         }
-        // Ensure quoteDetails has the USD amount
-        if (typeof quoteDetails.quote_amount_usd !== 'number' || quoteDetails.quote_amount_usd <= 0) {
+        // FIX: Ensure quoteDetails has the USD amount using the correct property name
+        if (typeof quoteDetails.quote_amount !== 'number' || quoteDetails.quote_amount <= 0) {
             showToast('Invalid quote amount for payment. Please re-calculate quote.', 'error');
             return;
         }
@@ -185,7 +186,8 @@ const ClientDirectUpload = () => {
         formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
         formData.append('deadlineTypeParam', deadlineTypeParam); 
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
-        formData.append('quoteAmountUsd', quoteDetails.quote_amount_usd); // Pass the calculated USD quote
+        // FIX: Pass the calculated USD quote using the correct property name
+        formData.append('quoteAmountUsd', quoteDetails.quote_amount); 
         formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); // Pass price per minute
         formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); // Pass the calculated deadline
 
@@ -220,7 +222,8 @@ const ClientDirectUpload = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: jobId, // Use the new jobId as negotiationId for payment
-                    amount: quoteDetails.quote_amount_usd, // Pass USD amount for payment
+                    // FIX: Pass USD amount for payment using the correct property name
+                    amount: quoteDetails.quote_amount, 
                     email: user.email
                 })
             });
@@ -402,7 +405,8 @@ const ClientDirectUpload = () => {
                     title="Your Instant Quote"
                     onClose={closeQuoteModal}
                     onSubmit={createAndPayForJob}
-                    submitText={`Proceed to Payment (USD ${quoteDetails.quote_amount_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                    // FIX: Use quote_amount for display in submit button text
+                    submitText={`Proceed to Payment (USD ${quoteDetails.quote_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     loading={loading} // Use overall loading for payment
                 >
                     <p>Based on your selections, here's your instant quote:</p>
@@ -425,7 +429,8 @@ const ClientDirectUpload = () => {
                         </div>
                         <div className="quote-item total-quote">
                             <span>Total Quote:</span>
-                            <strong>USD {quoteDetails.quote_amount_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                            {/* FIX: Use quote_amount for display */}
+                            <strong>USD {quoteDetails.quote_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                         </div>
                         <div className="quote-item total-quote">
                             <span>Estimated Delivery:</span>
