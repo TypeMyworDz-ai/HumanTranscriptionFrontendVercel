@@ -94,6 +94,11 @@ const arePropsEqual = (prevProps, nextProps) => {
         console.log(`NegotiationCard: Props changed - canCounter.`);
         return false;
     }
+    // NEW: Compare onDownloadFile prop
+    if (prevProps.onDownloadFile !== nextProps.onDownloadFile) {
+        console.log(`NegotiationCard: Props changed - onDownloadFile.`);
+        return false;
+    }
 
     // If all checked props are equal, prevent re-render
     return true;
@@ -117,7 +122,8 @@ const NegotiationCard = React.memo(({
   onOpenCounterModal, 
   openRejectModal,
   openCompleteJobModal,
-  canCounter 
+  canCounter,
+  onDownloadFile // NEW: Destructure onDownloadFile prop
 }) => { 
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
@@ -396,14 +402,17 @@ const NegotiationCard = React.memo(({
           <div className="detail-row">
             <span className="label">Attached File:</span>
             <span className="value">
-              <a
-                href={`${STATIC_FILES_URL}/uploads/negotiation_files/${negotiation.negotiation_files}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="file-link"
+              {/* FIX: Use onDownloadFile prop instead of direct href */}
+              <button // Changed from <a> to <button> for accessibility and to remove href="#" ESLint warning
+                onClick={(e) => {
+                  e.preventDefault(); // Prevent default button behavior if any
+                  onDownloadFile(negotiation.id, negotiation.negotiation_files);
+                }}
+                className="file-link-button" // Apply styling to make it look like a link
+                type="button" // Important for accessibility
               >
                 📄 {negotiation.negotiation_files}
-              </a>
+              </button>
             </span>
           </div>
         )}
