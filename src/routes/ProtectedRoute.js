@@ -42,10 +42,41 @@ const ProtectedRoute = () => {
         return <Outlet />; // Admin has full access to the nested routes
     }
 
+    // NEW: Handle Trainee-specific authorization
+    if (user?.user_type === 'trainee') {
+        const traineeDashboardPath = '/trainee-dashboard';
+        const trainingPaymentPath = '/training-payment';
 
-    // For non-admin, non-public users, apply existing role-specific checks
+        // Check if trainee has paid for training
+        if (user.transcriber_status !== 'paid_training_fee') {
+            // If trainee is trying to access anything other than the payment page, redirect to payment
+            if (location.pathname !== trainingPaymentPath) {
+                console.log(`ProtectedRoute: Trainee user (${user.full_name}) has not paid for training. Redirecting to ${trainingPaymentPath}.`);
+                return <Navigate to={trainingPaymentPath} replace />;
+            }
+            // If they are on the payment path, allow them to proceed.
+            return <Outlet />;
+        } else {
+            // If trainee has paid, but tries to access the payment page again, redirect to dashboard
+            if (location.pathname === trainingPaymentPath) {
+                console.log(`ProtectedRoute: Trainee user (${user.full_name}) has paid for training. Redirecting from payment page to ${traineeDashboardPath}.`);
+                return <Navigate to={traineeDashboardPath} replace />;
+            }
+            // If they are on any other trainee-specific path (e.g., /trainee-dashboard, /trainee/materials), allow.
+            // If they try to access non-trainee routes, redirect to their dashboard.
+            if (!location.pathname.startsWith('/trainee')) {
+                 console.log(`ProtectedRoute: Trainee user (${user.full_name}) trying to access non-trainee route ${location.pathname}. Redirecting to ${traineeDashboardPath}.`);
+                 return <Navigate to={traineeDashboardPath} replace />;
+            }
+            return <Outlet />; // Trainee has paid and is on a trainee-specific path, allow.
+        }
+    }
+
+
+    // For non-admin, non-trainee users (i.e., 'client' or 'transcriber' in assessment phase), apply existing role-specific checks
     const isTranscriber = user?.user_type === 'transcriber';
-    const isPendingTranscriber = user?.user_status === 'pending_assessment';
+    // FIX: Use transcriber_status from the user object
+    const isPendingTranscriber = user?.transcriber_status === 'pending_assessment'; 
 
     if (isTranscriber && isPendingTranscriber) {
         const testPath = '/transcriber-test';
@@ -55,7 +86,7 @@ const ProtectedRoute = () => {
         // other than the test or waiting page, redirect them to the test.
         // The test/waiting pages themselves will decide if they should be there.
         if (location.pathname !== testPath && location.pathname !== waitingPath) {
-            console.log(`ProtectedRoute: Pending transcriber (${user.full_name}) detected. Redirecting to /transcriber-test.`);
+            console.log(`ProtectedRoute: Pending transcriber (${user.full_name}) detected. Redirecting to ${testPath}.`);
             return <Navigate to={testPath} replace />;
         }
     }

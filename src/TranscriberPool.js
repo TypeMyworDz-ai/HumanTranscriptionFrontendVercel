@@ -398,9 +398,9 @@ const TranscriberPool = () => {
               <div className="client-info-for-transcriber">
                 <h4>Your Rating:</h4>
                 <div className="rating-display">
-                  {'★'.repeat(Math.floor(user?.client_profile?.average_rating || 0))}
-                  {'☆'.repeat(5 - Math.floor(user?.client_profile?.average_rating || 0))}
-                  <span className="rating-number">({(user?.client_profile?.average_rating || 0).toFixed(1)})</span>
+                  {'★'.repeat(Math.floor(user?.client_average_rating || 0))}
+                  {'☆'.repeat(5 - Math.floor(user?.client_average_rating || 0))}
+                  <span className="rating-number">({(user?.client_average_rating || 0).toFixed(1)})</span>
                 </div>
               </div>
               

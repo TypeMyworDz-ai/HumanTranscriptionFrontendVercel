@@ -1,5 +1,3 @@
-// src/ClientCompletedJobs.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -68,12 +66,12 @@ const ClientCompletedJobs = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast]); // Removed 'completedJobs' from dependencies
+    }, [isAuthenticated, logout, showToast]);
 
 
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientCompletedJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        showToast(`Job status updated for ID: ${data.negotiation_id}.`, 'info');
+        showToast(`Job status updated for ID: ${data.negotiationId}.`, 'info'); // FIX: Changed data.negotiation_id to data.negotiationId
         fetchClientCompletedJobs(); 
     }, [showToast, fetchClientCompletedJobs]);
 
@@ -166,6 +164,50 @@ const ClientCompletedJobs = () => {
         }
     }, [showToast, logout, fetchClientCompletedJobs]);
 
+    // NEW: Function to handle downloading negotiation files
+    const handleDownloadFile = useCallback(async (negotiationId, fileName) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+
+        try {
+            // Construct the API endpoint URL
+            const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${negotiationId}/download/${fileName}`;
+            
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                // Get the blob from the response
+                const blob = await response.blob();
+                // Create a temporary URL for the blob
+                const url = window.URL.createObjectURL(blob);
+                // Create a temporary link element
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName; // Set the download filename
+                document.body.appendChild(a);
+                a.click(); // Programmatically click the link to trigger download
+                a.remove(); // Clean up the link element
+                window.URL.revokeObjectURL(url); // Clean up the temporary URL
+                showToast(`Downloading ${fileName}...`, 'success');
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.error || `Failed to download ${fileName}.`, 'error');
+            }
+        } catch (error) {
+            console.error('Network error during file download:', error);
+            showToast('Network error during file download. Please try again.', 'error');
+        }
+    }, [showToast, logout]);
+
 
     if (loading) {
         return (
@@ -220,6 +262,7 @@ const ClientCompletedJobs = () => {
                                         showToast={showToast}
                                         currentUserId={user.id}
                                         currentUserType={user.user_type}
+                                        onDownloadFile={handleDownloadFile} // NEW: Pass the download function
                                     />
                                 );
                             })

@@ -1,432 +1,397 @@
-/* --------------------
-  Global & Background
--------------------- */
-.landing-page {
-  min-height: 100vh;
-  /* Updated, deeper, and more sophisticated gradient */
-  background: linear-gradient(135deg, #4d3a8e 0%, #2f204a 100%); 
-  color: white;
-  position: relative;
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden; /* Prevents horizontal scrolling */
+/* LandingPage.css */
+
+/* General Body and HTML styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f6f8; /* Light gray background */
+    color: #333;
+    line-height: 1.6;
 }
 
-/* --------------------
-  Top Navigation Bar (UPDATED)
--------------------- */
+.landing-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Top Navigation Bar */
 .top-bar-wrapper {
-  /* Changed to a semi-transparent, slightly lighter purple, or even white/light grey for strong contrast */
-  /* Option 1: Lighter Purple with Transparency (Good if logo is dark) */
-  background: rgba(144, 116, 222, 0.2); 
-  /* Option 2: Solid Lighter Background (Strongest contrast for dark logo/text) */
-  /* background: #f0f0f0;  */ /* Uncomment this line and comment the line above for a very light top bar */
-  
-  padding-bottom: 20px; 
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); 
-  border-bottom: none; 
-  position: relative;
-  z-index: 100;
+    width: 100%;
+    background-color: #6a1b9a; /* Deep purple */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .top-nav {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 30px; 
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end; 
-  height: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
 }
 
 .logo-section {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  transform: translateY(10px); 
-  margin-left: 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
 }
 
 .header-logo {
-  height: 45px; 
-  width: auto;
-  margin-right: 12px;
-  /* Added filter for potential dark logos on light background */
-  /* filter: invert(0%) sepia(100%) saturate(7460%) hue-rotate(30deg) brightness(90%) contrast(100%); */ /* Uncomment if logo is white and needs to be gold */
-  /* filter: invert(0%); */ /* Uncomment if logo is dark and needs to remain dark on a light bar */
+    height: 40px; /* Adjust as needed */
+    margin-right: 10px;
 }
 
 .logo-text {
-  font-size: 2rem; 
-  font-weight: 700; 
-  color: #ffc107; /* Kept the gold, but it will pop more with the new top bar */
-  line-height: 1;
-  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.6); /* Slightly stronger shadow for visibility */
-  /* If using a very light top bar, consider a darker text color: */
-  /* color: #333; */
+    font-size: 1.8em;
+    font-weight: bold;
 }
 
 .login-btn {
-  /* Updated for better integration with a potentially lighter top bar, or just better contrast */
-  background: #2f204a; /* Darker purple from the background gradient */
-  border: 1px solid #7e57c2;
-  color: white;
-  padding: 10px 25px; 
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  transform: translateY(10px);
-  margin-right: 0;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    background-color: #ffb300; /* Amber */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
 .login-btn:hover {
-  background: #3a2b5a;
-  border-color: #9575cd;
-  transform: translateY(8px) scale(1.02);
+    background-color: #ffa000; /* Darker amber on hover */
 }
 
-/* --------------------
-  Header Section
--------------------- */
+/* Main Header Section */
 .landing-header {
-  text-align: center;
-  padding: 80px 20px 60px; 
+    background: linear-gradient(135deg, #6a1b9a, #9c27b0); /* Gradient purple */
+    color: white;
+    text-align: center;
+    padding: 80px 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .landing-header h1 {
-  font-size: 3.5rem; 
-  margin-bottom: 15px;
-  font-weight: 800; 
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    font-size: 3.5em;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
 }
 
 .landing-header p {
-  font-size: 1.4rem; 
-  opacity: 0.95;
-  font-weight: 300;
+    font-size: 1.5em;
+    opacity: 0.9;
 }
 
-/* --------------------
-  Action Section
--------------------- */
+/* Action Section (Work, Hire, Train Cards) */
 .action-section {
-  padding: 40px 20px 80px;
-  text-align: center;
+    text-align: center;
+    padding: 60px 20px;
+    background-color: #ffffff;
 }
 
 .action-section h2 {
-  font-size: 2.8rem; 
-  margin-bottom: 50px;
-  font-weight: 600;
+    font-size: 2.5em;
+    color: #4a148c; /* Darker purple */
+    margin-bottom: 40px;
 }
 
 .action-cards {
-  display: flex;
-  justify-content: center;
-  gap: 50px; 
-  max-width: 900px;
-  margin: 0 auto;
+    display: flex;
+    justify-content: center; /* Center cards horizontally */
+    flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
+    gap: 30px; /* Space between cards */
+    max-width: 1200px; /* Limit width */
+    margin: 0 auto;
 }
 
 .action-card {
-  background: rgba(255, 255, 255, 0.05); 
-  backdrop-filter: blur(15px); 
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 25px; 
-  padding: 50px 30px; 
-  flex: 1;
-  max-width: 400px;
-  min-width: 250px;
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.worker-card {
-  background: linear-gradient(145deg, rgba(255, 107, 107, 0.1), rgba(255, 107, 107, 0.05));
-}
-
-.client-card {
-  background: linear-gradient(145deg, rgba(78, 205, 196, 0.1), rgba(78, 205, 196, 0.05));
+    background-color: #f8f9fa; /* Light background for cards */
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 300px; /* Fixed width for each card */
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Push button to bottom */
 }
 
 .action-card:hover {
-  transform: translateY(-15px); 
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.1);
+    transform: translateY(-10px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .action-card h3 {
-  font-size: 2.5rem; 
-  margin-bottom: 10px;
-  font-weight: 800;
+    font-size: 1.8em;
+    color: #6a1b9a; /* Deep purple */
+    margin-bottom: 15px;
 }
 
 .action-card p {
-  font-size: 1.2rem;
-  margin-bottom: 35px;
-  opacity: 0.85;
-  font-weight: 300;
+    font-size: 1.1em;
+    color: #555;
+    margin-bottom: 25px;
+    flex-grow: 1; /* Allow paragraph to take up available space */
 }
 
 .register-btn {
-  padding: 18px 35px; 
-  font-size: 1.2rem;
-  border-radius: 60px;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    display: inline-block;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    color: white;
+    text-decoration: none; /* For Link components if used */
 }
 
-.work-btn {
-  background: #ff6b6b; 
-  color: white;
+.register-btn.train-btn {
+    background-color: #ff9800; /* Orange for Train */
+}
+.register-btn.train-btn:hover {
+    background-color: #fb8c00;
+    transform: translateY(-2px);
 }
 
-.work-btn:hover {
-  background: #ee5a52;
-  box-shadow: 0 6px 15px rgba(255, 107, 107, 0.6);
-  transform: scale(1.05);
+.register-btn.work-btn {
+    background-color: #4caf50; /* Green for Work */
+}
+.register-btn.work-btn:hover {
+    background-color: #43a047;
+    transform: translateY(-2px);
 }
 
-.hire-btn {
-  background: #4ecdc4; 
-  color: white;
+.register-btn.hire-btn {
+    background-color: #2196f3; /* Blue for Hire */
+}
+.register-btn.hire-btn:hover {
+    background-color: #1976d2;
+    transform: translateY(-2px);
 }
 
-.hire-btn:hover {
-  background: #45b7aa;
-  box-shadow: 0 6px 15px rgba(78, 205, 196, 0.6);
-  transform: scale(1.05);
-}
-
-/* --------------------
-  Company Info Section
--------------------- */
+/* Company Info Section */
 .company-info {
-  padding: 100px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #f0f2f5;
+    padding: 60px 20px;
+    text-align: center;
 }
 
 .info-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between; 
-  align-items: flex-start; 
-  flex-wrap: wrap;
-  gap: 80px; 
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
 }
 
 .info-text {
-  flex: 1 1 550px; 
-  min-width: 300px;
-  max-width: 650px;
-  text-align: left;
-  display: flex;
-  flex-direction: column; 
-}
-
-.info-text .section-title {
-  width: 100%;
-  font-size: 3rem; 
-  margin-bottom: 30px;
-  font-weight: 700;
-  color: #ffc107; 
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  text-align: left; 
-}
-
-.info-text .intro-paragraph {
-  font-size: 1.2rem;
-  line-height: 1.7;
-  margin-bottom: 35px;
-  opacity: 0.95;
-  font-weight: 300;
-  border-left: 4px solid #4ecdc4; 
-  padding-left: 20px;
-  text-align: left; 
-}
-
-.benefits-and-intro {
-    display: flex;
-    flex-direction: column;
-}
-
-.benefits-list {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px 30px; 
-  margin-top: 20px; 
-}
-
-@media (min-width: 769px) {
-    .benefits-list {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.benefits-list li {
-  font-size: 1.1rem;
-  padding: 0;
-  display: flex;
-  align-items: flex-start;
-  border: none;
-}
-
-.info-text li .checkmark {
-  margin-right: 15px; 
-  flex-shrink: 0;
-  font-size: 1.2em; 
-  color: #4ecdc4;
-  transform: translateY(2px); 
-}
-
-.benefit-details {
-    display: flex;
-    flex-direction: column;
+    flex: 1 1 500px; /* Allows text to grow but not shrink below 500px */
     text-align: left;
 }
 
-.benefit-details strong {
-    font-weight: 600;
-    line-height: 1.4;
-    font-size: 1.15em;
+.info-text .section-title {
+    font-size: 2.2em;
+    color: #4a148c;
+    margin-bottom: 25px;
 }
 
-.benefit-details span {
-    font-size: 0.9em;
-    opacity: 0.8;
+.benefits-and-intro .intro-paragraph {
+    font-size: 1.1em;
+    color: #666;
+    margin-bottom: 30px;
+    line-height: 1.8;
+}
+
+.benefits-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.benefits-list li {
+    display: flex;
+    align-items: flex-start; /* Align checkmark to the top of text */
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: #444;
+}
+
+.benefits-list li .checkmark {
+    font-size: 1.2em;
+    margin-right: 15px;
+    color: #4caf50; /* Green checkmark */
+    flex-shrink: 0; /* Prevent checkmark from shrinking */
+}
+
+.benefits-list li .benefit-details {
+    text-align: left;
+}
+
+.benefits-list li .benefit-details strong {
+    display: block; /* Make strong text a block for better spacing */
+    font-size: 1.15em;
+    color: #333;
+    margin-bottom: 3px;
+}
+
+.benefits-list li .benefit-details span {
+    font-size: 0.95em;
+    color: #777;
 }
 
 
 .info-visual {
-  flex-shrink: 0;
-  min-width: 250px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  align-self: flex-start; 
+    flex: 1 1 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .visual-placeholder {
-  text-align: center;
-  padding: 50px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%; 
-  backdrop-filter: blur(15px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  width: 250px;
-  height: 250px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.5s ease;
+    background-color: #e0e0e0;
+    border-radius: 12px;
+    width: 250px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    color: #777;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
 }
-
-.visual-placeholder:hover {
-  transform: scale(1.05) rotate(-3deg);
+.visual-placeholder h3 {
+    font-size: 4em; /* Larger emoji */
+    margin-bottom: 10px;
 }
-
-.visual-icon {
-  width: 60px;
-  height: 60px;
-  margin-bottom: 15px;
-  color: #ffc107; 
-}
-
 .visual-placeholder p {
-  font-size: 1.3rem;
-  font-weight: 600;
-  opacity: 1;
+    font-size: 1.2em;
+    font-weight: bold;
 }
 
-/* --------------------
-  Footer Links
--------------------- */
+
+/* Footer Links */
 .footer-links {
-  background: rgba(0, 0, 0, 0.5); 
-  padding: 30px 20px;
+    background-color: #333;
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+    font-size: 0.9em;
 }
 
 .links-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  flex-wrap: wrap;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
 }
 
-.links-container a {
-  color: white;
-  text-decoration: none;
-  font-size: 1rem;
-  opacity: 0.7;
-  transition: opacity 0.3s ease, color 0.3s ease;
-  padding: 5px 10px;
+.footer-links a {
+    color: #a0a0a0;
+    text-decoration: none;
+    transition: color 0.3s ease;
 }
 
-.links-container a:hover {
-  opacity: 1;
-  color: #ffc107; 
-  text-decoration: none;
+.footer-links a:hover {
+    color: white;
+    text-decoration: underline;
 }
 
-/* --------------------
-  Media Queries (Responsiveness)
--------------------- */
-@media (max-width: 992px) {
-  .info-content {
-    gap: 50px;
-  }
+/* Responsive Adjustments */
+@media (max-width: 900px) {
+    .landing-header h1 {
+        font-size: 2.8em;
+    }
 
-  .info-text .section-title {
-    font-size: 2.5rem;
-  }
+    .landing-header p {
+        font-size: 1.2em;
+    }
+
+    .action-cards {
+        flex-direction: column; /* Stack cards vertically */
+        align-items: center;
+    }
+
+    .action-card {
+        width: 80%; /* Make cards wider on smaller screens */
+        max-width: 400px; /* Limit max width */
+    }
+
+    .info-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .info-text, .info-visual {
+        flex: 1 1 100%; /* Full width for these sections */
+        text-align: center;
+    }
+
+    .info-text .section-title {
+        text-align: center;
+    }
+
+    .benefits-and-intro .intro-paragraph {
+        text-align: center;
+    }
+
+    .benefits-list {
+        align-items: center; /* Center list items */
+    }
+    .benefits-list li {
+        justify-content: center; /* Center content within list item */
+        align-items: center;
+        text-align: center;
+    }
+    .benefits-list li .checkmark {
+        margin-right: 10px;
+    }
+    .benefits-list li .benefit-details strong,
+    .benefits-list li .benefit-details span {
+        display: inline; /* Revert to inline for smaller screens if preferred */
+    }
 }
 
+@media (max-width: 600px) {
+    .landing-header h1 {
+        font-size: 2em;
+    }
 
-@media (max-width: 768px) {
-  /* Mobile adjustments */
-  .info-content {
-    flex-direction: column;
-    gap: 50px;
-  }
-  
-  .info-text {
-      align-items: center;
-      text-align: center;
-  }
-  
-  .info-text .section-title {
-    text-align: center; 
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-  }
-  
-  .info-text .intro-paragraph {
-    padding-left: 0;
-    border-left: none;
-    border-top: 3px solid #4ecdc4;
-    padding-top: 20px;
-    text-align: center;
-  }
+    .landing-header p {
+        font-size: 1em;
+    }
 
-  .benefits-list {
-    grid-template-columns: 1fr;
-    gap: 20px 0;
-  }
-  
-  .benefits-list li {
-      justify-content: center;
-  }
-  
-  .info-visual {
-    align-self: center; 
-  }
+    .action-section h2 {
+        font-size: 2em;
+    }
+
+    .action-card {
+        padding: 20px;
+    }
+
+    .action-card h3 {
+        font-size: 1.5em;
+    }
+
+    .action-card p {
+        font-size: 1em;
+    }
+
+    .register-btn {
+        padding: 10px 20px;
+        font-size: 0.95em;
+    }
 }

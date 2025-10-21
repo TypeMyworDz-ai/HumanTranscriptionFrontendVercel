@@ -187,7 +187,7 @@ const ClientDirectUpload = () => {
         formData.append('deadlineTypeParam', deadlineTypeParam); 
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
         // FIX: Pass the calculated USD quote using the correct property name
-        formData.append('quoteAmountUsd', quoteDetails.quote_amount); 
+        formData.append('quote_amount', quoteDetails.quote_amount); // FIX: Changed 'quoteAmountUsd' to 'quote_amount'
         formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); // Pass price per minute
         formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); // Pass the calculated deadline
 

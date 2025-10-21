@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast'; // Import Toast component
 import Modal from './Modal'; // Import Modal component for delete confirmation
 import './AdminManagement.css'; // Assuming common admin styles
+import './AdminJobs.css'; // You'll need to create this CSS file for specific job table styling
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -176,14 +177,14 @@ const AdminJobs = () => {
                     {Array.isArray(jobs) && jobs.length === 0 ? ( // Corrected check for empty array
                         <p className="no-data-message">No jobs found.</p>
                     ) : (
-                        <div className="jobs-list-table">
-                            <table>
+                        <div className="jobs-list-table-wrapper"> {/* Added wrapper for table styling */}
+                            <table className="jobs-list-table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
                                         <th>Client</th>
                                         <th>Transcriber</th>
-                                        <th>Price</th>
+                                        <th>Price (USD)</th> {/* Changed to USD */}
                                         <th>Deadline</th>
                                         <th>Status</th>
                                         <th>Requested On</th>
@@ -196,7 +197,7 @@ const AdminJobs = () => {
                                             <td>{job.id.substring(0, 8)}...</td>
                                             <td>{job.client?.full_name || 'N/A'}</td> {/* Access client.full_name */}
                                             <td>{job.transcriber?.full_name || 'N/A'}</td> {/* Access transcriber.full_name */}
-                                            <td>KES {job.agreed_price_kes?.toLocaleString() || '0.00'}</td>
+                                            <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</td> {/* Updated to USD and formatted */}
                                             <td>{job.deadline_hours} hrs</td>
                                             {/* UPDATED: Use formatStatusDisplay helper */}
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusDisplay(job.status)}</span></td>

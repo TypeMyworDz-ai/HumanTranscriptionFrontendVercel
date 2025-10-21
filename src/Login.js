@@ -53,38 +53,24 @@ const Login = () => {
 
   const handleTranscriberRedirect = useCallback(async (token, userToRedirect) => {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/status`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const statusData = await response.json();
-      console.log('Transcriber Status Data:', statusData);
-
-      if (response.ok) {
-        const { user_status, user_level, has_submitted_test, test_submission } = statusData;
-        console.log('Detected user_status:', user_status);
-        console.log('Detected user_level:', user_level);
-        console.log('Has submitted test: ', has_submitted_test);
-        console.log('Test submission object:', test_submission);
-        console.log('Test submission status:', test_submission?.status);
-
+      // The transcriber status should already be in the user object from login API response
+      // For a more robust check, you might still fetch, but for now, rely on `userToRedirect`
+      // FIX: Access snake_case properties
+      const user_status = userToRedirect.transcriber_status;
+      const user_level = userToRedirect.transcriber_user_level;
+      
+      console.log('Detected transcriberStatus:', user_status);
+      console.log('Detected transcriberUserLevel:', user_level);
+      
+      // Check for submitted test status (if relevant for non-trainee transcribers)
+      // This part might need adjustment if test_submissions are not directly on user object or separate API call needed
+      // For simplicity, we'll assume the status from userToRedirect is sufficient for initial redirection.
+      
         if (user_status === 'pending_assessment') {
-            if (!has_submitted_test || test_submission === null) {
-                console.log('Redirecting to /transcriber-test (Test not submitted)');
-                navigate('/transcriber-test');
-            } else if (test_submission?.status === 'pending') {
-                console.log('Redirecting to /transcriber-waiting (Test submitted, awaiting approval)');
-                navigate('/transcriber-waiting');
-            } else if (test_submission?.status === 'rejected') {
-                console.log('Redirecting to / (Test rejected)');
-                showToast('Your transcriber test was rejected. Please contact support.', 'error');
-                setTimeout(() => navigate('/'), 3000);
-            } else {
-                console.log('Unexpected pending_assessment state, redirecting to home.');
-                navigate('/');
-            }
+            // This part might need a backend call to check if test is submitted or rejected
+            // For now, if 'pending_assessment', assume they need to take/wait for test
+            console.log('Redirecting to /transcriber-test (Pending assessment)');
+            navigate('/transcriber-test');
         } else if (user_status === 'active_transcriber' || user_level === 'proofreader') {
             console.log('Redirecting to /transcriber-dashboard (Active/Proofreader)');
             navigate('/transcriber-dashboard');
@@ -97,17 +83,31 @@ const Login = () => {
             navigate('/');
         }
 
-      } else {
-        console.error('Failed to check transcriber status:', statusData.error);
-        showToast(statusData.error || 'Failed to check transcriber status. Redirecting to home.', 'error');
-        navigate('/');
-      }
     } catch (error) {
       console.error('Status check error:', error);
-      showToast('Network error during status check. Redirecting to home.', 'error');
+      showToast('Error during status check. Redirecting to home.', 'error');
       navigate('/');
     }
   }, [navigate, showToast]);
+
+  // NEW: Handle Trainee-specific redirection
+  const handleTraineeRedirect = useCallback(async (userToRedirect) => {
+      // FIX: Access snake_case properties
+      console.log('Detected trainee status:', userToRedirect.transcriber_status);
+      console.log('Detected trainee user level:', userToRedirect.transcriber_user_level);
+
+      if (userToRedirect.transcriber_status === 'pending_training_payment') {
+          console.log('Redirecting to /training-payment (Trainee needs to pay)');
+          navigate('/training-payment');
+      } else if (userToRedirect.transcriber_status === 'paid_training_fee') {
+          console.log('Redirecting to /trainee-dashboard (Trainee has paid)');
+          navigate('/trainee-dashboard');
+      } else {
+          console.warn('Login.js: Unknown trainee status. Redirecting to /.');
+          navigate('/');
+      }
+  }, [navigate]);
+
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -141,6 +141,8 @@ const Login = () => {
           } else if (data.user.user_type === 'admin') {
             console.log('Login.js: Redirecting admin to /admin-dashboard.');
             navigate('/admin-dashboard');
+          } else if (data.user.user_type === 'trainee') { // NEW: Handle trainee user type
+            await handleTraineeRedirect(data.user);
           } else {
             console.warn('Login.js: Unknown user type from API response. Redirecting to /.');
             navigate('/');
@@ -156,7 +158,7 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, hideToast, login, navigate, showToast, handleTranscriberRedirect]);
+  }, [formData, hideToast, login, navigate, showToast, handleTranscriberRedirect, handleTraineeRedirect]); // Added handleTraineeRedirect to dependencies
 
   // NEW: Handle Forgot Password Request
   const handleForgotPasswordRequest = useCallback(async (e) => {
@@ -192,7 +194,7 @@ const Login = () => {
   return (
     <div className="register-container">
       <Link to="/" className="back-link">← Back to Home</Link>
-      <h2>Login to TypeMyworDz</h2>
+      <h2>TypeMyworDz</h2>
       <p>Access your account</p>
 
       <form onSubmit={handleSubmit} className="register-form">
@@ -239,6 +241,9 @@ const Login = () => {
         <Link to="/client-register" style={{ marginRight: '10px' }}>Register as Client</Link>
         <span>|</span>
         <Link to="/worker-register" style={{ marginLeft: '10px' }} >Register as Worker</Link>
+        {/* NEW: Link for Trainee Registration */}
+        <span style={{ margin: '0 10px' }}>|</span>
+        <Link to="/trainee-register">Register as Trainee</Link>
       </div>
 
       <Toast

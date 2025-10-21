@@ -13,6 +13,11 @@ const LandingPage = () => {
     navigate('/client-register');
   };
 
+  // NEW: Handler for Trainee Registration
+  const handleTraineeRegister = () => {
+    navigate('/trainee-register');
+  };
+
   const handleLogin = () => {
     navigate('/login');
   };
@@ -42,11 +47,20 @@ const LandingPage = () => {
         <p>Your Marketplace for Quality Transcription Services in Kenya</p>
       </header>
 
-      {/* Main Action Section */}
+      {/* Main Action Section - UPDATED for three registration options */}
       <section className="action-section">
         <h2>I want to:</h2>
         
         <div className="action-cards">
+          {/* NEW: Trainee Registration Card */}
+          <div className="action-card trainee-card">
+            <h3>Train</h3>
+            <p>Become a TypeMyworDz-certified transcriber</p>
+            <button onClick={handleTraineeRegister} className="register-btn train-btn">
+              Register here
+            </button>
+          </div>
+
           <div className="action-card worker-card">
             <h3>Work</h3>
             <p>Join our team of professional transcribers</p>
@@ -118,7 +132,6 @@ const LandingPage = () => {
             <div className="visual-placeholder">
               {/* Replaced SVG with emoji for simplicity */}
               <h3>🤝</h3> 
-              <p>Connect & Transcribe</p>
             </div>
           </div>
         </div>

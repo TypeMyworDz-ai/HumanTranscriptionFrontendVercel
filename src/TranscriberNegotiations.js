@@ -140,22 +140,24 @@ const TranscriberNegotiations = () => {
             return;
         }
 
-        const userStatus = user.status || '';
-        const userLevel = user.user_level || '';
+        // FIX: Access transcriber_status and transcriber_user_level from the user object
+        const transcriberStatus = user.transcriber_status || '';
+        const transcriberUserLevel = user.transcriber_user_level || '';
         const isTranscriber = user.user_type === 'transcriber';
 
-        const hasActiveTranscriberStatus = isTranscriber && (userStatus === 'active_transcriber' || userLevel === 'proofreader');
+        // Check if the user is an active transcriber (or proofreader)
+        const hasActiveTranscriberStatus = isTranscriber && (transcriberStatus === 'active_transcriber' || transcriberUserLevel === 'proofreader');
 
         if (!isTranscriber || !hasActiveTranscriberStatus) {
-            console.warn(`TranscriberNegotiations: Unauthorized access attempt by user_type: ${user.user_type}, status: ${userStatus}, level: ${userLevel}. Redirecting.`);
-            navigate('/');
+            console.warn(`TranscriberNegotiations: Unauthorized access attempt by user_type: ${user.user_type}, status: ${transcriberStatus}, level: ${transcriberUserLevel}. Redirecting.`);
+            logout(); // Log out the user if unauthorized
             return;
         }
 
         // Fetch negotiations and transcriber's detailed status
         fetchNegotiations();
         fetchTranscriberDetailedStatus(); // Fetch detailed status when component mounts or user changes
-    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, fetchTranscriberDetailedStatus]);
+    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, fetchTranscriberDetailedStatus, logout]); // Added logout to dependencies
 
     // CRITICAL: handleNegotiationUpdate defined correctly here, outside useEffect
     const handleNegotiationUpdate = useCallback((data) => {

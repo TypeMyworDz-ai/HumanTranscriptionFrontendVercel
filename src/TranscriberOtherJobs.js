@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal'; // Assuming you have a Modal component
 import { useAuth } from './contexts/AuthContext';
-import { getSocketInstance, disconnectSocket } from './ChatService'; // For real-time updates
+import { getSocketInstance } from './ChatService'; // Removed disconnectSocket
 import './TranscriberOtherJobs.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -246,8 +246,8 @@ const TranscriberOtherJobs = () => {
                                             <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{marginLeft: '5px'}}>{file}</a>
                                         ))}</p>
                                     )}
-                                    <p><strong>Quote:</strong> KES {job.quote_amount.toLocaleString()}</p>
-                                    <p><strong>Your 80% Pay:</strong> KES {(job.quote_amount * 0.8).toLocaleString()}</p>
+                                    <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p> {/* FIX: Changed KES to USD */}
+                                    <p><strong>Your 80% Pay:</strong> USD {(job.quote_amount * 0.8).toLocaleString()}</p> {/* FIX: Changed KES to USD */}
                                     <p><strong>Deadline:</strong> {job.agreed_deadline_hours} hours</p>
                                     <p><strong>Quality:</strong> {job.quality_param}</p>
                                     <p><strong>Requirements:</strong> {job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</p>

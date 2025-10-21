@@ -252,14 +252,16 @@ const TranscriberDashboard = () => {
     }
 
     const isTranscriber = user.user_type === 'transcriber';
-    const userStatus = user.status || '';
-    const userLevel = user.user_level || '';
+    // FIX: Access transcriber_status and transcriber_user_level from the user object
+    const transcriberStatus = user.transcriber_status || '';
+    const transcriberUserLevel = user.transcriber_user_level || '';
     const transcriberRating = user.average_rating || 0;
 
-    const hasActiveTranscriberStatus = isTranscriber && (userStatus === 'active_transcriber' || userLevel === 'proofreader');
+    // FIX: Update authorization check to use transcriber_status and transcriber_user_level
+    const hasActiveTranscriberStatus = isTranscriber && (transcriberStatus === 'active_transcriber' || transcriberUserLevel === 'proofreader');
 
     if (!isTranscriber || !hasActiveTranscriberStatus) {
-        console.warn(`TranscriberDashboard: Unauthorized access attempt by user_type: ${user.user_type}, status: ${userStatus}, level: ${userLevel}. Redirecting.`);
+        console.warn(`TranscriberDashboard: Unauthorized access attempt by user_type: ${user.user_type}, status: ${transcriberStatus}, level: ${transcriberUserLevel}. Redirecting.`);
         navigate('/');
         return;
     }
@@ -392,8 +394,8 @@ const TranscriberDashboard = () => {
             <main className="transcriber-dashboard-main">
                 <div className="transcriber-dashboard-content">
                     <div className="dashboard-overview">
-                        <h2 className="dashboard-title">Your Work Hub</h2>
-                        <p className="dashboard-description">Manage your profile, view negotiation requests, and track your transcription jobs.</p>
+                        <h2>Your Work Hub</h2>
+                        <p>Manage your profile, view negotiation requests, and track your transcription jobs.</p>
                     </div>
 
                     {/* UPDATED: Derived Status Display, centered */}

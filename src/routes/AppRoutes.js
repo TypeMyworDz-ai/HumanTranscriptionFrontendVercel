@@ -44,7 +44,7 @@ import ClientCompletedJobs from '../ClientCompletedJobs';
 import ClientProfile from '../ClientProfile';
 import TranscriberProfile from '../TranscriberProfile';
 // NEW: Import Direct Upload-related components
-import ClientDirectUpload from '../ClientDirectUpload'; // CORRECTED PATH
+import ClientDirectUpload from '../ClientDirectUpload'; 
 import TranscriberOtherJobs from '../TranscriberOtherJobs'; 
 import TranscriberJobs from '../TranscriberJobs'; 
 
@@ -52,6 +52,15 @@ import TranscriberJobs from '../TranscriberJobs';
 import AdminPaymentHistory from '../AdminPaymentHistory'; 
 import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; 
 import AdminJobDetails from '../AdminJobDetails'; 
+
+// NEW: Import Trainee-related components
+import TraineeRegister from '../TraineeRegister'; 
+import TrainingPayment from '../TrainingPayment'; 
+import TraineeDashboard from '../TraineeDashboard'; 
+import TraineeTrainingMaterials from '../TraineeTrainingMaterials'; 
+import TraineeTrainingRoom from '../TraineeTrainingRoom'; 
+// REMOVED: import TraineeTrainingRoomChat from '../TraineeTrainingRoomChat';
+
 
 const AppRoutes = () => {
     return (
@@ -61,10 +70,14 @@ const AppRoutes = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/client-register" element={<ClientRegister />} />
             <Route path="/worker-register" element={<WorkerRegister />} /> 
+            {/* NEW: Public Route for Trainee Registration */}
+            <Route path="/trainee-register" element={<TraineeRegister />} />
             {/* NEW: Public Route for Reset Password */}
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* NEW: Public Route for Paystack Payment Callback */}
             <Route path="/payment-callback" element={<PaymentCallback />} />
+            {/* NEW: Public Route for Training Payment */}
+            <Route path="/training-payment" element={<TrainingPayment />} />
 
 
             {/* Protected Routes (Authenticated Users) */}
@@ -78,8 +91,6 @@ const AppRoutes = () => {
                 <Route path="/client-payments" element={<ClientPaymentHistory />} />
                 <Route path="/client-jobs" element={<ClientJobs />} />
                 <Route path="/client-completed-jobs" element={<ClientCompletedJobs />} /> 
-                {/* REMOVED: Client Rate Transcriber Page Route */}
-                {/* <Route path="/client-rate-transcriber/:negotiationId" element={<ClientRateTranscriberPage />} /> */}
                 <Route path="/client-profile/:clientId" element={<ClientProfile />} />
                 <Route path="/client-direct-upload" element={<ClientDirectUpload />} /> 
 
@@ -112,6 +123,12 @@ const AppRoutes = () => {
                 {/* NEW: Admin Oversight Routes */}
                 <Route path="/admin/payments" element={<AdminPaymentHistory />} /> 
                 <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> 
+
+                {/* NEW: Trainee Dashboard Routes */}
+                <Route path="/trainee-dashboard" element={<TraineeDashboard />} />
+                <Route path="/trainee/materials" element={<TraineeTrainingMaterials />} />
+                <Route path="/trainee/training-room/:chatId" element={<TraineeTrainingRoom />} />
+                {/* REMOVED: <Route path="/trainee/training-room/chat/:chatId" element={<TraineeTrainingRoomChat />} /> */}
 
 
             </Route>

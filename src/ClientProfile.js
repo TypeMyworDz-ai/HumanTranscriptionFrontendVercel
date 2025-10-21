@@ -57,6 +57,7 @@ const ClientProfile = () => {
                 return;
             }
 
+            // Fetch ratings separately if needed, but client_average_rating is on the user object now
             const ratingsResponse = await fetch(`${BACKEND_API_URL}/api/ratings/client/${profileId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -65,29 +66,24 @@ const ClientProfile = () => {
             if (ratingsResponse.ok) {
                 setProfileData({
                     ...userData.user,
-                    // Use the averageRating fetched from the ratings API directly for the profile's main display
-                    client_profile: {
-                        ...userData.user.client_profile,
-                        average_rating: ratingsData.averageRating || 5.0, // Default to 5.0 if no rating
-                    }
+                    // Use client_average_rating directly from the user object
+                    client_average_rating: userData.user.client_average_rating || 5.0, // Default to 5.0 if no rating
+                    phone: userData.user.phone || '' // Access phone directly
                 });
                 setRatings(ratingsData.ratings || []);
                 
                 // Pre-fill edit states if this is the current user's profile
                 if (user?.id === profileId) {
                     setEditFullName(userData.user.full_name || '');
-                    // CORRECTED: Access phone from client_profile
-                    setEditPhone(userData.user.client_profile?.phone || '');
+                    setEditPhone(userData.user.phone || ''); // CORRECTED: Access phone directly from user object
                 }
             } else {
                 showToast(ratingsData.error || 'Failed to load client ratings.', 'error');
                 // Even if ratings fail, set basic profile data
                 setProfileData({
                     ...userData.user,
-                    client_profile: {
-                        ...userData.user.client_profile,
-                        average_rating: 5.0, // Default to 5.0 if ratings cannot be fetched
-                    }
+                    client_average_rating: userData.user.client_average_rating || 5.0, // Default to 5.0 if ratings cannot be fetched
+                    phone: userData.user.phone || '' // Access phone directly
                 });
             }
 
@@ -123,8 +119,7 @@ const ClientProfile = () => {
         if (user?.id === profileId) {
             setShowEditProfileModal(true);
             setEditFullName(profileData.full_name || '');
-            // CORRECTED: Access phone from client_profile for pre-fill
-            setEditPhone(profileData.client_profile?.phone || '');
+            setEditPhone(profileData.phone || ''); // CORRECTED: Access phone directly from profileData
         } else {
             showToast('You are not authorized to edit this profile.', 'error');
         }
@@ -162,7 +157,7 @@ const ClientProfile = () => {
                 },
                 body: JSON.stringify({
                     full_name: editFullName,
-                    phone: editPhone
+                    phone: editPhone // Send phone directly as it's a top-level field in users table
                 })
             });
             const data = await response.json();
@@ -181,7 +176,7 @@ const ClientProfile = () => {
         } finally {
             setEditModalLoading(false);
         }
-    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile]); // Removed user?.id from dependencies
+    }, [profileId, editFullName, editPhone, showToast, logout, closeEditProfileModal, fetchClientProfile]);
 
 
     if (authLoading || !isAuthenticated || !user || loading || !profileData) {
@@ -240,16 +235,16 @@ const ClientProfile = () => {
                         </div>
                         <div className="detail-row">
                             <span>Phone:</span>
-                            {/* CORRECTED: Access phone from client_profile */}
-                            <strong>{profileData.client_profile?.phone || 'Not provided'}</strong>
+                            {/* CORRECTED: Access phone directly from profileData */}
+                            <strong>{profileData.phone || 'Not provided'}</strong>
                         </div>
                         <div className="detail-row">
                             <span>Client Rating:</span>
                             <div className="rating-display">
-                                {/* Use profileData.client_profile.average_rating for display */}
-                                {'★'.repeat(Math.floor(profileData.client_profile?.average_rating || 0))}
-                                {'☆'.repeat(5 - Math.floor(profileData.client_profile?.average_rating || 0))}
-                                <span className="rating-number">({(profileData.client_profile?.average_rating || 0).toFixed(1)})</span>
+                                {/* Use profileData.client_average_rating for display */}
+                                {'★'.repeat(Math.floor(profileData.client_average_rating || 0))}
+                                {'☆'.repeat(5 - Math.floor(profileData.client_average_rating || 0))}
+                                <span className="rating-number">({(profileData.client_average_rating || 0).toFixed(1)})</span>
                             </div>
                         </div>
                     </div>

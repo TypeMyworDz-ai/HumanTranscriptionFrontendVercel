@@ -18,7 +18,7 @@ const ClientDashboard = () => {
     pendingNegotiations: 0,
     activeJobs: 0,
     completedJobs: 0,
-    clientRating: 5.0 // This will be updated from user.client_rating
+    clientRating: 5.0 // This will be updated from user.client_average_rating
   });
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [totalClientPayments, setTotalClientPayments] = useState(0); 
@@ -79,13 +79,10 @@ const ClientDashboard = () => {
         return;
     }
     try {
-      // Fetch client's main user data to get the latest rating
-      const userResponse = await fetch(`${BACKEND_API_URL}/api/auth/user/${clientId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const userDataFromApi = await userResponse.json();
-      // Ensure client_profile and client_rating exist before accessing
-      const clientRating = userDataFromApi.user?.client_profile?.client_rating || 5.0;
+      // FIX: Client's rating and completed jobs are now directly in the 'user' object
+      // Access user data from the 'user' object passed via useAuth, which is updated on login/profile update
+      const clientRating = user.client_average_rating || 5.0; // Use client_average_rating from user object
+      const clientCompletedJobs = user.client_completed_jobs || 0; // Use client_completed_jobs from user object
 
       const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
         headers: {
@@ -102,13 +99,14 @@ const ClientDashboard = () => {
             n.status === 'accepted_awaiting_payment' // NEW: Include this status for pending count
         ).length; 
         const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'hired').length; // Changed to filter only 'hired'
-        const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
+        // FIX: Remove direct calculation of completedJobs from negotiationsData
+        // const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
 
         setClientStats({
           pendingNegotiations,
           activeJobs,
-          completedJobs,
-          clientRating // Use the fetched clientRating
+          completedJobs: clientCompletedJobs, // FIX: Use clientCompletedJobs from user object
+          clientRating // Use the clientRating from user object
         });
       } else {
         console.error('Failed to fetch negotiations:', negotiationsData.error);
@@ -120,7 +118,7 @@ const ClientDashboard = () => {
     } finally {
       // setLoading(false); // This will be set by the main useEffect after all data is fetched
     }
-  }, [showToast]);
+  }, [showToast, user]); // FIX: Add user to dependency array
 
   // NEW: Fetch Client Payment History
   const fetchClientPaymentHistory = useCallback(async () => {
@@ -140,7 +138,7 @@ const ClientDashboard = () => {
     } catch (error) {
       console.error('Network error fetching client payment history:', error);
     }
-  }, [user]);
+  }, [user]); // FIX: Add user to dependency array
 
 
   // --- Main Data Management and Socket Setup useEffect ---
@@ -231,26 +229,13 @@ const ClientDashboard = () => {
     socket.on('negotiation_countered', handleNegotiationUpdate);
     socket.on('negotiation_cancelled', handleNegotiationUpdate);
     socket.on('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-    socket.on('newChatMessage', handleNewChatMessage); // This is crucial for real-time chat messages
-    socket.on('job_completed', handleJobCompleted); // Listen for job completion event
+    socket.on('newChatMessage', handleNewChatMessage);
+    socket.on('job_completed', handleJobCompleted);
     socket.on('payment_successful', handlePaymentSuccessful);
-    // Removed socket.on('connect', handleSocketConnect) as ChatService now handles room joining on connect.
-
 
     return () => {
       console.log(`ClientDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-      // Detach all listeners explicitly
-      socket.off('negotiation_accepted', handleNegotiationUpdate);
-      socket.off('negotiation_rejected', handleNegotiationUpdate);
-      socket.off('negotiation_countered', handleNegotiationUpdate);
-      socket.off('negotiation_cancelled', handleNegotiationUpdate);
-      socket.off('unreadMessageCountUpdate', handleUnreadMessageCountUpdate);
-      socket.off('newChatMessage', handleNewChatMessage);
-      socket.off('job_completed', handleJobCompleted); // Detach job completion listener
-      socket.off('payment_successful', handlePaymentSuccessful);
-      // Ensure disconnectSocket is called only when the component unmounts and the user is logging out
-      // or if we're sure this is the last component holding the socket.
-      disconnectSocket();
+      disconnectSocket(); // Ensure disconnectSocket is called only when the component unmounts
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, user, navigate, logout, showToast, fetchClientStats, fetchUnreadMessageCount, fetchClientPaymentHistory, playNotificationSound, isAuthenticated]);
@@ -360,9 +345,10 @@ const ClientDashboard = () => {
                 <div className="stat-item">
                   <h4>Client Rating</h4>
                   <p className="stat-value rating-stars">
-                    {'★'.repeat(Math.floor(clientStats.clientRating))}
-                    {'☆'.repeat(5 - Math.floor(clientStats.clientRating))}
-                    <span>({clientStats.clientRating.toFixed(1)})</span>
+                    {/* FIX: Use user.client_average_rating */}
+                    {'★'.repeat(Math.floor(user.client_average_rating || 5.0))}
+                    {'☆'.repeat(5 - Math.floor(user.client_average_rating || 5.0))}
+                    <span>({(user.client_average_rating || 5.0).toFixed(1)})</span>
                   </p>
                 </div>
                 <div className="stat-item">
@@ -375,7 +361,8 @@ const ClientDashboard = () => {
                 </div>
                 <div className="stat-item">
                   <h4>Completed Jobs</h4>
-                  <p className="stat-value">{clientStats.completedJobs}</p>
+                  {/* FIX: Use user.client_completed_jobs */}
+                  <p className="stat-value">{user.client_completed_jobs || 0}</p>
                 </div>
               </div>
             </div>

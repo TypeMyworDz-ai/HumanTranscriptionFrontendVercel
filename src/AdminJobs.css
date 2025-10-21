@@ -1,0 +1,186 @@
+/* AdminJobs.css */
+
+/* Styles for the table wrapper to provide consistent spacing and overflow handling */
+.jobs-list-table-wrapper {
+    margin-top: 20px;
+    overflow-x: auto; /* Allows horizontal scrolling on small screens */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Base table styles */
+.jobs-list-table {
+    width: 100%;
+    border-collapse: collapse; /* Ensures borders are single lines */
+    font-size: 0.95em;
+    min-width: 800px; /* Ensure table doesn't get too narrow */
+}
+
+/* Table header styles */
+.jobs-list-table thead th {
+    background-color: #f8f9fa; /* Light background for headers */
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #e0e0e0;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap; /* Prevent header text from wrapping */
+}
+
+/* Table body row and cell styles */
+.jobs-list-table tbody tr {
+    border-bottom: 1px solid #f0f0f0; /* Lighter border for rows */
+}
+
+.jobs-list-table tbody tr:last-child {
+    border-bottom: none; /* No border for the last row */
+}
+
+.jobs-list-table tbody tr:hover {
+    background-color: #f2f2f2; /* Highlight row on hover */
+}
+
+.jobs-list-table tbody td {
+    padding: 10px 15px;
+    vertical-align: middle;
+    color: #555;
+}
+
+/* Specific styling for the status badge */
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    color: white;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+/* Color codes for different job statuses */
+.status-badge.pending {
+    background-color: #ffc107; /* Amber/Yellow for pending */
+    color: #333;
+}
+
+.status-badge.transcriber_counter,
+.status-badge.client_counter {
+    background-color: #007bff; /* Blue for countered */
+}
+
+.status-badge.accepted_awaiting_payment {
+    background-color: #28a745; /* Green for accepted/awaiting payment */
+}
+
+.status-badge.hired {
+    background-color: #17a2b8; /* Teal/Cyan for hired/active */
+}
+
+.status-badge.completed {
+    background-color: #6f42c1; /* Purple for completed */
+}
+
+.status-badge.rejected,
+.status-badge.cancelled {
+    background-color: #dc3545; /* Red for rejected/cancelled */
+}
+
+/* Styles for action buttons within the table */
+.action-btn {
+    padding: 6px 10px;
+    margin-right: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease;
+    white-space: nowrap; /* Keep buttons from wrapping */
+}
+
+.action-btn.view-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.action-btn.view-btn:hover {
+    background-color: #0056b3;
+}
+
+.action-btn.delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.action-btn.delete-btn:hover {
+    background-color: #c82333;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .jobs-list-table-wrapper {
+        border-radius: 0; /* Remove border-radius on smaller screens */
+    }
+
+    .jobs-list-table {
+        min-width: unset; /* Allow table to shrink */
+    }
+
+    .jobs-list-table thead {
+        display: none; /* Hide table headers on small screens */
+    }
+
+    .jobs-list-table tbody,
+    .jobs-list-table tr,
+    .jobs-list-table td {
+        display: block; /* Make table elements block-level */
+        width: 100%; /* Full width for rows and cells */
+    }
+
+    .jobs-list-table tr {
+        margin-bottom: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .jobs-list-table td {
+        text-align: right;
+        padding-left: 50%; /* Make space for pseudo-element labels */
+        position: relative;
+        border-bottom: 1px dashed #f0f0f0; /* Dashed border for cells */
+    }
+
+    .jobs-list-table td:last-child {
+        border-bottom: none;
+    }
+
+    .jobs-list-table td::before {
+        content: attr(data-label); /* Use data-label for content */
+        position: absolute;
+        left: 15px;
+        width: calc(50% - 30px); /* Adjust width to leave space for padding */
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* Assign data-label attributes for each column */
+    .jobs-list-table tbody tr td:nth-of-type(1):before { content: "ID:"; }
+    .jobs-list-table tbody tr td:nth-of-type(2):before { content: "Client:"; }
+    .jobs-list-table tbody tr td:nth-of-type(3):before { content: "Transcriber:"; }
+    .jobs-list-table tbody tr td:nth-of-type(4):before { content: "Price:"; }
+    .jobs-list-table tbody tr td:nth-of-type(5):before { content: "Deadline:"; }
+    .jobs-list-table tbody tr td:nth-of-type(6):before { content: "Status:"; }
+    .jobs-list-table tbody tr td:nth-of-type(7):before { content: "Requested On:"; }
+    .jobs-list-table tbody tr td:nth-of-type(8):before { content: "Actions:"; }
+
+    .jobs-list-table tbody td:nth-of-type(8) {
+        text-align: center; /* Center action buttons */
+        padding-left: 15px; /* Adjust padding for action buttons */
+    }
+    .jobs-list-table tbody td:nth-of-type(8)::before {
+        content: ""; /* No label for action column on mobile */
+    }
+}

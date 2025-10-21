@@ -1,0 +1,204 @@
+/* TrainingPayment.css */
+
+.training-payment-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f0f2f5; /* Light background */
+    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.training-payment-header {
+    background-color: #6a1b9a; /* Deep purple */
+    color: white;
+    padding: 15px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+}
+
+.training-payment-header .header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.training-payment-header h1 {
+    font-size: 1.8em;
+    margin: 0;
+}
+
+.training-payment-header .user-profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.training-payment-header .welcome-text-badge {
+    background-color: #ffb300; /* Amber */
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.training-payment-header .logout-btn {
+    background-color: #dc3545; /* Red for logout */
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+}
+
+.training-payment-header .logout-btn:hover {
+    background-color: #c82333;
+}
+
+.training-payment-main {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.training-payment-content {
+    width: 100%;
+    max-width: 600px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    text-align: center;
+}
+
+.payment-card h2 {
+    color: #4a148c; /* Dark purple */
+    font-size: 2.2em;
+    margin-bottom: 20px;
+}
+
+.payment-card .intro-text {
+    font-size: 1.1em;
+    color: #555;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.payment-details {
+    margin-bottom: 30px;
+}
+
+.payment-details .fee-amount {
+    font-size: 1.5em;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.payment-details .fee-amount strong {
+    color: #6a1b9a; /* Deep purple */
+    font-size: 1.2em;
+    font-weight: 700;
+}
+
+.pay-now-btn {
+    background-color: #4caf50; /* Green */
+    color: white;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: 80%;
+    max-width: 300px;
+    font-weight: 600;
+}
+
+.pay-now-btn:hover:not(:disabled) {
+    background-color: #43a047;
+    transform: translateY(-2px);
+}
+
+.pay-now-btn:disabled {
+    background-color: #a5d6a7; /* Lighter green when disabled */
+    cursor: not-allowed;
+}
+
+.note-text {
+    font-size: 0.95em;
+    color: #777;
+    margin-top: 25px;
+    line-height: 1.5;
+}
+
+.back-to-home-btn {
+    display: inline-block;
+    margin-top: 30px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 1em;
+    transition: color 0.3s ease;
+}
+
+.back-to-home-btn:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Loading spinner styles */
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-size: 1.2em;
+    color: #6a1b9a;
+}
+
+.loading-spinner::before {
+    content: '';
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top: 4px solid #6a1b9a;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .training-payment-header .header-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .training-payment-header h1 {
+        font-size: 1.5em;
+    }
+    .training-payment-header .user-profile-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .training-payment-content {
+        padding: 30px 20px;
+    }
+    .payment-card h2 {
+        font-size: 1.8em;
+    }
+    .pay-now-btn {
+        width: 100%;
+    }
+}

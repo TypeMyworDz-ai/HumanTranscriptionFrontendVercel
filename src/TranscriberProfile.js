@@ -70,16 +70,34 @@ const TranscriberProfile = () => {
                 setProfileData({
                     ...userData.user,
                     average_rating: ratingsData.averageRating || 0, // Use the fetched average rating
+                    // FIX: Access these directly from userData.user as per new schema
+                    transcriber_status: userData.user.transcriber_status || '',
+                    transcriber_user_level: userData.user.transcriber_user_level || '',
+                    transcriber_completed_jobs: userData.user.transcriber_completed_jobs || 0,
+                    transcriber_mpesa_number: userData.user.transcriber_mpesa_number || '',
+                    transcriber_paypal_email: userData.user.transcriber_paypal_email || '',
+                    badges: userData.user.badges || '' // Assuming badges is a string field
                 });
                 setRatings(ratingsData.ratings || []);
                 // Pre-fill edit states if this is the current user's profile
                 if (user?.id === profileId) {
-                    setEditMpesaNumber(userData.user.transcribers?.[0]?.mpesa_number || '');
-                    setEditPaypalEmail(userData.user.transcribers?.[0]?.paypal_email || '');
+                    // FIX: Access these directly from userData.user as per new schema
+                    setEditMpesaNumber(userData.user.transcriber_mpesa_number || '');
+                    setEditPaypalEmail(userData.user.transcriber_paypal_email || '');
                 }
             } else {
                 showToast(ratingsData.error || 'Failed to load transcriber ratings.', 'error');
-                setProfileData(userData.user); // Still show basic profile if ratings fail
+                // Still show basic profile if ratings fail
+                setProfileData({
+                    ...userData.user,
+                    // FIX: Access these directly from userData.user as per new schema
+                    transcriber_status: userData.user.transcriber_status || '',
+                    transcriber_user_level: userData.user.transcriber_user_level || '',
+                    transcriber_completed_jobs: userData.user.transcriber_completed_jobs || 0,
+                    transcriber_mpesa_number: userData.user.transcriber_mpesa_number || '',
+                    transcriber_paypal_email: userData.user.transcriber_paypal_email || '',
+                    badges: userData.user.badges || ''
+                });
             }
 
         } catch (error) {
@@ -115,8 +133,9 @@ const TranscriberProfile = () => {
         if (user?.id === profileId || user?.user_type === 'admin') {
             setShowEditProfileModal(true);
             // Pre-fill form fields from current profileData
-            setEditMpesaNumber(profileData.transcribers?.[0]?.mpesa_number || '');
-            setEditPaypalEmail(profileData.transcribers?.[0]?.paypal_email || '');
+            // FIX: Access these directly from profileData as per new schema
+            setEditMpesaNumber(profileData.transcriber_mpesa_number || '');
+            setEditPaypalEmail(profileData.transcriber_paypal_email || '');
         } else {
             showToast('You are not authorized to edit this profile.', 'error');
         }
@@ -153,8 +172,8 @@ const TranscriberProfile = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    mpesa_number: editMpesaNumber,
-                    paypal_email: editPaypalEmail
+                    mpesa_number: editMpesaNumber, // FIX: Send as mpesa_number (backend expects this on transcriber-profile update)
+                    paypal_email: editPaypalEmail // FIX: Send as paypal_email (backend expects this on transcriber-profile update)
                 })
             });
             const data = await response.json();
@@ -183,9 +202,9 @@ const TranscriberProfile = () => {
         );
     }
 
-    // Safely access nested transcriber profile details
-    const transcriberDetails = profileData.transcribers?.[0] || {};
-
+    // Safely access nested transcriber profile details - now directly from profileData
+    // Removed transcriberDetails variable as data is now flat
+    
     return (
         <div className="transcriber-profile-container">
             <header className="transcriber-profile-header">
@@ -230,11 +249,13 @@ const TranscriberProfile = () => {
                         </div>
                         <div className="detail-row">
                             <span>Status:</span>
-                            <strong>{transcriberDetails.status || 'N/A'}</strong>
+                            {/* FIX: Access directly from profileData */}
+                            <strong>{profileData.transcriber_status || 'N/A'}</strong>
                         </div>
                         <div className="detail-row">
                             <span>User Level:</span>
-                            <strong>{transcriberDetails.user_level || 'N/A'}</strong>
+                            {/* FIX: Access directly from profileData */}
+                            <strong>{profileData.transcriber_user_level || 'N/A'}</strong>
                         </div>
                         <div className="detail-row">
                             <span>Average Rating:</span>
@@ -246,13 +267,14 @@ const TranscriberProfile = () => {
                         </div>
                         <div className="detail-row">
                             <span>Completed Jobs:</span>
-                            <strong>{transcriberDetails.completed_jobs || 0}</strong>
+                            {/* FIX: Access directly from profileData */}
+                            <strong>{profileData.transcriber_completed_jobs || 0}</strong>
                         </div>
-                        {transcriberDetails.badges && transcriberDetails.badges.length > 0 && (
+                        {profileData.badges && profileData.badges.length > 0 && ( // FIX: Access directly from profileData
                             <div className="detail-row">
                                 <span>Badges:</span>
                                 <div className="badges-list">
-                                    {transcriberDetails.badges.split(',').map(badge => (
+                                    {profileData.badges.split(',').map(badge => ( // FIX: Access directly from profileData
                                         <span key={badge} className="badge">{badge.replace('_', ' ')}</span>
                                     ))}
                                 </div>
@@ -263,11 +285,13 @@ const TranscriberProfile = () => {
                             <>
                                 <div className="detail-row">
                                     <span>Mpesa Number:</span>
-                                    <strong>{transcriberDetails.mpesa_number || 'Not provided'}</strong>
+                                    {/* FIX: Access directly from profileData */}
+                                    <strong>{profileData.transcriber_mpesa_number || 'Not provided'}</strong>
                                 </div>
                                 <div className="detail-row">
                                     <span>PayPal Email:</span>
-                                    <strong>{transcriberDetails.paypal_email || 'Not provided'}</strong>
+                                    {/* FIX: Access directly from profileData */}
+                                    <strong>{profileData.transcriber_paypal_email || 'Not provided'}</strong>
                                 </div>
                             </>
                         )}
