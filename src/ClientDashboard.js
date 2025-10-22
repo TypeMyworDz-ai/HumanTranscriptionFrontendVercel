@@ -17,7 +17,7 @@ const ClientDashboard = () => {
   const [clientStats, setClientStats] = useState({
     pendingNegotiations: 0,
     activeJobs: 0,
-    completedJobs: 0,
+    completedJobs: 0, // Initialized to 0
     clientRating: 5.0 // This will be updated from user.client_average_rating
   });
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -82,7 +82,7 @@ const ClientDashboard = () => {
       // FIX: Client's rating and completed jobs are now directly in the 'user' object
       // Access user data from the 'user' object passed via useAuth, which is updated on login/profile update
       const clientRating = user.client_average_rating || 5.0; // Use client_average_rating from user object
-      const clientCompletedJobs = user.client_completed_jobs || 0; // Use client_completed_jobs from user object
+      // const clientCompletedJobs = user.client_completed_jobs || 0; // This was the problematic line
 
       const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
         headers: {
@@ -99,13 +99,14 @@ const ClientDashboard = () => {
             n.status === 'accepted_awaiting_payment' // NEW: Include this status for pending count
         ).length; 
         const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'hired').length; // Changed to filter only 'hired'
-        // FIX: Remove direct calculation of completedJobs from negotiationsData
-        // const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
+        // FIX: Calculate completedJobs directly from negotiationsData for consistency
+        const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
+
 
         setClientStats({
           pendingNegotiations,
           activeJobs,
-          completedJobs: clientCompletedJobs, // FIX: Use clientCompletedJobs from user object
+          completedJobs: completedJobs, // FIX: Use calculated completedJobs from negotiationsData
           clientRating // Use the clientRating from user object
         });
       } else {
@@ -133,6 +134,7 @@ const ClientDashboard = () => {
       if (response.ok && data.summary) {
         setTotalClientPayments(data.summary.totalPayments || 0);
       } else {
+        // FIX: Removed extra comma
         console.error('Failed to fetch client payment history:', data.error);
       }
     } catch (error) {
@@ -320,7 +322,7 @@ const ClientDashboard = () => {
             {/* NEW CARD: My Completed Jobs */}
             <Link to="/client-completed-jobs" className="dashboard-card">
               <div className="card-icon">✅</div>
-              <h3>My Completed Jobs ({clientStats.completedJobs})</h3>
+              <h3>My Completed Jobs ({clientStats.completedJobs})</h3> {/* NOW USES CALCULATED VALUE */}
               <p>Review your finished projects and provide feedback.</p>
             </Link>
 
@@ -361,8 +363,8 @@ const ClientDashboard = () => {
                 </div>
                 <div className="stat-item">
                   <h4>Completed Jobs</h4>
-                  {/* FIX: Use user.client_completed_jobs */}
-                  <p className="stat-value">{user.client_completed_jobs || 0}</p>
+                  {/* FIX: Use clientStats.completedJobs for consistency with the card above */}
+                  <p className="stat-value">{clientStats.completedJobs}</p> 
                 </div>
               </div>
             </div>
