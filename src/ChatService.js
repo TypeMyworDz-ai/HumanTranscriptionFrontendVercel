@@ -77,7 +77,7 @@ export const connectSocket = (userId) => {
  * Sends a message (text or file attachment) to the server via HTTP POST.
  * Handles different endpoints based on message type (negotiation vs. direct chat).
  * @param {object} messageData - The message object.
- *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, senderUserType?: string, fileUrl?: string, fileName?: string, timestamp: string }
+ *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, trainingRoomId?: string, senderUserType?: string, fileUrl?: string, fileName?: string, timestamp: string }
  * @returns {Promise<object>} The response data from the server.
  * @throws {Error} If authentication token is missing or network error occurs.
  */
@@ -104,7 +104,21 @@ export const sendMessage = async (messageData) => {
       receiverId: messageData.receiverId,
       negotiationId: messageData.negotiationId,
     };
-  } else if (messageData.senderUserType === 'admin') {
+  } else if (messageData.trainingRoomId) { // NEW: Handle training room messages
+    // Both admin and trainee use the generic send-message endpoints for training room
+    // The backend will differentiate based on senderUserType and trainingRoomId
+    if (messageData.senderUserType === 'admin') {
+      endpoint = `${BACKEND_API_URL}/api/admin/chat/send-message`;
+    } else {
+      endpoint = `${BACKEND_API_URL}/api/user/chat/send-message`;
+    }
+    payload = {
+      ...payload,
+      receiverId: messageData.receiverId,
+      trainingRoomId: messageData.trainingRoomId, // NEW: Include trainingRoomId
+    };
+  }
+  else if (messageData.senderUserType === 'admin') { // Direct chat for admin
     endpoint = `${BACKEND_API_URL}/api/admin/chat/send-message`;
     payload = {
       ...payload,
