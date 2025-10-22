@@ -1,6 +1,6 @@
 // frontend/client/src/routes/ProtectedRoute.js
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,8 +9,19 @@ import { useAuth } from '../contexts/AuthContext';
  * It renders its children only if the user is authenticated AND authorized.
  */
 const ProtectedRoute = () => {
-    const { isAuthenticated, user, isAuthReady } = useAuth();
+    const { isAuthenticated, user, isAuthReady, refreshUserData } = useAuth();
     const location = useLocation();
+
+    // FIX: Check if we're on the payment callback page
+    const isPaymentCallbackPage = location.pathname.includes('payment-callback');
+
+    // FIX: Refresh user data when on payment callback page to get updated payment status
+    useEffect(() => {
+        if (isPaymentCallbackPage && isAuthenticated && user) {
+            console.log('ProtectedRoute: On payment callback page. Refreshing user data...');
+            refreshUserData();
+        }
+    }, [isPaymentCallbackPage, isAuthenticated, user, refreshUserData]);
 
     // 1. Handle initial loading state while the authentication check is running
     if (!isAuthReady) {
@@ -25,6 +36,12 @@ const ProtectedRoute = () => {
     // 2. Authentication Check: If not logged in, redirect to login page
     if (!isAuthenticated) {
         return <Navigate to="/login" replace state={{ from: location }} />;
+    }
+
+    // FIX: Allow payment callback page to proceed without further checks
+    if (isPaymentCallbackPage) {
+        console.log('ProtectedRoute: Allowing payment callback page to proceed.');
+        return <Outlet />;
     }
 
     // 3. Role-based Redirection/Authorization Checks
