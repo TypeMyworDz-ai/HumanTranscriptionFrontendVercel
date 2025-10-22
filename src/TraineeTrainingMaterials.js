@@ -62,15 +62,18 @@ const TraineeTrainingMaterials = () => {
             return;
         }
 
-        // Ensure the user is a trainee and has paid
-        if (user.user_type !== 'trainee') {
-            console.warn(`TraineeTrainingMaterials: Unauthorized access attempt by user_type: ${user.user_type}. Redirecting.`);
-            navigate('/');
-            return;
-        }
-        if (user.transcriber_status !== 'paid_training_fee') {
-            console.warn(`TraineeTrainingMaterials: Trainee (${user.full_name}) has not paid for training. Redirecting to payment page.`);
-            navigate('/training-payment');
+        // Determine if the user is authorized to view materials
+        const isAuthorized = (
+            (user.user_type === 'trainee' && user.transcriber_status === 'paid_training_fee') ||
+            user.user_type === 'transcriber' ||
+            user.user_type === 'admin'
+        );
+
+        if (!isAuthorized) {
+            console.warn(`TraineeTrainingMaterials: Unauthorized access attempt by user_type: ${user.user_type}, status: ${user.transcriber_status}. Redirecting.`);
+            // Redirect to home page if not authorized, as they might be authenticated but lack permission
+            navigate('/'); 
+            showToast('Access denied. You are not authorized to view this content.', 'error');
             return;
         }
 
@@ -80,19 +83,43 @@ const TraineeTrainingMaterials = () => {
     }, [isAuthReady, user, authLoading, navigate, fetchTrainingMaterials, showToast]);
 
 
-    if (loading || authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
+    // Determine the back-to-dashboard link dynamically
+    const getBackToDashboardLink = () => {
+        if (user?.user_type === 'trainee') {
+            return '/trainee-dashboard';
+        } else if (user?.user_type === 'transcriber') {
+            return '/transcriber-dashboard';
+        } else if (user?.user_type === 'admin') {
+            return '/admin-dashboard';
+        }
+        return '/'; // Default to home if user type is unknown or not set
+    };
+
+    if (loading || authLoading || !isAuthenticated || !user) {
         return (
             <div className="training-materials-container">
-                <div className="loading-spinner">Loading training materials...</div>
+                <div className="loading-spinner">Loading Knowledge Base...</div>
             </div>
         );
     }
+    
+    // Final check for authorization after loading, to handle initial render or quick state changes
+    const isAuthorizedForRender = (
+        (user.user_type === 'trainee' && user.transcriber_status === 'paid_training_fee') ||
+        user.user_type === 'transcriber' ||
+        user.user_type === 'admin'
+    );
+
+    if (!isAuthorizedForRender) {
+        return null; // Don't render anything if unauthorized, as a redirect has already been initiated
+    }
+
 
     return (
         <div className="training-materials-container">
             <header className="training-materials-header">
                 <div className="header-content">
-                    <h1>Training Materials</h1>
+                    <h1>Knowledge Base</h1> {/* Renamed header */}
                     <div className="user-profile-actions">
                         <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">
@@ -106,17 +133,17 @@ const TraineeTrainingMaterials = () => {
                 <div className="training-materials-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>Essential Resources for Your Training</h2>
+                            <h2>Essential Resources for Your Work</h2> {/* Updated text */}
                             <p>Access guides, articles, and tools to enhance your transcription skills.</p>
                         </div>
-                        <Link to="/trainee-dashboard" className="back-to-dashboard-btn">
+                        <Link to={getBackToDashboardLink()} className="back-to-dashboard-btn">
                             ← Back to Dashboard
                         </Link>
                     </div>
 
                     <div className="materials-grid">
                         {materials.length === 0 ? (
-                            <p className="no-materials-message">No training materials available yet. Please check back later!</p>
+                            <p className="no-materials-message">No materials available yet. Please check back later!</p>
                         ) : (
                             materials.map(material => (
                                 <a 

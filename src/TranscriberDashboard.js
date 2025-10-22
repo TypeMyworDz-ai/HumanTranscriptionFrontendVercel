@@ -455,6 +455,13 @@ const TranscriberDashboard = () => {
                             <p>Browse and take direct upload jobs from clients.</p>
                             </Link>
                         )}
+                        
+                        {/* NEW: Knowledge Base Card for Transcribers */}
+                        <Link to="/trainee/materials" className="dashboard-card"> 
+                            <div className="card-icon">📚</div>
+                            <h3>Knowledge Base</h3>
+                            <p>Access training materials and helpful resources.</p>
+                        </Link>
                     </div>
                 </div>
             </main>

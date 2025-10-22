@@ -5,7 +5,7 @@ import { useAuth } from './contexts/AuthContext';
 import './TrainingPayment.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-const TRAINING_FEE_USD = 0.40; // Define the fixed training fee
+const TRAINING_FEE_USD = 10.00; // Define the fixed training fee
 
 const TrainingPayment = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
