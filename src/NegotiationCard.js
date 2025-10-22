@@ -121,7 +121,7 @@ const NegotiationCard = React.memo(({
   openAcceptModal,
   onOpenCounterModal, 
   openRejectModal,
-  openCompleteJobModal,
+  openCompleteJobModal, // This prop now opens the modal in ClientJobs.js
   canCounter,
   onDownloadFile // NEW: Destructure onDownloadFile prop
 }) => { 
@@ -437,6 +437,32 @@ const NegotiationCard = React.memo(({
           <span className="label">Requested:</span>
           <span className="value">{new Date(negotiation.created_at).toLocaleDateString()}</span>
         </div>
+        {/* NEW: Display Completed At for completed jobs */}
+        {negotiation.status === 'completed' && negotiation.completed_at && (
+            <div className="detail-row">
+                <span className="label">Completed At:</span>
+                <span className="value">{formatDisplayTimestamp(negotiation.completed_at)}</span>
+            </div>
+        )}
+        {/* NEW: Display Client Feedback for completed jobs */}
+        {negotiation.status === 'completed' && (negotiation.client_feedback_comment || negotiation.client_feedback_rating) && (
+            <div className="detail-row client-feedback-section">
+                <span className="label">Client Feedback:</span>
+                <span className="value">
+                    {negotiation.client_feedback_rating && (
+                        <div className="rating-display" style={{ marginBottom: '5px' }}>
+                            {'★'.repeat(negotiation.client_feedback_rating)}
+                            {'☆'.repeat(5 - negotiation.client_feedback_rating)}
+                            <span className="rating-number">({negotiation.client_feedback_rating.toFixed(1)})</span>
+                        </div>
+                    )}
+                    {negotiation.client_feedback_comment && (
+                        <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>"{negotiation.client_feedback_comment}"</p>
+                    )}
+                    {!negotiation.client_feedback_comment && !negotiation.client_feedback_rating && <p>No feedback provided.</p>}
+                </span>
+            </div>
+        )}
       </div>
 
       {negotiation.transcriber_response && negotiation.status !== 'pending' && (
@@ -611,7 +637,7 @@ const NegotiationCard = React.memo(({
               <div className="hired-actions">
                 <span className="info-text">🎉 Job Active! Transcriber hired.</span>
                 {/* REMOVED BUTTON: Upload Audio Files removed for client view, as requested by the user. */}
-                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation.id); }} className="action-btn complete-job-btn">Mark as Complete</button>}
+                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation); }} className="action-btn complete-job-btn">Mark as Complete</button>} {/* UPDATED: Pass the whole negotiation object */}
               </div>
             )}
 

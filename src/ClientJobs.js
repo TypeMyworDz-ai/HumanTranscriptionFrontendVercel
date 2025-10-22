@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
 import NegotiationCard from './NegotiationCard'; // To display individual job details
+import Modal from './Modal'; // Import the Modal component
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket } from './ChatService'; // Removed disconnectSocket and getSocketInstance
 import './ClientJobs.css'; // You'll need to create this CSS file
+import './AdminManagement.css'; // Reusing some modal styles from AdminManagement.css
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -15,6 +17,14 @@ const ClientJobs = () => {
     const [activeJobs, setActiveJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+
+    // NEW: State for Mark Job Complete Modal
+    const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
+    const [jobToComplete, setJobToComplete] = useState(null);
+    const [clientFeedbackComment, setClientFeedbackComment] = useState('');
+    const [clientFeedbackRating, setClientFeedbackRating] = useState(5); // Default rating
+    const [completeJobModalLoading, setCompleteJobModalLoading] = useState(false);
+
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -63,11 +73,10 @@ const ClientJobs = () => {
     // Function to handle job status updates received via Socket.IO
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        showToast(`Job status updated for ID: ${data.negotiationId?.substring(0, 8)}.`, 'info'); // FIX: Changed data.negotiation_id to data.negotiationId
+        showToast(`Job status updated for ID: ${data.negotiationId?.substring(0, 8)}.`, 'info'); 
         fetchClientJobs(); 
     }, [showToast, fetchClientJobs]);
 
-    // FIX APPLIED: Removed 'activeJobs' from dependency array by using functional state update form.
     const handleNewChatMessageForActiveJobs = useCallback((data) => {
         console.log('ClientJobs Real-time: New chat message received!', data);
         const receivedNegotiationId = data.negotiation_id;
@@ -160,29 +169,65 @@ const ClientJobs = () => {
         showToast('Deletion not implemented for active jobs in this view.', 'info');
     }, [showToast]);
 
-    // Function to handle marking a job as complete (client-side)
-    const handleMarkJobComplete = useCallback(async (negotiationId) => {
-        if (!window.confirm('Are you sure you want to mark this job as complete? This action will finalize the job.')) {
+    // NEW: Open the modal to mark a job as complete
+    const openMarkJobCompleteModal = useCallback((job) => {
+        setJobToComplete(job);
+        setClientFeedbackComment(''); // Reset comment
+        setClientFeedbackRating(5); // Reset rating
+        setShowCompleteJobModal(true);
+    }, []);
+
+    // NEW: Close the modal
+    const closeMarkJobCompleteModal = useCallback(() => {
+        setShowCompleteJobModal(false);
+        setJobToComplete(null);
+        setClientFeedbackComment('');
+        setClientFeedbackRating(5);
+        setCompleteJobModalLoading(false);
+    }, []);
+
+    // NEW: Handle comment change
+    const handleFeedbackCommentChange = useCallback((e) => {
+        setClientFeedbackComment(e.target.value);
+    }, []);
+
+    // NEW: Handle rating change
+    const handleFeedbackRatingChange = useCallback((e) => {
+        setClientFeedbackRating(parseInt(e.target.value, 10));
+    }, []);
+
+
+    // NEW: Function to handle marking a job as complete with feedback (client-side)
+    const submitMarkJobComplete = useCallback(async () => {
+        if (!jobToComplete?.id) {
+            showToast('No job selected for completion.', 'error');
+            return;
+        }
+
+        setCompleteJobModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            logout();
             return;
         }
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                logout();
-                return;
-            }
-            setLoading(true);
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationId}/complete`, {
-                method: 'PUT', // Or POST, depending on your API design
+            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`, {
+                method: 'PUT',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify({
+                    clientFeedbackComment: clientFeedbackComment,
+                    clientFeedbackRating: clientFeedbackRating
+                })
             });
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Job marked as complete successfully!', 'success');
+                showToast('Job marked as complete successfully! Thank you for your feedback.', 'success');
+                closeMarkJobCompleteModal(); // Close the modal
                 fetchClientJobs(); // Re-fetch jobs to update the list
             } else {
                 showToast(data.error || 'Failed to mark job as complete', 'error');
@@ -191,9 +236,9 @@ const ClientJobs = () => {
             console.error('Network error marking job as complete:', error);
             showToast('Network error while marking job as complete. Please try again.', 'error');
         } finally {
-            setLoading(false);
+            setCompleteJobModalLoading(false);
         }
-    }, [showToast, logout, fetchClientJobs]);
+    }, [jobToComplete, clientFeedbackComment, clientFeedbackRating, showToast, logout, closeMarkJobCompleteModal, fetchClientJobs]);
 
 
     // Placeholder for payment (should already be handled in ClientNegotiations)
@@ -350,7 +395,7 @@ const ClientJobs = () => {
                                     showToast={showToast}
                                     currentUserId={user.id}
                                     currentUserType={user.user_type}
-                                    openCompleteJobModal={handleMarkJobComplete} // Pass the mark complete function
+                                    openCompleteJobModal={openMarkJobCompleteModal} // Pass the new modal open function
                                     onDownloadFile={handleDownloadFile} // NEW: Pass the download function
                                     // No modals needed here for active jobs typically
                                 />
@@ -359,6 +404,48 @@ const ClientJobs = () => {
                     </div>
                 </div>
             </main>
+
+            {/* NEW: Mark Job Complete with Feedback Modal */}
+            {showCompleteJobModal && jobToComplete && (
+                <Modal
+                    show={showCompleteJobModal}
+                    title={`Complete Job: ${jobToComplete.id?.substring(0, 8)}...`}
+                    onClose={closeMarkJobCompleteModal}
+                    onSubmit={submitMarkJobComplete}
+                    submitText="Mark as Complete"
+                    loading={completeJobModalLoading}
+                    submitButtonClass="complete-training-confirm-btn" // Reuse green button style
+                >
+                    <p>Provide feedback for the transcriber and mark this job as complete.</p>
+                    <div className="form-group">
+                        <label htmlFor="clientFeedbackComment">Your Feedback (Optional):</label>
+                        <textarea
+                            id="clientFeedbackComment"
+                            value={clientFeedbackComment}
+                            onChange={handleFeedbackCommentChange}
+                            placeholder="Share your thoughts on the transcriber's performance, quality of work, communication, etc."
+                            rows="4"
+                        ></textarea>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="clientFeedbackRating">Rate Transcriber (1-5 Stars):</label>
+                        <select
+                            id="clientFeedbackRating"
+                            value={clientFeedbackRating}
+                            onChange={handleFeedbackRatingChange}
+                            required
+                        >
+                            <option value="5">5 Stars - Excellent</option>
+                            <option value="4">4 Stars - Very Good</option>
+                            <option value="3">3 Stars - Good</option>
+                            <option value="2">2 Stars - Fair</option>
+                            <option value="1">1 Star - Poor</option>
+                        </select>
+                    </div>
+                    <p className="modal-note">Your rating here will be visible to the admin and will help in their overall evaluation of the transcriber.</p>
+                </Modal>
+            )}
+
 
             <Toast
                 message={toast.message}

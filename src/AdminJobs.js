@@ -50,6 +50,22 @@ const AdminJobs = () => {
         }
     }, []);
 
+    // Helper function to format timestamp robustly for display
+    const formatDisplayTimestamp = useCallback((isoTimestamp) => {
+        if (!isoTimestamp) return 'N/A';
+        try {
+            const date = new Date(isoTimestamp);
+            if (isNaN(date.getTime())) { 
+                console.warn(`Attempted to format invalid date string: ${isoTimestamp}`);
+                return 'Invalid Date';
+            }
+            return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+            return 'Invalid Date';
+        }
+    }, []);
+
     // Function to fetch all jobs (negotiations) for admin
     const fetchAllJobs = useCallback(async () => {
         setLoading(true);
@@ -188,6 +204,8 @@ const AdminJobs = () => {
                                         <th>Deadline</th>
                                         <th>Status</th>
                                         <th>Requested On</th>
+                                        <th>Completed At</th> {/* NEW: Completed At column */}
+                                        <th>Client Feedback</th> {/* NEW: Client Feedback column */}
                                         <th>Actions</th> {/* NEW: Actions column */}
                                     </tr>
                                 </thead>
@@ -202,6 +220,28 @@ const AdminJobs = () => {
                                             {/* UPDATED: Use formatStatusDisplay helper */}
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusDisplay(job.status)}</span></td>
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
+                                            {/* NEW: Display Completed At */}
+                                            <td>{job.completed_at ? formatDisplayTimestamp(job.completed_at) : 'N/A'}</td>
+                                            {/* NEW: Display Client Feedback */}
+                                            <td>
+                                                {job.status === 'completed' && (job.client_feedback_comment || job.client_feedback_rating) ? (
+                                                    <div className="admin-client-feedback">
+                                                        {job.client_feedback_rating && (
+                                                            <div className="rating-display" style={{ marginBottom: '3px', fontSize: '0.9em' }}>
+                                                                {'★'.repeat(job.client_feedback_rating)}
+                                                                {'☆'.repeat(5 - job.client_feedback_rating)}
+                                                                <span className="rating-number">({job.client_feedback_rating.toFixed(1)})</span>
+                                                            </div>
+                                                        )}
+                                                        {job.client_feedback_comment && (
+                                                            <p style={{ margin: 0, fontStyle: 'italic', fontSize: '0.85em', color: '#555' }}>
+                                                                "{job.client_feedback_comment.substring(0, 50)}{job.client_feedback_comment.length > 50 ? '...' : ''}"
+                                                            </p>
+                                                        )}
+                                                        {!job.client_feedback_comment && !job.client_feedback_rating && <span>No feedback provided.</span>}
+                                                    </div>
+                                                ) : 'N/A'}
+                                            </td>
                                             <td>
                                                 <button 
                                                     onClick={(e) => {

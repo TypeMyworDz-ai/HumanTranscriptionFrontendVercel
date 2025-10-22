@@ -117,7 +117,10 @@ const TranscriberNegotiations = () => {
                     id: n.id, 
                     status: n.status, 
                     clientRating: n.client_info?.client_rating, 
-                    dueDate: n.due_date 
+                    dueDate: n.due_date,
+                    completed_at: n.completed_at, // NEW: Log completed_at
+                    client_feedback_comment: n.client_feedback_comment, // NEW: Log client_feedback_comment
+                    client_feedback_rating: n.client_feedback_rating // NEW: Log client_feedback_rating
                 })));
                 if (data.negotiations.length === 0) {
                     showToast('No pending negotiation requests found.', 'info');
@@ -362,7 +365,7 @@ const TranscriberNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    transcriber_response: rejectReason || 'Transcriber rejected the offer.'
+                    reason: rejectReason || 'Transcriber rejected the offer.'
                 })
             });
 
@@ -410,6 +413,7 @@ const TranscriberNegotiations = () => {
                 showToast(data.error || 'Failed to mark job as complete.', 'error');
             }
         } catch (error) {
+            // FIX: Removed extra single quote
             console.error('Error completing job:', error);
             showToast('Network error while completing job.', 'error');
         } finally {
@@ -493,6 +497,51 @@ const TranscriberNegotiations = () => {
             showToast('Network error. Please try again.', 'error');
         }
     }, [showToast, fetchNegotiations, logout, fetchTranscriberDetailedStatus]);
+
+    // NEW: Function to handle downloading negotiation files
+    const handleDownloadFile = useCallback(async (negotiationId, fileName) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+
+        try {
+            // Construct the API endpoint URL
+            const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${negotiationId}/download/${fileName}`;
+            
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                // Get the blob from the response
+                const blob = await response.blob();
+                // Create a temporary URL for the blob
+                const url = window.URL.createObjectURL(blob);
+                // Create a temporary link element
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName; // Set the download filename
+                document.body.appendChild(a);
+                a.click(); // Programmatically click the link to trigger download
+                a.remove(); // Clean up the link element
+                window.URL.revokeObjectURL(url); // Clean up the temporary URL
+                showToast(`Downloading ${fileName}...`, 'success');
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.error || `Failed to download ${fileName}.`, 'error');
+            }
+        } catch (error) {
+            console.error('Network error during file download:', error);
+            showToast('Network error during file download. Please try again.', 'error');
+        }
+    }, [showToast, logout]);
+
 
     if (authLoading || !isAuthenticated || !user) {
         return <div className="loading-container">Loading authentication...</div>;
@@ -599,6 +648,7 @@ const TranscriberNegotiations = () => {
                                     onOpenCounterModal={openCounterModal}
                                     openRejectModal={openRejectModal}
                                     openCompleteJobModal={openCompleteJobModal}
+                                    onDownloadFile={handleDownloadFile} // NEW: Pass the download function
                                 />
                             ))
                         )}

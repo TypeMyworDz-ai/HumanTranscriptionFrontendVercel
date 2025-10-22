@@ -42,7 +42,7 @@ const ClientCompletedJobs = () => {
             if (response.ok) {
                 const fetchedNegotiations = data.negotiations || [];
                 const jobs = fetchedNegotiations.filter(n => n.status === 'completed');
-                console.log("ClientCompletedJobs: Filtered Completed Jobs:", jobs.map(j => ({ id: j.id, status: j.status })));
+                console.log("ClientCompletedJobs: Filtered Completed Jobs:", jobs.map(j => ({ id: j.id, status: j.status, completed_at: j.completed_at, client_feedback_comment: j.client_feedback_comment, client_feedback_rating: j.client_feedback_rating }))); // Log for debugging
                 
                 // Use functional update for setCompletedJobs with deep comparison
                 setCompletedJobs(prevJobs => {
@@ -71,7 +71,7 @@ const ClientCompletedJobs = () => {
 
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientCompletedJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        showToast(`Job status updated for ID: ${data.negotiationId}.`, 'info'); // FIX: Changed data.negotiation_id to data.negotiationId
+        showToast(`Job status updated for ID: ${data.negotiationId}.`, 'info'); 
         fetchClientCompletedJobs(); 
     }, [showToast, fetchClientCompletedJobs]);
 
