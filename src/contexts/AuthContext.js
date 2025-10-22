@@ -3,6 +3,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 
 const AuthContext = createContext(null);
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -85,6 +86,50 @@ export const AuthProvider = ({ children }) => {
     console.groupEnd();
   }, []);
 
+  // NEW: Add refreshUserData function to fetch the latest user data from the server
+  const refreshUserData = useCallback(async () => {
+    console.groupCollapsed('AuthContext: refreshUserData triggered (START)');
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('refreshUserData: No token found, cannot refresh user data');
+      console.groupEnd();
+      return;
+    }
+
+    try {
+      console.log('refreshUserData: Fetching fresh user data from server');
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const userData = await response.json();
+      console.log('refreshUserData: Received fresh user data:', userData);
+
+      // Update localStorage with fresh user data
+      localStorage.setItem('user', JSON.stringify(userData.user));
+      
+      // Update state
+      setUserRef.current(userData.user);
+      console.log('refreshUserData: Updated user state with fresh data');
+      
+      // Log the updated transcriber_status
+      console.log('refreshUserData: New transcriber_status =', userData.user.transcriber_status);
+      
+    } catch (error) {
+      console.error('refreshUserData: Error fetching user data:', error);
+    } finally {
+      console.groupEnd();
+    }
+  }, []);
+
   useEffect(() => {
     console.log('AuthContext: Primary useEffect triggered.');
     checkAuth();
@@ -143,7 +188,8 @@ export const AuthProvider = ({ children }) => {
     isAuthReady,
     login,
     logout,
-    checkAuth
+    checkAuth,
+    refreshUserData // NEW: Add refreshUserData to context value
   };
 
   return (
