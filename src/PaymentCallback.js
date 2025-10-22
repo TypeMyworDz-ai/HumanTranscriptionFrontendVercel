@@ -1,4 +1,4 @@
-// src/PaymentCallback.js
+// src/PaymentCallback.js - Updated to redirect to login after successful payment
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
@@ -11,12 +11,11 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const PaymentCallback = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { user, isAuthenticated, authLoading, logout, refreshUserData } = useAuth(); // Add refreshUserData
+    const { user, isAuthenticated, authLoading, logout } = useAuth();
 
     const [paymentStatus, setPaymentStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
     const [message, setMessage] = useState('Verifying your payment...');
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
-    const [redirectUrl, setRedirectUrl] = useState('');
 
     const showToast = useCallback((msg, type = 'success') => setToast({ isVisible: true, message: msg, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -33,7 +32,7 @@ const PaymentCallback = () => {
             return;
         }
 
-        // NEW: Extract all relevant parameters from the URL
+        // Extract all relevant parameters from the URL
         const reference = searchParams.get('reference'); // Paystack's transaction reference
         const relatedJobId = searchParams.get('relatedJobId'); // Our custom ID (negotiationId or traineeId)
         const jobType = searchParams.get('jobType'); // Our custom type (e.g., 'negotiation', 'training')
@@ -54,7 +53,7 @@ const PaymentCallback = () => {
             }
 
             try {
-                // NEW: Pass relatedJobId and jobType to the backend for verification
+                // Pass relatedJobId and jobType to the backend for verification
                 const response = await fetch(`${BACKEND_API_URL}/api/payment/verify/${reference}?relatedJobId=${relatedJobId}&jobType=${jobType}`, {
                     method: 'GET',
                     headers: {
@@ -65,31 +64,29 @@ const PaymentCallback = () => {
 
                 if (response.ok) {
                     setPaymentStatus('success');
-                    let successMessage = 'Payment successful!';
-                    let redirectTo = '/client-dashboard'; // Default redirection
-
+                    
                     if (jobType === 'training') {
-                        successMessage = 'Training payment successful! You now have access to the training dashboard.';
-                        redirectTo = '/trainee-dashboard';
-                    } else if (jobType === 'negotiation' || jobType === 'direct_upload') {
-                        successMessage = 'Payment successful! Your job is now active.';
-                        redirectTo = '/client-dashboard';
+                        const successMessage = 'Training payment successful! You will now be logged out and redirected to login again to access your training dashboard.';
+                        setMessage(successMessage);
+                        showToast(successMessage, 'success');
+                        
+                        console.log("Payment successful. Refreshing user data...");
+                        
+                        // CRITICAL FIX: Force a complete re-authentication by logging out
+                        // This ensures all user data is fresh on next login
+                        setTimeout(() => {
+                            console.log("Logging out and redirecting to login page...");
+                            logout();
+                            setTimeout(() => {
+                                navigate('/login');
+                            }, 500);
+                        }, 3000);
+                    } else {
+                        const successMessage = 'Payment successful! Your job is now active.';
+                        setMessage(successMessage);
+                        showToast(successMessage, 'success');
+                        setTimeout(() => navigate('/client-dashboard'), 3000);
                     }
-                    
-                    setMessage(successMessage);
-                    showToast(successMessage, 'success');
-                    setRedirectUrl(redirectTo);
-                    
-                    // IMPORTANT NEW: Refresh user data after successful payment
-                    console.log("Payment successful. Refreshing user data...");
-                    await refreshUserData();
-                    console.log("User data refreshed. Will redirect to", redirectTo);
-                    
-                    // Wait a bit longer to ensure user data is fully refreshed
-                    setTimeout(() => {
-                        console.log(`Redirecting to ${redirectTo} now...`);
-                        navigate(redirectTo);
-                    }, 3000);
                 } else {
                     setPaymentStatus('failed');
                     setMessage(data.error || 'Payment verification failed.');
@@ -104,10 +101,8 @@ const PaymentCallback = () => {
         };
 
         verifyPayment();
-    }, [searchParams, isAuthenticated, authLoading, navigate, logout, showToast, refreshUserData]);
+    }, [searchParams, isAuthenticated, authLoading, navigate, logout, showToast]);
 
-    // Rest of the component remains the same...
-    
     const getStatusIcon = () => {
         if (paymentStatus === 'verifying') return '⏳';
         if (paymentStatus === 'success') return '✅';
@@ -122,22 +117,13 @@ const PaymentCallback = () => {
         return '';
     };
 
-    // NEW: Determine dynamic dashboard link for "Go to Dashboard" button
-    const getDashboardLink = () => {
-        if (redirectUrl) return redirectUrl;
-        if (user?.user_type === 'trainee') return '/trainee-dashboard';
-        if (user?.user_type === 'client') return '/client-dashboard';
-        if (user?.user_type === 'admin') return '/admin-dashboard'; // Although admin wouldn't typically be here
-        return '/';
-    };
-
-    // Add manual redirect function
-    const handleManualRedirect = async () => {
-        // Refresh user data again before manual redirect
-        await refreshUserData();
-        const dashboardUrl = getDashboardLink();
-        console.log(`Manual redirect to ${dashboardUrl}`);
-        navigate(dashboardUrl);
+    // Handle manual logout and redirect
+    const handleManualLogout = () => {
+        console.log("Manual logout and redirect to login...");
+        logout();
+        setTimeout(() => {
+            navigate('/login');
+        }, 500);
     };
 
     return (
@@ -146,14 +132,12 @@ const PaymentCallback = () => {
                 <div className="header-content">
                     <h1>Payment Status</h1>
                     <div className="user-profile-actions">
-                        {/* Ensure user is authenticated and the user object exists before accessing properties */}
                         {isAuthenticated && user && (
                             <>
                                 <span className="welcome-text-badge">Welcome, {user.full_name || 'User'}!</span>
                                 <button onClick={logout} className="logout-btn">Logout</button>
                             </>
                         )}
-                        {/* Show login if not authenticated and auth loading is complete */}
                         {!isAuthenticated && !authLoading && ( 
                             <Link to="/login" className="back-to-dashboard-btn">Login</Link>
                         )}
@@ -169,13 +153,18 @@ const PaymentCallback = () => {
                     {paymentStatus === 'failed' && (
                         <p>If you believe this is an error, please contact support.</p>
                     )}
-                    {paymentStatus !== 'verifying' && (
+                    {paymentStatus === 'success' && (
                         <button 
-                            onClick={handleManualRedirect} 
+                            onClick={handleManualLogout} 
                             className="back-to-dashboard-btn"
                         >
-                            Go to Dashboard
+                            Logout and Login Again
                         </button>
+                    )}
+                    {paymentStatus === 'failed' && (
+                        <Link to="/training-payment" className="back-to-dashboard-btn">
+                            Try Again
+                        </Link>
                     )}
                 </div>
             </main>
