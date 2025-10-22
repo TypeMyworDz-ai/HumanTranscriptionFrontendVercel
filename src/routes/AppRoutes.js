@@ -59,6 +59,10 @@ import TrainingPayment from '../TrainingPayment';
 import TraineeDashboard from '../TraineeDashboard'; 
 import TraineeTrainingMaterials from '../TraineeTrainingMaterials'; 
 import TraineeTrainingRoom from '../TraineeTrainingRoom'; 
+// NEW: Import AdminTrainingMaterials for Knowledge Base management
+import AdminTrainingMaterials from '../AdminTrainingMaterials';
+// NEW: Import AdminTrainingRoom for managing trainee communications
+import AdminTrainingRoom from '../AdminTrainingRoom';
 // REMOVED: import TraineeTrainingRoomChat from '../TraineeTrainingRoomChat';
 
 
@@ -123,6 +127,13 @@ const AppRoutes = () => {
                 {/* NEW: Admin Oversight Routes */}
                 <Route path="/admin/payments" element={<AdminPaymentHistory />} /> 
                 <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> 
+                {/* NEW: Admin Route for Training Materials (Knowledge Base) */}
+                <Route path="/admin/training-materials" element={<AdminTrainingMaterials />} />
+                {/* NEW: Admin Route for Training Room Management */}
+                <Route path="/admin/training-rooms" element={<AdminTrainingRoom />} />
+                {/* NEW: Admin Route to view a specific Trainee's Training Room */}
+                <Route path="/admin/training-room/:chatId" element={<TraineeTrainingRoom />} />
+
 
                 {/* NEW: Trainee Dashboard Routes */}
                 <Route path="/trainee-dashboard" element={<TraineeDashboard />} />

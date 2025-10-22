@@ -6,7 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import Toast from './Toast';
 // FIXED: Removed direct 'io' import, use ChatService for socket management
-import { connectSocket, disconnectSocket, getSocketInstance } from './ChatService'; 
+import { connectSocket, disconnectSocket } from './ChatService'; // REMOVED: getSocketInstance
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -306,6 +306,18 @@ const AdminDashboard = () => {
                             <div className="card-icon">💬</div>
                             <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
                             <p>View and respond to direct messages from users.</p>
+                        </Link>
+
+                        <Link to="/admin/training-materials" className="admin-card"> {/* NEW: Knowledge Base Card */}
+                            <div className="card-icon">📚</div>
+                            <h3>Knowledge Base</h3>
+                            <p>Manage training materials and resources for trainees.</p>
+                        </Link>
+
+                        <Link to="/admin/training-rooms" className="admin-card"> {/* NEW: Training Room Management Card */}
+                            <div className="card-icon">🧑‍🏫</div>
+                            <h3>Manage Training Rooms</h3>
+                            <p>Oversee and participate in trainee communication channels.</p>
                         </Link>
 
                         <Link to="/admin/settings" className="admin-card">

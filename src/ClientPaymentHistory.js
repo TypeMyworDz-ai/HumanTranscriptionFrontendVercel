@@ -1,4 +1,4 @@
-// src/ClientPaymentHistory.js - UPDATED for USD currency consistency
+// src/ClientPaymentHistory.js - UPDATED for USD currency consistency and error handling
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -140,11 +140,11 @@ const ClientPaymentHistory = () => {
                                     {payments.map((payment) => (
                                         <tr key={payment.id}>
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
-                                            <td>{payment.negotiation_id.substring(0, 8)}...</td>
+                                            <td>{payment.negotiation_id ? `${payment.negotiation_id.substring(0, 8)}...` : 'N/A'}</td> {/* ADDED: Check for negotiation_id before substring */}
                                             <td>{payment.transcriber?.full_name || 'N/A'}</td>
                                             <td>USD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
                                             <td>{payment.paystack_status}</td>
-                                            <td>{payment.negotiation?.requirements?.substring(0, 50)}...</td>
+                                            <td>{payment.negotiation?.requirements ? `${payment.negotiation.requirements.substring(0, 50)}...` : 'N/A'}</td> {/* ADDED: Check for negotiation.requirements before substring */}
                                         </tr>
                                     ))}
                                 </tbody>

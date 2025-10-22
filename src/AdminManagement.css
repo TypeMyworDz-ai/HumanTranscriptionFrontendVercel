@@ -1,31 +1,27 @@
-/* frontend/client/src/AdminManagement.css */
+/* AdminManagement.css */
 
-/* Generic Container for all Admin Management Pages */
-.admin-management-container {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #f0f4f8 0%, #e0eafc 100%);
-    font-family: 'Inter', sans-serif;
+/* General Body and Container Styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f7f6;
+    margin: 0;
+    padding: 0;
     color: #333;
-    line-height: 1.6;
+}
+
+.admin-management-container {
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
+    background-color: #f4f7f6;
 }
 
-/* Header for Admin Management Pages (similar to AdminDashboard) */
+/* Header Styling */
 .admin-management-header {
-    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-    color: white;
-    padding: 18px 0;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-.admin-management-header .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 30px;
+    background-color: #2c3e50; /* Dark blue/grey */
+    color: #ecf0f1; /* Light text */
+    padding: 15px 25px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -33,620 +29,444 @@
 
 .admin-management-header h1 {
     margin: 0;
-    font-size: 2rem; /* Slightly smaller than main dashboard H1 */
-    font-weight: 700;
-    letter-spacing: -0.5px;
+    font-size: 1.8em;
+    font-weight: 600;
 }
 
 .admin-management-header .user-info {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
 }
 
 .admin-management-header .user-info span {
-    font-size: 1rem;
-    opacity: 0.95;
-    font-weight: 500;
+    font-size: 1em;
+    font-weight: 400;
 }
 
-.admin-management-header .logout-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+.logout-btn {
+    background-color: #e74c3c; /* Red for logout */
     color: white;
-    padding: 8px 18px;
-    border-radius: 28px;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
     cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
 }
 
-.admin-management-header .logout-btn:hover {
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-1px);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+.logout-btn:hover {
+    background-color: #c0392b;
 }
 
 /* Main Content Area */
 .admin-management-main {
     flex-grow: 1;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 30px; /* Slightly less padding than main dashboard */
+    padding: 25px;
+    max-width: 1400px; /* Limit content width */
+    margin: 20px auto; /* Center content with some top margin */
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .back-link-container {
-    margin-bottom: 30px;
-    text-align: left;
+    margin-bottom: 25px;
 }
 
 .back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: #667eea;
+    color: #3498db;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.95em;
     transition: color 0.2s ease;
 }
 
 .back-link:hover {
-    color: #5a67d8;
+    color: #2980b9;
     text-decoration: underline;
 }
 
 .admin-content-section h2 {
     color: #2c3e50;
-    margin-bottom: 15px;
-    font-size: 2.2rem;
-    font-weight: 700;
-    text-align: center;
-    letter-spacing: -0.5px;
+    font-size: 1.6em;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 10px;
 }
 
 .admin-content-section p {
     color: #555;
-    margin-bottom: 40px;
-    font-size: 1.05rem;
-    text-align: center;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
+    line-height: 1.6;
+    margin-bottom: 20px;
 }
 
-.placeholder-content {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    text-align: center;
-    color: #777;
-    font-style: italic;
-    min-height: 150px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Global status badge styling, used both in list and details */
-.status-badge {
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: white; /* Default text color */
-    text-transform: capitalize;
-    background-color: #6c757d; /* Default gray background */
-    display: inline-block; /* Ensure padding and background work */
-    min-width: 80px; /* Give some consistent width */
-    text-align: center;
-    margin-left: 10px; /* Add some space if next to other text */
-}
-.status-badge.pending {
-    background-color: #ffc107; /* Yellow */
-    color: #333; /* Dark text for better contrast on yellow */
-}
-.status-badge.approved { background-color: #28a745; } /* Green */
-.status-badge.rejected { background-color: #dc3545; } /* Red */
-
-/* Specific status badge colors for user types in AdminUsers */
-.status-badge.client {
-    background-color: #007bff; /* Blue for clients */
-    color: white;
-}
-.status-badge.transcriber {
-    background-color: #28a745; /* Green for transcribers */
-    color: white;
-}
-
-
-/* Styles for AdminTranscriberTests.js specific elements */
-.submissions-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
-    margin-top: 30px;
-}
-
-.submission-card {
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    border-left: 5px solid #ccc; /* Default subtle border */
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.submission-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.submission-card.pending { border-left-color: #ffc107; }
-.submission-card.approved { border-left-color: #28a745; }
-.submission-card.rejected { border-left-color: #dc3545; }
-
-.submission-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.submission-card h3 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: #2c3e50;
-}
-
-.submission-card p {
-    font-size: 0.95rem;
-    color: #666;
-    margin-bottom: 8px;
-    text-align: left;
-}
-.submission-card p:last-of-type {
-    margin-bottom: 15px;
-}
-
-.submission-card .submission-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-    justify-content: flex-end;
-}
-
-/* Base styles for all action buttons within submission-actions */
-.submission-card .submission-actions button,
-.submission-card .submission-actions .view-details-btn { /* Apply to both button and link */
-    padding: 8px 15px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background-color 0.2s ease;
-    text-decoration: none; /* Ensure links don't have underlines */
-    display: inline-block; /* Make links behave like buttons for padding etc. */
-    text-align: center; /* Center text in case it's a link */
-    color: white; /* Default text color for buttons */
-}
-
-
-.submission-card .approve-btn {
-    background-color: #28a745;
-}
-.submission-card .approve-btn:hover {
-    background-color: #218838;
-}
-
-.submission-card .reject-btn {
-    background-color: #dc3545;
-}
-.submission-card .reject-btn:hover {
-    background-color: #c82333;
-}
-
-.submission-card .view-details-btn {
-    background-color: #007bff;
-    /* Color is already set in the base styles above */
-}
-.submission-card .view-details-btn:hover {
-    background-color: #0056b3;
-}
-
-.submission-card .rejection-reason {
-    color: #dc3545;
-    font-style: italic;
-    font-size: 0.9rem;
-    margin-top: 10px;
-    text-align: left;
-}
-
-/* Styles for AdminTranscriberTestDetails.js */
-.transcription-display {
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 20px;
-    font-family: 'Courier New', Courier, monospace; /* Monospace for transcription */
-    white-space: pre-wrap; /* Preserve whitespace and wrap lines */
-    word-wrap: break-word; /* Break long words */
-    line-height: 1.5;
-    font-size: 1rem;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-}
-
-/* NEW: Styles for AdminUsers.js */
 /* Search Bar */
 .search-bar {
-    margin-bottom: 30px;
-    text-align: center;
+    margin-bottom: 25px;
 }
 
 .search-input {
     width: 100%;
-    max-width: 400px;
-    padding: 12px 20px;
-    border: 1px solid #ced4da;
-    border-radius: 25px;
-    font-size: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search-input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
     outline: none;
 }
 
-/* Users List Table */
+.no-data-message {
+    text-align: center;
+    color: #777;
+    font-style: italic;
+    padding: 30px 0;
+    border: 1px dashed #e0e0e0;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+/* Users Table Styling */
 .users-list-table {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    overflow-x: auto; /* For responsive tables on small screens */
+    overflow-x: auto; /* Enable horizontal scrolling for small screens */
+    margin-top: 20px;
 }
 
 .users-list-table table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px; /* Ensure table doesn't get too narrow */
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
 }
 
 .users-list-table th,
 .users-list-table td {
-    padding: 15px 20px;
+    padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid #f0f4f8;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
 }
 
 .users-list-table th {
-    background-color: #f8f9fa;
-    color: #495057;
-    font-weight: 700;
+    background-color: #f8f8f8;
+    color: #555;
+    font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
+    font-size: 0.9em;
+}
+
+.users-list-table tbody tr:hover {
+    background-color: #fbfbfb;
 }
 
 .users-list-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.users-list-table tbody tr:hover {
-    background-color: #f0f4f8;
+.users-list-table td a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
 }
 
-.users-list-table td {
-    color: #333;
-    font-size: 0.95rem;
+.users-list-table td a:hover {
+    text-decoration: underline;
 }
 
-/* Chat Button */
-.chat-btn {
-    background-color: #667eea; /* A friendly purple-blue */
-    color: white;
-    padding: 8px 15px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
     font-weight: 600;
-    transition: background-color 0.2s ease;
-    font-size: 0.9rem;
+    text-transform: capitalize;
+    color: white;
+    text-align: center;
+    min-width: 80px; /* Ensure badges have a consistent width */
+}
+
+/* Specific badge colors */
+.status-badge.client { background-color: #3498db; } /* Blue */
+.status-badge.transcriber { background-color: #27ae60; } /* Green */
+.status-badge.admin { background-color: #95a5a6; } /* Grey */
+.status-badge.trainee { background-color: #f39c12; } /* Orange/Yellow */
+.status-badge.paid_training_fee { background-color: #2ecc71; } /* Lighter Green for paid */
+.status-badge.active_transcriber { background-color: #1abc9c; } /* Teal for active */
+.status-badge.pending { background-color: #f1c40f; } /* Yellow for pending test */
+.status-badge.rejected { background-color: #e74c3c; } /* Red for rejected test */
+
+
+/* Rating Display */
+.rating-display {
+    display: flex;
+    align-items: center;
+    font-size: 1.1em;
+    color: #f39c12; /* Star color */
+}
+
+.rating-display .rating-number {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 5px;
+}
+
+/* Action Buttons */
+.users-list-table td button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    white-space: nowrap; /* Prevent buttons from wrapping text */
+    margin-bottom: 5px; /* Spacing between buttons in the same cell */
+}
+
+.users-list-table td button:last-child {
+    margin-bottom: 0;
+}
+
+.chat-btn {
+    background-color: #34495e; /* Darker blue/grey */
+    color: white;
 }
 
 .chat-btn:hover {
-    background-color: #5a67d8;
-}
-
-/* NEW: Chat Window Specific Styles for AdminChat.js */
-.chat-window {
-    display: flex;
-    flex-direction: column;
-    height: 600px; /* Fixed height for chat window */
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    max-width: 800px; /* Max width for chat interface */
-    margin: 40px auto; /* Center the chat window */
-}
-
-.messages-display {
-    flex-grow: 1;
-    padding: 20px;
-    overflow-y: auto;
-    border-bottom: 1px solid #e0eafc;
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Space between messages */
-}
-
-.chat-message {
-    padding: 10px 15px;
-    border-radius: 15px;
-    max-width: 80%;
-    position: relative;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.chat-message.admin-message {
-    align-self: flex-end;
-    background-color: #667eea; /* Admin message color */
-    color: white;
-    border-bottom-right-radius: 2px;
-}
-
-.chat-message.user-message {
-    align-self: flex-start;
-    background-color: #f0f4f8; /* User message color */
-    color: #333;
-    border: 1px solid #e0eafc; /* Subtle border for user messages */
-    border-bottom-left-radius: 2px;
-}
-
-.message-header {
-    font-size: 0.75rem;
-    opacity: 0.8;
-    margin-bottom: 5px;
-    display: flex;
-    justify-content: space-between;
-}
-.chat-message.admin-message .message-header { color: rgba(255, 255, 255, 0.8); }
-.chat-message.user-message .message-header { color: #555; }
-
-
-.message-input-area {
-    display: flex;
-    padding: 15px;
-    border-top: 1px solid #e0eafc;
-    background-color: #f8f9fa;
-}
-
-.message-input-area textarea {
-    flex-grow: 1;
-    padding: 12px 15px;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    resize: none;
-    font-size: 1rem;
-    margin-right: 10px;
-    font-family: 'Inter', sans-serif;
-}
-
-.message-input-area textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.1rem rgba(102, 126, 234, 0.25);
-    outline: none;
-}
-
-.send-message-btn {
-    background-color: #667eea;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background-color 0.2s ease;
-    white-space: nowrap; /* Prevent text wrapping */
-}
-
-.send-message-btn:hover {
-    background-color: #5a67d8;
-}
-
-/* Attach File Button Styles */
-.attach-file-btn {
-    background-color: #9b59b6; /* Muted purple */
-    color: white;
-    border: none;
-    padding: 10px 12px;
-    border-radius: 8px; /* Slightly more rounded */
-    cursor: pointer;
-    font-size: 1.2em; /* Larger icon */
-    margin-right: 10px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px; /* Match textarea height */
-    width: 40px; /* Make it a square icon button */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.attach-file-btn:hover {
-    background-color: #8e44ad; /* Darker purple on hover */
+    background-color: #2c3e50;
     transform: translateY(-1px);
 }
 
-.attach-file-btn:disabled {
-    background-color: #bdc3c7; /* Gray when disabled */
-    cursor: not-allowed;
-    transform: none;
+.rate-btn {
+    background-color: #8e44ad; /* Purple */
+    color: white;
 }
 
-/* Selected File Preview */
-.selected-file-preview {
+.rate-btn:hover {
+    background-color: #9b59b6;
+    transform: translateY(-1px);
+}
+
+.complete-training-btn {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+
+.complete-training-btn:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+.delete-btn {
+    background-color: #dc3545; /* Red */
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+/* Modal Styling (assuming basic Modal component structure) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 10px;
-    background-color: #eaf2f8; /* Light blue background */
-    padding: 8px 12px;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.5em;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #777;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    color: #333;
+}
+
+.modal-body p {
+    line-height: 1.6;
+    margin-bottom: 15px;
+    color: #444;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
     border-radius: 5px;
-    font-size: 0.9em;
-    color: #2c3e50; /* Dark text */
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
 }
 
-.selected-file-preview span {
-    margin-right: 10px;
+.form-group input[type="number"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #3498db;
+    outline: none;
+}
+
+.modal-footer {
     display: flex;
-    align-items: center;
-    word-break: break-all; /* Break long file names */
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+    margin-top: 20px;
 }
 
-.remove-file-btn {
-    background-color: #e74c3c; /* Red */
+.modal-cancel-btn {
+    background-color: #ccc;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+.modal-cancel-btn:hover {
+    background-color: #bbb;
+}
+
+.modal-submit-btn {
+    background-color: #3498db; /* Blue for general submit */
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
+    padding: 10px 20px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 0.7em;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+.modal-submit-btn:hover {
+    background-color: #2980b9;
+}
+
+/* Specific Modal Submit Button Overrides */
+.complete-training-confirm-btn {
+    background-color: #28a745; /* Green for complete training */
+}
+.complete-training-confirm-btn:hover {
+    background-color: #218838;
+}
+
+.delete-user-confirm-btn {
+    background-color: #dc3545; /* Red for delete user */
+}
+.delete-user-confirm-btn:hover {
+    background-color: #c82333;
+}
+
+
+/* Loading Spinner */
+.loading-spinner {
     display: flex;
-    align-items: center;
     justify-content: center;
-    line-height: 1;
-    transition: background-color 0.3s ease;
-}
-
-.remove-file-btn:hover {
-    background-color: #c0392b; /* Darker red on hover */
-}
-
-.message-attachment a {
-    color: inherit; /* Inherit color from parent */
-    text-decoration: none;
-    display: flex;
     align-items: center;
-}
-
-.message-attachment a:hover {
-    text-decoration: underline;
+    height: 100px;
+    font-size: 1.2em;
+    color: #555;
 }
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-    .admin-management-header .header-content {
+    .admin-management-header {
         flex-direction: column;
-        gap: 15px;
         text-align: center;
-        padding: 0 20px;
+        gap: 10px;
     }
+
     .admin-management-header .user-info {
         flex-direction: column;
         gap: 10px;
     }
-    .admin-management-header h1 {
-        font-size: 1.8rem;
-    }
+
     .admin-management-main {
-        padding: 30px 20px;
+        padding: 15px;
+        margin: 15px;
     }
-    .admin-content-section h2 {
-        font-size: 1.8rem;
-    }
-    .admin-content-section p {
-        font-size: 0.95rem;
-        margin-bottom: 30px;
-    }
-    .submissions-list {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    .submission-card h3 {
-        font-size: 1.3rem;
-    }
-    .status-badge { /* Adjust for smaller screens */
-        font-size: 0.8rem;
-        padding: 4px 8px;
-        min-width: unset;
-    }
-    .users-list-table table {
-        min-width: unset; /* Allow table to shrink more on small screens */
-    }
+
     .users-list-table th,
     .users-list-table td {
-        padding: 10px 15px;
-        font-size: 0.85rem;
+        padding: 10px;
+        font-size: 0.9em;
     }
-    .chat-btn {
+
+    .users-list-table td button {
         padding: 6px 10px;
-        font-size: 0.8rem;
-    }
-    .chat-window {
-        height: 400px; /* Smaller height on mobile */
-        margin: 20px auto;
-    }
-    .messages-display {
-        padding: 15px;
-        gap: 10px;
-    }
-    .chat-message {
-        padding: 8px 12px;
-        font-size: 0.9rem;
-    }
-    .message-input-area {
-        padding: 10px;
-    }
-    .message-input-area textarea {
-        padding: 10px;
-        font-size: 0.9rem;
-    }
-    .send-message-btn {
-        padding: 8px 15px;
-        font-size: 0.85rem;
-    }
-    .attach-file-btn { /* Adjust attach button for mobile */
-        height: 35px;
-        width: 35px;
-        font-size: 1em;
-        padding: 8px 10px;
-    }
-    .remove-file-btn {
-        width: 18px;
-        height: 18px;
-        font-size: 0.6em;
+        font-size: 0.8em;
+        margin-left: 5px;
     }
 }
 
 @media (max-width: 480px) {
     .admin-management-header h1 {
-        font-size: 1.5rem;
+        font-size: 1.5em;
     }
-    .admin-management-header .user-info span {
-        font-size: 0.9rem;
-    }
-    .admin-management-header .logout-btn {
-        padding: 6px 15px;
-        font-size: 0.8rem;
-    }
-    .admin-management-main {
-        padding: 20px 15px;
-    }
-    .admin-content-section h2 {
-        font-size: 1.5rem;
-    }
-    .admin-content-section p {
-        font-size: 0.9rem;
-        margin-bottom: 20px;
-    }
-    .submission-card {
-        padding: 20px;
+
+    .users-list-table th,
+    .users-list-table td {
+        white-space: nowrap; /* Keep table cells from wrapping too much */
     }
 }
