@@ -1,6 +1,8 @@
 // src/PaymentCallback.js - FIXED: 'user' is not defined error and improved header rendering
+// UPDATED: Correctly extract and pass relatedJobId, jobType, and reference for verification.
+//          Dynamic messages and redirection based on jobType.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
 import { useAuth } from './contexts/AuthContext';
@@ -17,8 +19,8 @@ const PaymentCallback = () => {
     const [message, setMessage] = useState('Verifying your payment...');
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
-    const showToast = (msg, type = 'success') => setToast({ isVisible: true, message: msg, type });
-    const hideToast = () => setToast((prev) => ({ ...prev, isVisible: false }));
+    const showToast = useCallback((msg, type = 'success') => setToast({ isVisible: true, message: msg, type }), []);
+    const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
     useEffect(() => {
         // Only proceed if authentication state is resolved
@@ -32,12 +34,14 @@ const PaymentCallback = () => {
             return;
         }
 
-        const reference = searchParams.get('reference');
-        const negotiationId = searchParams.get('negotiationId'); // Our custom negotiationId from metadata
+        // NEW: Extract all relevant parameters from the URL
+        const reference = searchParams.get('reference'); // Paystack's transaction reference
+        const relatedJobId = searchParams.get('relatedJobId'); // Our custom ID (negotiationId or traineeId)
+        const jobType = searchParams.get('jobType'); // Our custom type (e.g., 'negotiation', 'training')
 
-        if (!reference || !negotiationId) {
+        if (!reference || !relatedJobId || !jobType) {
             setPaymentStatus('failed');
-            setMessage('Invalid payment callback. Missing reference or negotiation ID.');
+            setMessage('Invalid payment callback. Missing transaction reference, job ID, or job type.');
             showToast('Invalid payment callback.', 'error');
             return;
         }
@@ -51,7 +55,8 @@ const PaymentCallback = () => {
             }
 
             try {
-                const response = await fetch(`${BACKEND_API_URL}/api/payment/verify/${reference}?negotiationId=${negotiationId}`, {
+                // NEW: Pass relatedJobId and jobType to the backend for verification
+                const response = await fetch(`${BACKEND_API_URL}/api/payment/verify/${reference}?relatedJobId=${relatedJobId}&jobType=${jobType}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -61,10 +66,20 @@ const PaymentCallback = () => {
 
                 if (response.ok) {
                     setPaymentStatus('success');
-                    setMessage('Payment successful! Your job is now active.');
-                    showToast('Payment successful!', 'success');
-                    // Optionally, redirect to client dashboard after a short delay
-                    setTimeout(() => navigate('/client-dashboard'), 3000);
+                    let successMessage = 'Payment successful!';
+                    let redirectTo = '/client-dashboard'; // Default redirection
+
+                    if (jobType === 'training') {
+                        successMessage = 'Training payment successful! You now have access to the training dashboard.';
+                        redirectTo = '/trainee-dashboard';
+                    } else if (jobType === 'negotiation' || jobType === 'direct_upload') {
+                        successMessage = 'Payment successful! Your job is now active.';
+                        redirectTo = '/client-dashboard';
+                    }
+                    
+                    setMessage(successMessage);
+                    showToast(successMessage, 'success');
+                    setTimeout(() => navigate(redirectTo), 3000);
                 } else {
                     setPaymentStatus('failed');
                     setMessage(data.error || 'Payment verification failed.');
@@ -79,7 +94,7 @@ const PaymentCallback = () => {
         };
 
         verifyPayment();
-    }, [searchParams, isAuthenticated, authLoading, navigate, logout]); // Added logout to dependencies
+    }, [searchParams, isAuthenticated, authLoading, navigate, logout, showToast, hideToast]); // Added showToast, hideToast to dependencies
 
     const getStatusIcon = () => {
         if (paymentStatus === 'verifying') return '⏳';
@@ -94,6 +109,15 @@ const PaymentCallback = () => {
         if (paymentStatus === 'failed') return 'failed-status';
         return '';
     };
+
+    // NEW: Determine dynamic dashboard link for "Go to Dashboard" button
+    const getDashboardLink = () => {
+        if (user?.user_type === 'trainee') return '/trainee-dashboard';
+        if (user?.user_type === 'client') return '/client-dashboard';
+        if (user?.user_type === 'admin') return '/admin-dashboard'; // Although admin wouldn't typically be here
+        return '/';
+    };
+
 
     return (
         <div className="payment-callback-container">
@@ -125,7 +149,8 @@ const PaymentCallback = () => {
                         <p>If you believe this is an error, please contact support.</p>
                     )}
                     {paymentStatus !== 'verifying' && (
-                        <Link to="/client-dashboard" className="back-to-dashboard-btn">
+                        // NEW: Use dynamic dashboard link
+                        <Link to={getDashboardLink()} className="back-to-dashboard-btn">
                             Go to Dashboard
                         </Link>
                     )}
