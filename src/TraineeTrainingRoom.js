@@ -2,19 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import Toast from './Toast';
 import { useAuth } from './contexts/AuthContext';
-// FIX: Removed 'uploadChatAttachment' from import as it's not used here
 import { connectSocket, disconnectSocket, sendMessage } from './ChatService'; 
 import { BACKEND_API_URL } from './config';
-import './TraineeTrainingRoom.css'; // You'll need to create this CSS file
+import './TraineeTrainingRoom.css';
 
-const MAX_TRAINING_FILE_SIZE_MB = 500; // Max file size for training room attachments
+const MAX_TRAINING_FILE_SIZE_MB = 500; 
 
 // Helper function to format timestamp robustly for display
 const formatDisplayTimestamp = (isoTimestamp) => {
     if (!isoTimestamp) return 'N/A';
     try {
         const date = new Date(isoTimestamp);
-        if (isNaN(date.getTime())) { // Check if the date is invalid
+        if (isNaN(date.getTime())) { 
             console.warn(`Attempted to format invalid date string: ${isoTimestamp}`);
             return 'Invalid Date';
         }
@@ -26,23 +25,24 @@ const formatDisplayTimestamp = (isoTimestamp) => {
 };
 
 const TraineeTrainingRoom = () => {
-    const { chatId: trainingRoomId } = useParams(); // The chatId will be the trainee's user ID for this room
+    const { chatId: trainingRoomId } = useParams(); 
     const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [trainerUser, setTrainerUser] = useState(null); // The admin trainer for this room
+    const [trainerUser, setTrainerUser] = useState(null); 
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+    const [adminId, setAdminId] = useState(null); // NEW: State to store admin ID fetched from backend
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [isUploadingFile, setIsUploadingFile] = useState(false);
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
-    const audioRef = useRef(null); // For notification sounds
-    const textareaRef = useRef(null); // Ref for the textarea to manage height
+    const audioRef = useRef(null); 
+    const textareaRef = useRef(null); 
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -53,13 +53,67 @@ const TraineeTrainingRoom = () => {
         }
     }, []);
 
-    // Effect for auto-resizing textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
-    }, [newMessage]); // Rerun when newMessage changes
+    }, [newMessage]); 
+
+    // NEW: Function to fetch the ADMIN_USER_ID from the backend
+    const fetchAdminUserId = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn("fetchAdminUserId: Token missing.");
+            return null;
+        }
+        try {
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/trainer-id`, { // Assuming this new endpoint exists
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok && data.adminId) {
+                setAdminId(data.adminId);
+                return data.adminId;
+            } else {
+                console.error('Failed to fetch admin ID:', data.error);
+                showToast(data.error || 'Failed to fetch admin ID for training.', 'error');
+                return null;
+            }
+        } catch (error) {
+            console.error('Network error fetching admin ID:', error);
+            showToast('Network error while fetching admin ID.', 'error');
+            return null;
+        }
+    }, [showToast]);
+
+    // MODIFIED: fetchTrainerDetails now uses the fetched adminId
+    const fetchTrainerDetails = useCallback(async (currentAdminId) => {
+        if (!currentAdminId) {
+            showToast('Training admin not configured. Please ensure ADMIN_USER_ID is set in backend.', 'error');
+            console.error('ADMIN_USER_ID is not configured in environment variables or could not be fetched.');
+            navigate('/trainee-dashboard');
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/users/${currentAdminId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok && data.user) {
+                setTrainerUser(data.user);
+            } else {
+                showToast('Failed to fetch trainer details.', 'error');
+                console.error('Failed to fetch trainer details:', data.error);
+                navigate('/trainee-dashboard');
+            }
+        } catch (error) {
+            console.error('Network error fetching trainer details:', error);
+            showToast('Network error fetching trainer details.', 'error');
+            navigate('/trainee-dashboard');
+        }
+    }, [navigate, showToast]);
 
 
     useEffect(() => {
@@ -71,7 +125,6 @@ const TraineeTrainingRoom = () => {
             return;
         }
 
-        // Ensure the user is a trainee (or admin) and has paid
         if (user.user_type !== 'trainee' && user.user_type !== 'admin') {
             console.warn(`TraineeTrainingRoom: Unauthorized access attempt by user_type: ${user.user_type}. Redirecting.`);
             navigate('/');
@@ -83,38 +136,18 @@ const TraineeTrainingRoom = () => {
             return;
         }
 
-        // Fetch the admin trainer's details for the room
-        const fetchTrainerDetails = async () => {
-            const adminId = process.env.ADMIN_USER_ID; // Assuming a single dedicated admin trainer
-            if (!adminId) {
-                showToast('Training admin not configured.', 'error');
-                console.error('ADMIN_USER_ID is not configured in environment variables.');
-                navigate('/trainee-dashboard');
-                return;
-            }
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${BACKEND_API_URL}/api/admin/users/${adminId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await response.json();
-                if (response.ok && data.user) {
-                    setTrainerUser(data.user);
-                } else {
-                    showToast('Failed to fetch trainer details.', 'error');
-                    console.error('Failed to fetch trainer details:', data.error);
-                    navigate('/trainee-dashboard');
+        // Only fetch admin ID if it hasn't been fetched yet
+        if (!adminId) {
+            fetchAdminUserId().then(fetchedAdminId => {
+                if (fetchedAdminId) {
+                    fetchTrainerDetails(fetchedAdminId);
                 }
-            } catch (error) {
-                console.error('Network error fetching trainer details:', error);
-                showToast('Network error fetching trainer details.', 'error');
-                navigate('/trainee-dashboard');
-            }
-        };
+            });
+        } else {
+            fetchTrainerDetails(adminId);
+        }
 
-        fetchTrainerDetails();
-
-    }, [isAuthReady, user, authLoading, navigate, showToast, trainingRoomId]);
+    }, [isAuthReady, user, authLoading, navigate, showToast, trainingRoomId, adminId, fetchAdminUserId, fetchTrainerDetails]);
 
 
     const fetchTrainingRoomMessages = useCallback(async () => {
@@ -162,13 +195,11 @@ const TraineeTrainingRoom = () => {
         }
 
         setMessages((prevMessages) => {
-            // Prevent duplicate messages if already optimistically added
             if (prevMessages.some(m => m.id === msg.id && !m.isOptimistic)) {
                 console.log('TraineeTrainingRoom: Received duplicate message, ignoring.', msg);
                 return prevMessages;
             }
 
-            // Update optimistic message to real message if it exists
             const updatedMessages = prevMessages.map(m =>
                 m.isOptimistic && m.sender_id === msg.sender_id && m.content === msg.content &&
                 m.file_url === msg.file_url && m.training_room_id === msg.training_room_id
@@ -176,7 +207,6 @@ const TraineeTrainingRoom = () => {
                     : m
             );
 
-            // If it's a completely new message or an optimistic one that wasn't matched
             if (!updatedMessages.some(m => m.id === msg.id && !m.isOptimistic)) {
                 if (msg.sender_id !== user.id) {
                     playNotificationSound();
@@ -209,9 +239,8 @@ const TraineeTrainingRoom = () => {
 
         const handleSocketConnect = () => {
             if (!isMounted) return;
-            // Join own room and the trainer's room (if not self)
             socket.emit('joinUserRoom', user.id);
-            if (user.id !== trainerUser.id) { // Only join if trainer is a different user
+            if (user.id !== trainerUser.id) { 
                 socket.emit('joinUserRoom', trainerUser.id);
             }
             console.log(`TraineeTrainingRoom: Socket connected. Joined rooms for ${user.id} and ${trainerUser.id}. Fetching training room messages.`);
@@ -265,8 +294,6 @@ const TraineeTrainingRoom = () => {
         if (file) {
             setIsUploadingFile(true);
             try {
-                // Use a specific upload function for training room attachments
-                // Note: The backend route /api/trainee/training-room/upload-attachment expects 'trainingRoomAttachment' field name
                 const formData = new FormData();
                 formData.append('trainingRoomAttachment', file);
 
@@ -281,7 +308,6 @@ const TraineeTrainingRoom = () => {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
-                        // 'Content-Type': 'multipart/form-data' is set automatically by fetch when using FormData
                     },
                     body: formData
                 });
@@ -311,7 +337,7 @@ const TraineeTrainingRoom = () => {
             const optimisticMessage = {
                 id: tempMessageId,
                 sender_id: user.id,
-                receiver_id: (user.user_type === 'trainee' ? trainerUser.id : trainingRoomId), // Trainee sends to trainer, Admin sends to trainee
+                receiver_id: (user.user_type === 'trainee' ? trainerUser.id : trainingRoomId), 
                 content: messageToSend,
                 timestamp: formatDisplayTimestamp(new Date().toISOString()),
                 sender_name: user.full_name,
@@ -326,7 +352,7 @@ const TraineeTrainingRoom = () => {
                 senderId: user.id,
                 receiverId: (user.user_type === 'trainee' ? trainerUser.id : trainingRoomId),
                 negotiationId: null,
-                trainingRoomId: trainingRoomId, // Pass trainingRoomId
+                trainingRoomId: trainingRoomId, 
                 messageText: messageToSend,
                 timestamp: new Date().toISOString(),
                 senderUserType: user.user_type,
@@ -364,7 +390,6 @@ const TraineeTrainingRoom = () => {
         }
 
         setSelectedFile(file);
-        // If message is empty, send file immediately. Otherwise, attach and wait for send button.
         if (newMessage.trim() === '') {
             await handleSendMessage(file);
         } else {
@@ -381,7 +406,6 @@ const TraineeTrainingRoom = () => {
 
     const renderFileAttachment = (fileUrl, fileName) => {
         if (!fileUrl) return null;
-        // The fileUrl from backend is already a full relative path like /uploads/...
         const fullFileUrl = `${BACKEND_API_URL}${fileUrl}`; 
         const fileExtension = fileName ? fileName.split('.').pop().toLowerCase() : '';
 
@@ -397,7 +421,7 @@ const TraineeTrainingRoom = () => {
     };
 
 
-    if (loading || authLoading || !isAuthenticated || !user || !trainerUser || user.user_type === 'client') {
+    if (loading || authLoading || !isAuthenticated || !user || !trainerUser || user.user_type === 'client' || !adminId) { // MODIFIED: Added adminId to loading condition
         return (
             <div className="training-room-container">
                 <div className="loading-spinner">Loading training room...</div>

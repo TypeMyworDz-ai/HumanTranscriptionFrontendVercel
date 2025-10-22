@@ -152,7 +152,7 @@ const TraineeDashboard = () => {
                     </div>
 
                     <div className="trainee-status-display">
-                        <p>Your Current Status: <strong>{traineeStatus?.status?.replace(/_/g, ' ') || 'Loading...'}</strong></p>
+                        {/* Removed: Your Current Status: <strong>{traineeStatus?.status?.replace(/_/g, ' ') || 'Loading...'}</strong> */}
                         <p>Your User Level: <strong>{traineeStatus?.user_level || 'Loading...'}</strong></p>
                         {traineeStatus?.status === 'paid_training_fee' && (
                             <p className="status-message">You have successfully paid for training access. Start learning!</p>
