@@ -1,7 +1,8 @@
 // src/TranscriberNegotiations.js - FINALIZED for USD currency and syntax fix (removed inline comments from select, corrected loading block, fixed 'not defined' errors, fixed canTranscriberAccept warning)
+// UPDATED: Transcribers can no longer counter the deadline. Only price and message are counterable.
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom'; // Import useLocation
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
@@ -15,11 +16,11 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 // --- Component Definition ---
 const TranscriberNegotiations = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
-    const location = useLocation(); // Get current URL location
+    const location = useLocation();
     const navigate = useNavigate();
 
     const [negotiations, setNegotiations] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Corrected: useState(true)
     const [toast, setToast] = useState({
         isVisible: false,
         message: '',
@@ -31,16 +32,14 @@ const TranscriberNegotiations = () => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterOfferData, setCounterOfferData] = useState({
-        proposedPrice: '', // This will now be in USD
-        deadlineHours: '',
+        proposedPrice: '',
         transcriberResponse: ''
     });
     const [rejectReason, setRejectReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
     const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
 
-    // CRITICAL: Restored and verified state variables
-    const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(true); // Default to true
+    const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(true);
     const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
 
@@ -59,7 +58,6 @@ const TranscriberNegotiations = () => {
         }));
     }, []);
 
-    // CRITICAL: Restored and verified fetchTranscriberDetailedStatus
     const fetchTranscriberDetailedStatus = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token || !user?.id) {
@@ -69,21 +67,21 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, { // Using the adminController's endpoint for comprehensive user data
+            const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
             if (response.ok && data.user) {
-                setIsTranscriberAvailable(data.user.is_available || true); // Default to true
+                setIsTranscriberAvailable(data.user.is_available || true);
                 setTranscriberCurrentJobId(data.user.current_job_id || null);
             } else {
                 console.error('Failed to fetch transcriber detailed status:', data.error);
-                setIsTranscriberAvailable(true); // Default to true on error
+                setIsTranscriberAvailable(true);
                 setTranscriberCurrentJobId(null);
             }
         } catch (error) {
             console.error('Network error fetching transcriber detailed status:', error);
-            setIsTranscriberAvailable(true); // Default to true on error
+            setIsTranscriberAvailable(true);
             setTranscriberCurrentJobId(null);
         }
     }, [user?.id, setIsTranscriberAvailable, setTranscriberCurrentJobId]);
@@ -112,15 +110,14 @@ const TranscriberNegotiations = () => {
             const data = await response.json();
             if (response.ok) {
                 setNegotiations(data.negotiations);
-                // Log fetched negotiations for debugging
                 console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ 
                     id: n.id, 
                     status: n.status, 
                     clientRating: n.client_info?.client_rating, 
                     dueDate: n.due_date,
-                    completed_at: n.completed_at, // NEW: Log completed_at
-                    client_feedback_comment: n.client_feedback_comment, // NEW: Log client_feedback_comment
-                    client_feedback_rating: n.client_feedback_rating // NEW: Log client_feedback_rating
+                    completed_at: n.completed_at,
+                    client_feedback_comment: n.client_feedback_comment,
+                    client_feedback_rating: n.client_feedback_rating
                 })));
                 if (data.negotiations.length === 0) {
                     showToast('No pending negotiation requests found.', 'info');
@@ -143,35 +140,30 @@ const TranscriberNegotiations = () => {
             return;
         }
 
-        // FIX: Access transcriber_status and transcriber_user_level from the user object
         const transcriberStatus = user.transcriber_status || '';
         const transcriberUserLevel = user.transcriber_user_level || '';
         const isTranscriber = user.user_type === 'transcriber';
 
-        // Check if the user is an active transcriber (or proofreader)
         const hasActiveTranscriberStatus = isTranscriber && (transcriberStatus === 'active_transcriber' || transcriberUserLevel === 'proofreader');
 
         if (!isTranscriber || !hasActiveTranscriberStatus) {
             console.warn(`TranscriberNegotiations: Unauthorized access attempt by user_type: ${user.user_type}, status: ${transcriberStatus}, level: ${transcriberUserLevel}. Redirecting.`);
-            logout(); // Log out the user if unauthorized
+            logout();
             return;
         }
 
-        // Fetch negotiations and transcriber's detailed status
         fetchNegotiations();
-        fetchTranscriberDetailedStatus(); // Fetch detailed status when component mounts or user changes
-    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, fetchTranscriberDetailedStatus, logout]); // Added logout to dependencies
+        fetchTranscriberDetailedStatus();
+    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiations, fetchTranscriberDetailedStatus, logout]);
 
-    // CRITICAL: handleNegotiationUpdate defined correctly here, outside useEffect
     const handleNegotiationUpdate = useCallback((data) => {
         console.log('TranscriberNegotiations Real-time: Negotiation update received!', data);
         showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
         fetchNegotiations();
-        fetchTranscriberDetailedStatus(); // Refresh status on new request
+        fetchTranscriberDetailedStatus();
     }, [showToast, fetchNegotiations, fetchTranscriberDetailedStatus]);
 
 
-    // --- Socket.IO Event Listeners ---
     useEffect(() => {
         if (!user?.id || !isAuthenticated) {
             console.log("TranscriberNegotiations: User ID or authentication status not ready for socket connection.");
@@ -181,12 +173,11 @@ const TranscriberNegotiations = () => {
         console.log(`TranscriberNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
         const socket = connectSocket(user.id);
 
-        // All handlers use the top-level useCallback definitions
         socket.on('new_negotiation_request', handleNegotiationUpdate);
         socket.on('negotiation_accepted', handleNegotiationUpdate);
         socket.on('negotiation_rejected', handleNegotiationUpdate);
         socket.on('negotiation_countered', handleNegotiationUpdate);
-        socket.on('job_completed', handleNegotiationUpdate); // Re-use general update handler for job completion
+        socket.on('job_completed', handleNegotiationUpdate);
 
 
         return () => {
@@ -198,11 +189,9 @@ const TranscriberNegotiations = () => {
             socket.off('job_completed', handleNegotiationUpdate);
             disconnectSocket();
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, isAuthenticated, handleNegotiationUpdate]);
 
 
-    // --- Modal Handlers ---
     const openAcceptModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowAcceptModal(true);
@@ -220,8 +209,7 @@ const TranscriberNegotiations = () => {
         const currentNegotiation = negotiations.find(n => n.id === negotiationId);
         if (currentNegotiation) {
             setCounterOfferData({
-                proposedPrice: currentNegotiation.agreed_price_usd?.toString() || '', // UPDATED: Use agreed_price_usd
-                deadlineHours: currentNegotiation.deadline_hours?.toString() || '',
+                proposedPrice: currentNegotiation.agreed_price_usd?.toString() || '',
                 transcriberResponse: ''
             });
         }
@@ -230,7 +218,7 @@ const TranscriberNegotiations = () => {
     const closeCounterModal = useCallback(() => {
         setShowCounterModal(false);
         setSelectedNegotiationId(null);
-        setCounterOfferData({ proposedPrice: '', deadlineHours: '', transcriberResponse: '' });
+        setCounterOfferData({ proposedPrice: '', transcriberResponse: '' });
         setModalLoading(false);
     }, []);
 
@@ -269,7 +257,6 @@ const TranscriberNegotiations = () => {
         setRejectReason(e.target.value);
     }, []);
 
-    // --- ACTUAL API Actions ---
     const confirmAcceptNegotiation = useCallback(async () => {
         setModalLoading(true);
         const token = localStorage.getItem('token');
@@ -292,7 +279,7 @@ const TranscriberNegotiations = () => {
                 showToast(data.message || 'Negotiation accepted! Job is now active.', 'success');
                 closeAcceptModal();
                 fetchNegotiations();
-                fetchTranscriberDetailedStatus(); // Refresh status on successful accept
+                fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to accept negotiation.', 'error');
             }
@@ -306,8 +293,8 @@ const TranscriberNegotiations = () => {
 
     const confirmCounterNegotiation = useCallback(async () => {
         setModalLoading(true);
-        if (!counterOfferData.proposedPrice || !counterOfferData.deadlineHours) {
-            showToast('Please provide both a price and a deadline for your counter-offer.', 'error');
+        if (!counterOfferData.proposedPrice) {
+            showToast('Please provide a proposed price for your counter-offer.', 'error');
             setModalLoading(false);
             return;
         }
@@ -326,8 +313,7 @@ const TranscriberNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    proposed_price_usd: parseFloat(counterOfferData.proposedPrice), // UPDATED: Use proposed_price_usd
-                    deadline_hours: parseInt(counterOfferData.deadlineHours, 10),
+                    proposed_price_usd: parseFloat(counterOfferData.proposedPrice),
                     transcriber_response: counterOfferData.transcriberResponse
                 })
             });
@@ -337,7 +323,7 @@ const TranscriberNegotiations = () => {
                 showToast(data.message || 'Counter-offer sent! Awaiting client response.', 'success');
                 closeCounterModal();
                 fetchNegotiations();
-                fetchTranscriberDetailedStatus(); // Refresh status on successful counter
+                fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to send counter-offer.', 'error');
             }
@@ -374,7 +360,7 @@ const TranscriberNegotiations = () => {
                 showToast(data.message || 'Negotiation rejected!', 'success');
                 closeRejectModal();
                 fetchNegotiations();
-                fetchTranscriberDetailedStatus(); // Refresh status on successful reject
+                fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to reject negotiation.', 'error');
             }
@@ -408,12 +394,11 @@ const TranscriberNegotiations = () => {
                 showToast(data.message || 'Job marked as complete!', 'success');
                 closeCompleteJobModal();
                 fetchNegotiations();
-                fetchTranscriberDetailedStatus(); // Refresh status on successful complete
+                fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to mark job as complete.', 'error');
             }
         } catch (error) {
-            // FIX: Removed extra single quote
             console.error('Error completing job:', error);
             showToast('Network error while completing job.', 'error');
         } finally {
@@ -422,7 +407,6 @@ const TranscriberNegotiations = () => {
     }, [selectedNegotiationId, showToast, closeCompleteJobModal, fetchNegotiations, logout, fetchTranscriberDetailedStatus]);
 
 
-    // --- Utility Functions for Status Display ---
     const getStatusColor = useCallback((status, isClientViewing) => {
         const colors = {
             'pending': '#ffc107',
@@ -457,7 +441,6 @@ const TranscriberNegotiations = () => {
         return texts[status] || status;
     }, []);
 
-    // --- Navigation to Payment (placeholder) ---
     const proceedToPayment = useCallback((negotiation) => {
         localStorage.setItem('selectedNegotiation', JSON.stringify(negotiation));
         showToast('Redirecting to payment...', 'success');
@@ -466,7 +449,6 @@ const TranscriberNegotiations = () => {
         }, 1500);
     }, [navigate, showToast]);
 
-    // --- Delete Negotiation Handler ---
     const handleDeleteNegotiation = useCallback(async (negotiationId) => {
         if (!window.confirm('Are you sure you want to cancel this negotiation? This action cannot be undone.')) {
             return;
@@ -489,7 +471,7 @@ const TranscriberNegotiations = () => {
             if (response.ok) {
                 showToast('Negotiation cancelled successfully!', 'success');
                 fetchNegotiations();
-                fetchTranscriberDetailedStatus(); // Refresh status on successful delete
+                fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to cancel negotiation', 'error');
             }
@@ -498,7 +480,6 @@ const TranscriberNegotiations = () => {
         }
     }, [showToast, fetchNegotiations, logout, fetchTranscriberDetailedStatus]);
 
-    // NEW: Function to handle downloading negotiation files
     const handleDownloadFile = useCallback(async (negotiationId, fileName) => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -508,7 +489,6 @@ const TranscriberNegotiations = () => {
         }
 
         try {
-            // Construct the API endpoint URL
             const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${negotiationId}/download/${fileName}`;
             
             const response = await fetch(downloadUrl, {
@@ -519,18 +499,15 @@ const TranscriberNegotiations = () => {
             });
 
             if (response.ok) {
-                // Get the blob from the response
                 const blob = await response.blob();
-                // Create a temporary URL for the blob
                 const url = window.URL.createObjectURL(blob);
-                // Create a temporary link element
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = fileName; // Set the download filename
+                a.download = fileName;
                 document.body.appendChild(a);
-                a.click(); // Programmatically click the link to trigger download
-                a.remove(); // Clean up the link element
-                window.URL.revokeObjectURL(url); // Clean up the temporary URL
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
                 showToast(`Downloading ${fileName}...`, 'success');
             } else {
                 const errorData = await response.json();
@@ -553,12 +530,10 @@ const TranscriberNegotiations = () => {
         );
     }
 
-    // Determine if transcriber can accept based on their own availability
     const canTranscriberAccept = isTranscriberAvailable && !transcriberCurrentJobId;
 
-    // Filter negotiations based on URL query parameter
     const query = new URLSearchParams(location.search);
-    const statusFilter = query.get('status'); // 'active', 'completed', etc.
+    const statusFilter = query.get('status');
 
     let displayedNegotiations = [];
     let pageTitle = "Negotiation Room";
@@ -567,21 +542,18 @@ const TranscriberNegotiations = () => {
     let emptyMessage = "No ongoing negotiations.";
 
     if (statusFilter === 'active') {
-        // UPDATED: When status is 'active', show only 'hired' jobs
         displayedNegotiations = negotiations.filter(n => n.status === 'hired');
         pageTitle = "My Active Jobs";
         pageDescription = "Track the progress of your assigned transcription jobs and communicate with clients.";
         listSubtitle = "Currently Assigned Jobs";
         emptyMessage = "No active jobs assigned to you.";
     } else if (statusFilter === 'completed') {
-        // When status is 'completed', show only 'completed' jobs
         displayedNegotiations = negotiations.filter(n => n.status === 'completed');
         pageTitle = "My Completed Jobs";
         pageDescription = "Review your finished transcription projects and earnings.";
         listSubtitle = "Completed Jobs";
         emptyMessage = "No completed jobs yet.";
-    } else { // Default view: Negotiation Room
-        // FIX: Only show truly ongoing negotiations in the default Negotiation Room view
+    } else {
         displayedNegotiations = negotiations.filter(n =>
             n.status === 'pending' ||
             n.status === 'transcriber_counter' ||
@@ -599,7 +571,7 @@ const TranscriberNegotiations = () => {
         <div className="transcriber-negotiations-container">
             <header className="transcriber-negotiations-header">
                 <div className="header-content">
-                    <h1>{pageTitle}</h1> {/* Dynamic page title */}
+                    <h1>{pageTitle}</h1>
                     <div className="user-profile-actions">
                         <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">
@@ -613,15 +585,15 @@ const TranscriberNegotiations = () => {
                 <div className="transcriber-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>{pageTitle}</h2> {/* Dynamic heading */}
-                            <p>{pageDescription}</p> {/* Dynamic description */}
+                            <h2>{pageTitle}</h2>
+                            <p>{pageDescription}</p>
                         </div>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
                         </Link>
                     </div>
 
-                    <h3 className="negotiation-room-subtitle">{listSubtitle}</h3> {/* Dynamic list subtitle */}
+                    <h3 className="negotiation-room-subtitle">{listSubtitle}</h3>
                     <div className="negotiations-list">
                         {displayedNegotiations.length === 0 ? (
                             <p>{emptyMessage}</p>
@@ -648,46 +620,14 @@ const TranscriberNegotiations = () => {
                                     onOpenCounterModal={openCounterModal}
                                     openRejectModal={openRejectModal}
                                     openCompleteJobModal={openCompleteJobModal}
-                                    onDownloadFile={handleDownloadFile} // NEW: Pass the download function
+                                    onDownloadFile={handleDownloadFile}
                                 />
                             ))
                         )}
                     </div>
-
-                    {/* REMOVED: The 'Closed Negotiations' section to declutter the default view */}
-                    {/*
-                    <h3 className="negotiation-room-subtitle">Closed Negotiations</h3>
-                    <div className="negotiations-list">
-                        {negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').length === 0 ? (
-                            <p>No closed negotiations.</p>
-                        ) : (
-                             negotiations.filter(n => n.status === 'completed' || n.status === 'rejected' || n.status === 'cancelled').map(negotiation => (
-                                <NegotiationCard
-                                    key={negotiation.id}
-                                    negotiation={negotiation}
-                                    onDelete={handleDeleteNegotiation}
-                                    onPayment={proceedToPayment}
-                                    onLogout={logout}
-                                    getStatusColor={getStatusColor}
-                                    getStatusText={getStatusText}
-                                    showToast={showToast}
-                                    currentUserId={user.id}
-                                    currentUserType={user.user_type}
-                                    openAcceptModal={openAcceptModal}
-                                    canAccept={false}
-                                    canCounter={false}
-                                    onOpenCounterModal={openCounterModal}
-                                    openRejectModal={openRejectModal}
-                                    openCompleteJobModal={openCompleteJobModal}
-                                />
-                            ))
-                        )}
-                    </div>
-                    */}
                 </div>
             </main>
 
-            {/* --- Modals --- */}
             {showAcceptModal && (
                 <Modal
                     show={showAcceptModal}
@@ -726,19 +666,7 @@ const TranscriberNegotiations = () => {
                             required
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="deadlineHours">Revised Deadline (Hours):</label>
-                        <input
-                            id="deadlineHours"
-                            type="number"
-                            name="deadlineHours"
-                            value={counterOfferData.deadlineHours}
-                            onChange={handleCounterOfferChange}
-                            placeholder="Enter revised deadline in hours"
-                            min="1"
-                            required
-                        />
-                    </div>
+                    {/* Removed the deadlineHours input field as transcribers cannot counter it */}
                     <div className="form-group">
                         <label htmlFor="transcriberResponse">Your Message (Optional):</label>
                         <textarea
