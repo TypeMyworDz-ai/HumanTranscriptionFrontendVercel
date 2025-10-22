@@ -18,6 +18,7 @@ const PaymentCallback = () => {
     const [paymentStatus, setPaymentStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
     const [message, setMessage] = useState('Verifying your payment...');
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+    const [redirectUrl, setRedirectUrl] = useState(''); // Store the redirect URL
 
     const showToast = useCallback((msg, type = 'success') => setToast({ isVisible: true, message: msg, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -69,6 +70,7 @@ const PaymentCallback = () => {
                     let successMessage = 'Payment successful!';
                     let redirectTo = '/client-dashboard'; // Default redirection
 
+                    // FIX: Set redirectUrl based on jobType and user type
                     if (jobType === 'training') {
                         successMessage = 'Training payment successful! You now have access to the training dashboard.';
                         redirectTo = '/trainee-dashboard';
@@ -79,7 +81,14 @@ const PaymentCallback = () => {
                     
                     setMessage(successMessage);
                     showToast(successMessage, 'success');
-                    setTimeout(() => navigate(redirectTo), 3000);
+                    setRedirectUrl(redirectTo); // Store the redirect URL
+                    
+                    // FIX: Ensure redirection happens after a delay
+                    console.log(`Payment successful. Will redirect to ${redirectTo} in 3 seconds...`);
+                    setTimeout(() => {
+                        console.log(`Redirecting to ${redirectTo} now...`);
+                        navigate(redirectTo);
+                    }, 3000);
                 } else {
                     setPaymentStatus('failed');
                     setMessage(data.error || 'Payment verification failed.');
@@ -94,7 +103,7 @@ const PaymentCallback = () => {
         };
 
         verifyPayment();
-    }, [searchParams, isAuthenticated, authLoading, navigate, logout, showToast, hideToast]); // Added showToast, hideToast to dependencies
+    }, [searchParams, isAuthenticated, authLoading, navigate, logout, showToast]); // Removed hideToast from dependencies
 
     const getStatusIcon = () => {
         if (paymentStatus === 'verifying') return '⏳';
@@ -112,12 +121,22 @@ const PaymentCallback = () => {
 
     // NEW: Determine dynamic dashboard link for "Go to Dashboard" button
     const getDashboardLink = () => {
+        // First check the redirectUrl from payment verification
+        if (redirectUrl) return redirectUrl;
+        
+        // Fall back to user type if redirectUrl isn't set yet
         if (user?.user_type === 'trainee') return '/trainee-dashboard';
         if (user?.user_type === 'client') return '/client-dashboard';
         if (user?.user_type === 'admin') return '/admin-dashboard'; // Although admin wouldn't typically be here
         return '/';
     };
 
+    // FIX: Add manual redirect function
+    const handleManualRedirect = () => {
+        const dashboardUrl = getDashboardLink();
+        console.log(`Manual redirect to ${dashboardUrl}`);
+        navigate(dashboardUrl);
+    };
 
     return (
         <div className="payment-callback-container">
@@ -149,10 +168,13 @@ const PaymentCallback = () => {
                         <p>If you believe this is an error, please contact support.</p>
                     )}
                     {paymentStatus !== 'verifying' && (
-                        // NEW: Use dynamic dashboard link
-                        <Link to={getDashboardLink()} className="back-to-dashboard-btn">
+                        // FIX: Use onClick handler for immediate navigation
+                        <button 
+                            onClick={handleManualRedirect} 
+                            className="back-to-dashboard-btn"
+                        >
                             Go to Dashboard
-                        </Link>
+                        </button>
                     )}
                 </div>
             </main>
