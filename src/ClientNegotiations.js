@@ -6,7 +6,7 @@ import NegotiationCard from './NegotiationCard';
 import './ClientNegotiations.css';
 
 import { connectSocket, disconnectSocket } from './ChatService';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext'; // FIX: Corrected import syntax
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
@@ -29,9 +29,7 @@ const ClientNegotiations = () => {
     const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterBackOfferData, setCounterBackOfferData] = useState({
         proposedPrice: '', // This will be in USD
-        // FIX: Removed deadlineHours from here
         clientResponse: '',
-        // FIX: Removed counterBackFile from here
     });
     const [rejectCounterReason, setRejectCounterReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
@@ -191,9 +189,7 @@ const ClientNegotiations = () => {
             setSelectedNegotiationId(negotiationId);
             setCounterBackOfferData({
                 proposedPrice: currentNeg.agreed_price_usd?.toString() || '', // UPDATED: Use agreed_price_usd
-                // FIX: Removed deadlineHours from initial state for counter-offer
                 clientResponse: '',
-                // FIX: Removed counterBackFile from initial state for counter-offer
             });
             setShowCounterBackModal(true);
         }
@@ -202,7 +198,6 @@ const ClientNegotiations = () => {
     const closeCounterBackModal = useCallback(() => {
         setShowCounterBackModal(false);
         setSelectedNegotiationId(null);
-        // FIX: Removed deadlineHours and counterBackFile from reset
         setCounterBackOfferData({ proposedPrice: '', clientResponse: '' });
         setModalLoading(false);
     }, []);
@@ -213,14 +208,6 @@ const ClientNegotiations = () => {
             [e.target.name]: e.target.value
         });
     }, [counterBackOfferData]);
-
-    // FIX: Removed handleCounterBackFileChange as file upload is no longer allowed
-    // const handleCounterBackFileChange = useCallback((e) => {
-    //     setCounterBackOfferData(prevData => ({
-    //         ...prevData,
-    //         counterBackFile: e.target.files[0] || null
-    //     }));
-    // }, []);
 
     const handleRejectCounterReasonChange = useCallback((e) => {
         setRejectCounterReason(e.target.value);
@@ -326,7 +313,6 @@ const ClientNegotiations = () => {
                 body: JSON.stringify({
                     proposed_price_usd: parseFloat(counterBackOfferData.proposedPrice),
                     client_response: counterBackOfferData.clientResponse,
-                    // FIX: Removed deadline_hours and negotiationFile from here
                 })
             });
 
@@ -347,7 +333,7 @@ const ClientNegotiations = () => {
     }, [selectedNegotiationId, counterBackOfferData, showToast, closeCounterBackModal, fetchNegotiations, logout]);
 
     const handleProceedToPayment = useCallback(async (negotiation) => {
-        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) { // UPDATED: Use agreed_price_usd
+        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) {
             showToast('Missing client email or negotiation details for payment.', 'error');
             return;
         }
@@ -368,9 +354,10 @@ const ClientNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    negotiationId: negotiation.id,
-                    amount: negotiation.agreed_price_usd, // UPDATED: Pass agreed_price_usd
-                    email: user.email
+                    jobId: negotiation.id,
+                    amount: negotiation.agreed_price_usd,
+                    jobType: 'negotiation', // FIX: Added jobType
+                    clientEmail: user.email // FIX: Changed to 'clientEmail'
                 })
             });
 
@@ -591,8 +578,6 @@ const ClientNegotiations = () => {
                             required
                         />
                     </div>
-                    {/* FIX: Removed the Revised Deadline (Hours) input field */}
-                    {/* FIX: Removed the Attach Audio/Video/Doc File input field */}
                     <div className="form-group">
                         <label htmlFor="clientResponse">Your Message (Optional):</label>
                         <textarea
