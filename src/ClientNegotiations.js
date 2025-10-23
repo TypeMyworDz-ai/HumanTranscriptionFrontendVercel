@@ -29,9 +29,9 @@ const ClientNegotiations = () => {
     const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterBackOfferData, setCounterBackOfferData] = useState({
         proposedPrice: '', // This will be in USD
-        deadlineHours: '',
+        // FIX: Removed deadlineHours from here
         clientResponse: '',
-        counterBackFile: null // State to hold the selected file
+        // FIX: Removed counterBackFile from here
     });
     const [rejectCounterReason, setRejectCounterReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
@@ -191,9 +191,9 @@ const ClientNegotiations = () => {
             setSelectedNegotiationId(negotiationId);
             setCounterBackOfferData({
                 proposedPrice: currentNeg.agreed_price_usd?.toString() || '', // UPDATED: Use agreed_price_usd
-                deadlineHours: currentNeg.deadline_hours?.toString() || '',
+                // FIX: Removed deadlineHours from initial state for counter-offer
                 clientResponse: '',
-                counterBackFile: null // Reset file on modal open
+                // FIX: Removed counterBackFile from initial state for counter-offer
             });
             setShowCounterBackModal(true);
         }
@@ -202,7 +202,8 @@ const ClientNegotiations = () => {
     const closeCounterBackModal = useCallback(() => {
         setShowCounterBackModal(false);
         setSelectedNegotiationId(null);
-        setCounterBackOfferData({ proposedPrice: '', deadlineHours: '', clientResponse: '', counterBackFile: null }); // Reset file on modal close
+        // FIX: Removed deadlineHours and counterBackFile from reset
+        setCounterBackOfferData({ proposedPrice: '', clientResponse: '' });
         setModalLoading(false);
     }, []);
 
@@ -213,13 +214,13 @@ const ClientNegotiations = () => {
         });
     }, [counterBackOfferData]);
 
-    // Handle file selection for counter-offer
-    const handleCounterBackFileChange = useCallback((e) => {
-        setCounterBackOfferData(prevData => ({
-            ...prevData,
-            counterBackFile: e.target.files[0] || null
-        }));
-    }, []);
+    // FIX: Removed handleCounterBackFileChange as file upload is no longer allowed
+    // const handleCounterBackFileChange = useCallback((e) => {
+    //     setCounterBackOfferData(prevData => ({
+    //         ...prevData,
+    //         counterBackFile: e.target.files[0] || null
+    //     }));
+    // }, []);
 
     const handleRejectCounterReasonChange = useCallback((e) => {
         setRejectCounterReason(e.target.value);
@@ -301,8 +302,9 @@ const ClientNegotiations = () => {
 
     const confirmCounterBackNegotiation = useCallback(async () => {
         setModalLoading(true);
-        if (!counterBackOfferData.proposedPrice || !counterBackOfferData.deadlineHours) {
-            showToast('Please provide both a price and a deadline for your counter-offer.', 'error');
+        // FIX: Only check for proposedPrice and clientResponse
+        if (!counterBackOfferData.proposedPrice || !counterBackOfferData.clientResponse) {
+            showToast('Please provide both a proposed price and a message for your counter-offer.', 'error'); // FIX: Updated message
             setModalLoading(false);
             return;
         }
@@ -314,23 +316,18 @@ const ClientNegotiations = () => {
         }
 
         try {
-            // Use FormData for file upload
-            const formData = new FormData();
-            formData.append('proposed_price_usd', parseFloat(counterBackOfferData.proposedPrice)); // UPDATED: Use proposed_price_usd
-            formData.append('deadline_hours', parseInt(counterBackOfferData.deadlineHours, 10));
-            formData.append('client_response', counterBackOfferData.clientResponse);
-            
-            if (counterBackOfferData.counterBackFile) {
-                formData.append('negotiationFile', counterBackOfferData.counterBackFile); // Append the file
-            }
-
+            // FIX: Send JSON body instead of FormData, as no file is uploaded
             const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${selectedNegotiationId}/client/counter-back`, {
                 method: 'PUT',
                 headers: {
-                    // DO NOT set Content-Type header when sending FormData; browser sets it automatically
+                    'Content-Type': 'application/json', // Set Content-Type for JSON
                     'Authorization': `Bearer ${token}`
                 },
-                body: formData // Send FormData directly
+                body: JSON.stringify({
+                    proposed_price_usd: parseFloat(counterBackOfferData.proposedPrice),
+                    client_response: counterBackOfferData.clientResponse,
+                    // FIX: Removed deadline_hours and negotiationFile from here
+                })
             });
 
             const data = await response.json();
@@ -355,7 +352,7 @@ const ClientNegotiations = () => {
             return;
         }
         if (!PAYSTACK_PUBLIC_KEY) {
-            showToast('Payment gateway not configured. Please contact support.', 'error');
+            showToast('Payment gateway not configured. Please contact support.!', 'error');
             console.error('PAYSTACK_PUBLIC_KEY is not set in environment variables.');
             return;
         }
@@ -479,8 +476,7 @@ const ClientNegotiations = () => {
                 <div className="client-negotiations-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2 className="negotiation-room-title">Negotiation Room</h2> {/* Changed heading */}
-                            {/* UPDATED: New descriptive text for chat guidelines with red, all-caps NOTE */}
+                            <h2 className="negotiation-room-title">Negotiation Room</h2>
                             <p>
                                 <span style={{ color: 'red', textTransform: 'uppercase', fontWeight: 'bold' }}>Note:</span>
                                 <ol>
@@ -494,17 +490,14 @@ const ClientNegotiations = () => {
                         </Link>
                     </div>
 
-                    <h3 className="negotiation-room-subtitle">Ongoing Negotiations</h3> {/* New subtitle for the consolidated list */}
+                    <h3 className="negotiation-room-subtitle">Ongoing Negotiations</h3>
                     <div className="negotiations-list">
-                        {/* This filter ensures negotiations accepted by a transcriber (awaiting payment)
-                            remain visible in the "Negotiation Room" until payment is completed,
-                            but EXCLUDES 'hired' jobs. */}
                         {negotiations.filter(n =>
                             (n.status === 'pending' ||
                             n.status === 'transcriber_counter' ||
                             n.status === 'client_counter' ||
                             n.status === 'accepted_awaiting_payment') &&
-                            n.status !== 'hired' // EXCLUDE 'hired' jobs from Negotiation Room
+                            n.status !== 'hired'
                         ).map(negotiation => (
                             <NegotiationCard
                                 key={negotiation.id}
@@ -585,43 +578,21 @@ const ClientNegotiations = () => {
                 >
                     <p>Propose new terms back to the transcriber:</p>
                     <div className="form-group">
-                        <label htmlFor="counterBackProposedPrice">Proposed Price (USD):</label> {/* UPDATED: Changed KES to USD */}
+                        <label htmlFor="counterBackProposedPrice">Proposed Price (USD):</label>
                         <input
                             id="counterBackProposedPrice"
                             type="number"
                             name="proposedPrice"
                             value={counterBackOfferData.proposedPrice}
                             onChange={handleCounterBackOfferChange}
-                            placeholder="Enter your counter-offer in USD" // UPDATED: Changed KES to USD
+                            placeholder="Enter your counter-offer in USD"
                             min="1"
-                            step="0.01" // Allow for cents
+                            step="0.01"
                             required
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="counterBackDeadlineHours">Revised Deadline (Hours):</label>
-                        <input
-                            id="counterBackDeadlineHours"
-                            type="number"
-                            name="deadlineHours"
-                            value={counterBackOfferData.deadlineHours}
-                            onChange={handleCounterBackOfferChange}
-                            placeholder="Enter revised deadline in hours"
-                            min="1"
-                            required
-                        />
-                    </div>
-                    {/* NEW: File input for counter-offer */}
-                    <div className="form-group">
-                        <label htmlFor="counterBackFile">Attach Audio/Video/Doc File (Optional, Max 500MB):</label> {/* Updated max size in comment */}
-                        <input
-                            id="counterBackFile"
-                            type="file"
-                            name="counterBackFile"
-                            onChange={handleCounterBackFileChange}
-                            accept="audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
-                        />
-                    </div>
+                    {/* FIX: Removed the Revised Deadline (Hours) input field */}
+                    {/* FIX: Removed the Attach Audio/Video/Doc File input field */}
                     <div className="form-group">
                         <label htmlFor="clientResponse">Your Message (Optional):</label>
                         <textarea
@@ -629,7 +600,7 @@ const ClientNegotiations = () => {
                             name="clientResponse"
                             value={counterBackOfferData.clientResponse}
                             onChange={handleCounterBackOfferChange}
-                            placeholder="e.g., 'I can offer USD 12.00 for 4 hours.'" // UPDATED: Changed KES to USD
+                            placeholder="e.g., 'I can offer USD 12.00 for 4 hours.'"
                             rows="3"
                         ></textarea>
                     </div>
