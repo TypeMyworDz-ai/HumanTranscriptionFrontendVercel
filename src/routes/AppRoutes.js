@@ -1,4 +1,5 @@
 // frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, Profile Routes, and Direct Upload Routes
+// NEW: Route for AdminTranscriberPayouts
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
@@ -52,6 +53,8 @@ import TranscriberJobs from '../TranscriberJobs';
 import AdminPaymentHistory from '../AdminPaymentHistory'; 
 import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; 
 import AdminJobDetails from '../AdminJobDetails'; 
+// NEW: Import AdminTranscriberPayouts
+import AdminTranscriberPayouts from '../AdminTranscriberPayouts'; // NEW: Import AdminTranscriberPayouts
 
 // NEW: Import Trainee-related components
 import TraineeRegister from '../TraineeRegister'; 
@@ -127,6 +130,9 @@ const AppRoutes = () => {
                 {/* NEW: Admin Oversight Routes */}
                 <Route path="/admin/payments" element={<AdminPaymentHistory />} /> 
                 <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> 
+                <Route path="/admin/job-details/:jobId" element={<AdminJobDetails />} /> {/* Corrected path for AdminJobDetails if it's meant to be under /admin/ */}
+                {/* NEW: AdminTranscriberPayouts Route */}
+                <Route path="/admin/payments/transcriber/:transcriberId" element={<AdminTranscriberPayouts />} /> {/* NEW ROUTE */}
                 {/* NEW: Admin Route for Training Materials (Knowledge Base) */}
                 <Route path="/admin/training-materials" element={<AdminTrainingMaterials />} />
                 {/* NEW: Admin Route for Training Room Management */}
@@ -139,7 +145,6 @@ const AppRoutes = () => {
                 <Route path="/trainee-dashboard" element={<TraineeDashboard />} />
                 <Route path="/trainee/materials" element={<TraineeTrainingMaterials />} />
                 <Route path="/trainee/training-room/:chatId" element={<TraineeTrainingRoom />} />
-                {/* REMOVED: <Route path="/trainee/training-room/chat/:chatId" element={<TraineeTrainingRoomChat />} /> */}
 
 
             </Route>

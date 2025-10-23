@@ -1,7 +1,10 @@
 // src/TranscriberNegotiations.js - FINALIZED for USD currency and syntax fix (removed inline comments from select, corrected loading block, fixed 'not defined' errors, fixed canTranscriberAccept warning)
 // UPDATED: Transcribers can no longer counter the deadline. Only price and message are counterable.
+// NEW: Display client's job count in negotiation cards.
+// FIXED: JSX parsing error (Expected corresponding JSX closing tag for <div>)
+// FIXED: Removed unused 'useRef' import
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
+import React, { useState, useEffect, useCallback } from 'react'; // Removed useRef
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
@@ -20,7 +23,7 @@ const TranscriberNegotiations = () => {
     const navigate = useNavigate();
 
     const [negotiations, setNegotiations] = useState([]);
-    const [loading, setLoading] = useState(true); // Corrected: useState(true)
+    const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({
         isVisible: false,
         message: '',
@@ -114,6 +117,7 @@ const TranscriberNegotiations = () => {
                     id: n.id, 
                     status: n.status, 
                     clientRating: n.client_info?.client_rating, 
+                    clientJobs: n.client_info?.client_completed_jobs, // Log clientJobs
                     dueDate: n.due_date,
                     completed_at: n.completed_at,
                     client_feedback_comment: n.client_feedback_comment,
@@ -621,6 +625,8 @@ const TranscriberNegotiations = () => {
                                     openRejectModal={openRejectModal}
                                     openCompleteJobModal={openCompleteJobModal}
                                     onDownloadFile={handleDownloadFile}
+                                    // FIX: Pass client_completed_jobs to NegotiationCard
+                                    clientCompletedJobs={negotiation.client_info?.client_completed_jobs}
                                 />
                             ))
                         )}

@@ -49,3 +49,93 @@
     font-weight: bold;
     text-align: center;
 }
+
+/* NEW: Styles for status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px; /* More rounded corners */
+    font-size: 0.85em; /* Slightly smaller font */
+    font-weight: 600; /* Bolder text */
+    text-transform: capitalize; /* Capitalize first letter */
+    color: #fff; /* White text for all badges by default */
+    text-align: center;
+    min-width: 80px; /* Ensure a minimum width for consistency */
+}
+
+/* Specific colors for different statuses */
+.status-badge.success {
+    background-color: #28a745; /* Green */
+}
+
+.status-badge.awaiting_completion {
+    background-color: #ffc107; /* Amber/Yellow */
+    color: #333; /* Darker text for light background */
+}
+
+.status-badge.failed,
+.status-badge.rejected,
+.status-badge.cancelled {
+    background-color: #dc3545; /* Red */
+}
+
+.status-badge.paid_out {
+    background-color: #6a0dad; /* Purple, indicating completed payout */
+}
+
+.status-badge.pending,
+.status-badge.accepted_awaiting_payment { /* Assuming these also need a distinct color */
+    background-color: #007bff; /* Blue */
+}
+
+/* Default/fallback status if none of the above match */
+.status-badge.unknown,
+.status-badge.default {
+    background-color: #6c757d; /* Grey */
+}
+
+/* Styles for the new transcriber payouts summary table */
+.transcriber-payouts-summary-table-wrapper {
+    margin-top: 30px;
+}
+
+.transcriber-payouts-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.transcriber-payouts-summary-table th,
+.transcriber-payouts-summary-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+.transcriber-payouts-summary-table th {
+    background-color: #eef;
+    color: #333;
+    font-weight: bold;
+}
+
+.transcriber-payouts-summary-table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.transcriber-payouts-summary-table tbody tr:hover {
+    background-color: #e0e0e0;
+}
+
+.view-payout-btn {
+    background-color: #007bff; /* Blue */
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.view-payout-btn:hover {
+    background-color: #0056b3;
+}

@@ -94,9 +94,13 @@ const arePropsEqual = (prevProps, nextProps) => {
         console.log(`NegotiationCard: Props changed - canCounter.`);
         return false;
     }
-    // NEW: Compare onDownloadFile prop
     if (prevProps.onDownloadFile !== nextProps.onDownloadFile) {
         console.log(`NegotiationCard: Props changed - onDownloadFile.`);
+        return false;
+    }
+    // FIX: Compare clientCompletedJobs prop
+    if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) {
+        console.log(`NegotiationCard: Props changed - clientCompletedJobs.`);
         return false;
     }
 
@@ -123,7 +127,8 @@ const NegotiationCard = React.memo(({
   openRejectModal,
   openCompleteJobModal, // This prop now opens the modal in ClientJobs.js
   canCounter,
-  onDownloadFile // NEW: Destructure onDownloadFile prop
+  onDownloadFile, // Destructure onDownloadFile prop
+  clientCompletedJobs // FIX: Destructure clientCompletedJobs prop
 }) => { 
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
@@ -294,7 +299,7 @@ const NegotiationCard = React.memo(({
     if (!file) return;
 
     setIsSendingFile(true);
-    showToast('Uploading file...!', 'info'); // Added ! for consistency
+    showToast('Uploading file...!', 'info');
 
     let tempMessageId; 
     try {
@@ -370,13 +375,19 @@ const NegotiationCard = React.memo(({
                 <span className="completed">{otherParty?.completed_jobs || 0} jobs</span>
               </div>
             ) : (
+              // FIX: Display client's completed jobs
               <div className="client-stats">
                 <span className="client-rating-stars">
-                  {'★'.repeat(Math.floor(otherParty?.client_rating || 5.0))}
-                  {'☆'.repeat(5 - Math.floor(otherParty?.client_rating || 5.0))}
-                  <span className="rating-number">({(otherParty?.client_rating || 5.0).toFixed(1)})</span>
+                  {'★'.repeat(Math.floor(otherParty?.client_average_rating || 5.0))}
+                  {'☆'.repeat(5 - Math.floor(otherParty?.client_average_rating || 5.0))}
+                  <span className="rating-number">({(otherParty?.client_average_rating || 5.0).toFixed(1)})</span>
                 </span>
                 <span className="rating-label">Client Rating</span>
+                {clientCompletedJobs !== undefined && ( // Only display if prop is provided
+                    <span className="completed-jobs-count" style={{ marginLeft: '10px' }}>
+                        ({clientCompletedJobs} jobs completed)
+                    </span>
+                )}
               </div>
             )}
           </div>
@@ -402,14 +413,13 @@ const NegotiationCard = React.memo(({
           <div className="detail-row">
             <span className="label">Attached File:</span>
             <span className="value">
-              {/* FIX: Use onDownloadFile prop instead of direct href */}
-              <button // Changed from <a> to <button> for accessibility and to remove href="#" ESLint warning
+              <button
                 onClick={(e) => {
-                  e.preventDefault(); // Prevent default button behavior if any
+                  e.preventDefault();
                   onDownloadFile(negotiation.id, negotiation.negotiation_files);
                 }}
-                className="file-link-button" // Apply styling to make it look like a link
-                type="button" // Important for accessibility
+                className="file-link-button"
+                type="button"
               >
                 📄 {negotiation.negotiation_files}
               </button>
@@ -424,27 +434,19 @@ const NegotiationCard = React.memo(({
           <span className="label">Deadline:</span>
           <span className="value">
             {negotiation.deadline_hours} hours
-            {/* NEW: Display due_date and Overdue status */}
-            {negotiation.due_date && (
-                <span className="due-date-display" style={{ marginLeft: '10px' }}>
-                    (Due: {new Date(negotiation.due_date).toLocaleString()}
-                    {isOverdue && <span style={{ color: 'red', fontWeight: 'bold' }}> - OVERDUE</span>})
-                </span>
-            )}
+            {isOverdue && <span className="due-date-display" style={{ marginLeft: '10px', color: 'red', fontWeight: 'bold' }}> - OVERDUE</span>}
           </span>
         </div>
         <div className="detail-row">
           <span className="label">Requested:</span>
           <span className="value">{new Date(negotiation.created_at).toLocaleDateString()}</span>
         </div>
-        {/* NEW: Display Completed At for completed jobs */}
         {negotiation.status === 'completed' && negotiation.completed_at && (
             <div className="detail-row">
                 <span className="label">Completed At:</span>
                 <span className="value">{formatDisplayTimestamp(negotiation.completed_at)}</span>
             </div>
         )}
-        {/* NEW: Display Client Feedback for completed jobs */}
         {negotiation.status === 'completed' && (negotiation.client_feedback_comment || negotiation.client_feedback_rating) && (
             <div className="detail-row client-feedback-section">
                 <span className="label">Client Feedback:</span>
@@ -636,12 +638,10 @@ const NegotiationCard = React.memo(({
             {negotiation.status === 'hired' && (
               <div className="hired-actions">
                 <span className="info-text">🎉 Job Active! Transcriber hired.</span>
-                {/* REMOVED BUTTON: Upload Audio Files removed for client view, as requested by the user. */}
-                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation); }} className="action-btn complete-job-btn">Mark as Complete</button>} {/* UPDATED: Pass the whole negotiation object */}
+                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation); }} className="action-btn complete-job-btn">Mark as Complete</button>}
               </div>
             )}
 
-            {/* Removed the completed-actions div, as the button is moved */}
             {negotiation.status === 'completed' && (
               <div className="completed-status-message">
                   <span className="success-text">🎉 Job Completed!</span>
@@ -681,8 +681,8 @@ const NegotiationCard = React.memo(({
                 >
                   Accept
                 </button>}
-                {canCounter && onOpenCounterModal && <button // Use canCounter to enable/disable
-                  onClick={(e) => { e.stopPropagation(); onOpenCounterModal(negotiation.id); }} // Renamed prop
+                {canCounter && onOpenCounterModal && <button
+                  onClick={(e) => { e.stopPropagation(); onOpenCounterModal(negotiation.id); }}
                   className="action-btn counter-btn"
                 >
                   Counter
@@ -703,7 +703,6 @@ const NegotiationCard = React.memo(({
             {negotiation.status === 'hired' && (
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
-                    {/* BUTTON KEPT: This button is intended for the transcriber to submit the final transcript. */}
                 </div>
             )}
             {negotiation.status === 'client_counter' && (

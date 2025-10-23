@@ -1,4 +1,6 @@
 // src/TranscriberPaymentHistory.js - UPDATED to display USD currency and Upcoming Payouts
+// REMOVED: All Past Transactions table
+// FIXED: Upcoming payouts now correctly displayed and grouped by week
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,10 +14,10 @@ const TranscriberPaymentHistory = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [payments, setPayments] = useState([]);
-    const [upcomingPayouts, setUpcomingPayouts] = useState([]); // NEW: State for upcoming payouts
-    const [summary, setSummary] = useState({ totalEarnings: 0, monthlyEarnings: 0 });
-    const [totalUpcomingPayouts, setTotalUpcomingPayouts] = useState(0); // NEW: Total for upcoming payouts
+    // Removed 'payments' state as 'All Past Transactions' table is removed
+    const [upcomingPayouts, setUpcomingPayouts] = useState([]);
+    const [summary, setSummary] = useState({ totalEarnings: 0, monthlyEarnings: 0 }); // Summary now reflects total paid earnings
+    const [totalUpcomingPayouts, setTotalUpcomingPayouts] = useState(0);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -27,7 +29,7 @@ const TranscriberPaymentHistory = () => {
         setToast((prev) => ({ ...prev, isVisible: false }));
     }, []);
 
-    const fetchPaymentHistory = useCallback(async () => {
+    const fetchTranscriberPayouts = useCallback(async () => { // Renamed from fetchPaymentHistory for clarity
         const token = localStorage.getItem('token');
         if (!token) {
             if (isAuthenticated) {
@@ -40,6 +42,7 @@ const TranscriberPaymentHistory = () => {
 
         setLoading(true);
         try {
+            // This endpoint now returns separated completed and upcoming payments
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/payments`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -48,10 +51,18 @@ const TranscriberPaymentHistory = () => {
             const data = await response.json();
 
             if (response.ok) {
-                setPayments(data.payments || []);
+                // No longer setting 'payments' state for a separate table
                 setSummary(data.summary || { totalEarnings: 0, monthlyEarnings: 0 });
-                if (data.payments?.length === 0) {
-                    showToast('No payment history found yet.', 'info');
+                
+                // Set upcoming payouts from the new data property
+                setUpcomingPayouts(data.upcomingPayouts || []);
+                setTotalUpcomingPayouts(data.totalUpcomingPayouts || 0);
+
+                // Adjust toast message based on available data
+                if (data.payments?.length === 0 && data.upcomingPayouts?.length === 0) {
+                    showToast('No payment history or upcoming payouts found yet.', 'info');
+                } else if (data.upcomingPayouts?.length === 0 && data.payments?.length > 0) {
+                    showToast('No upcoming payouts found, but you have past earnings.', 'info');
                 }
             } else {
                 showToast(data.error || 'Failed to load payment history.', 'error');
@@ -60,45 +71,9 @@ const TranscriberPaymentHistory = () => {
             console.error('Network error fetching payment history:', error);
             showToast('Network error while fetching payment history.', 'error');
         } finally {
-            // setLoading(false); // Will be set by fetchUpcomingPayouts
-        }
-    }, [isAuthenticated, logout, showToast]);
-
-    // NEW: Function to fetch upcoming payouts
-    const fetchUpcomingPayouts = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            if (isAuthenticated) {
-                console.warn("TranscriberPaymentHistory: Token missing for upcoming payouts. Forcing logout.");
-                logout();
-            }
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/payouts/upcoming`, { // NEW API endpoint
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
-
-            if (response.ok) {
-                setUpcomingPayouts(data.upcomingPayouts || []);
-                setTotalUpcomingPayouts(data.totalUpcomingPayouts || 0);
-            } else {
-                showToast(data.error || 'Failed to load upcoming payouts.', 'error');
-            }
-        } catch (error) {
-            console.error('Network error fetching upcoming payouts:', error);
-            showToast('Network error while fetching upcoming payouts.', 'error');
-        } finally {
             setLoading(false);
         }
     }, [isAuthenticated, logout, showToast]);
-
 
     useEffect(() => {
         if (authLoading) return;
@@ -109,14 +84,10 @@ const TranscriberPaymentHistory = () => {
             return;
         }
 
-        // Fetch both payment history and upcoming payouts
-        Promise.all([
-            fetchPaymentHistory(),
-            fetchUpcomingPayouts()
-        ]).finally(() => {
-            setLoading(false);
-        });
-    }, [isAuthenticated, authLoading, user, navigate, fetchPaymentHistory, fetchUpcomingPayouts]);
+        // Only call fetchTranscriberPayouts
+        fetchTranscriberPayouts();
+        
+    }, [isAuthenticated, authLoading, user, navigate, fetchTranscriberPayouts]);
 
     if (authLoading || !isAuthenticated || !user || loading) {
         return (
@@ -155,27 +126,27 @@ const TranscriberPaymentHistory = () => {
                     <div className="summary-cards-grid">
                         <div className="summary-card">
                             <h3>Total Earnings</h3>
-                            <p className="summary-value">USD {summary.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
+                            <p className="summary-value">USD {summary.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         <div className="summary-card">
                             <h3>This Month's Earnings</h3>
-                            <p className="summary-value">USD {summary.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
+                            <p className="summary-value">USD {summary.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="summary-card"> {/* NEW: Card for Total Upcoming Payouts */}
+                        <div className="summary-card">
                             <h3>Total Upcoming Payouts</h3>
-                            <p className="summary-value">USD {totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
+                            <p className="summary-value">USD {totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                     </div>
 
                     {/* NEW: Upcoming Payments Table */}
-                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h3> {/* UPDATED: KES to USD in count display */}
+                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h3>
                     {upcomingPayouts.length === 0 ? (
-                        <p className="no-data-message">No upcoming payouts found.</p>
+                        <p className="no-data-message">No upcoming payouts found for the current week.</p>
                     ) : (
-                        <div className="upcoming-payouts-table-container payments-table-container"> {/* Reused payments-table-container for styling */}
+                        <div className="upcoming-payouts-table-container payments-table-container">
                             {upcomingPayouts.map(week => (
                                 <div key={week.date} className="weekly-payout-group">
-                                    <h4>Week Ending: {week.date} (Total: USD {week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4> {/* UPDATED: KES to USD, added formatting */}
+                                    <h4>Week Ending: {week.date} (Total: USD {week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4>
                                     <table>
                                         <thead>
                                             <tr>
@@ -190,11 +161,11 @@ const TranscriberPaymentHistory = () => {
                                         <tbody>
                                             {week.payouts.map(payout => (
                                                 <tr key={payout.id}>
-                                                    <td>{payout.negotiation_id.substring(0, 8)}...</td>
-                                                    <td>{payout.clientName}</td>
-                                                    <td>{payout.jobRequirements.substring(0, 50)}...</td>
-                                                    <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
-                                                    <td><span className={`status-badge ${payout.status}`}>{payout.status}</span></td>
+                                                    <td>{payout.related_job_id ? payout.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
+                                                    <td>{payout.clientName || 'N/A'}</td>
+                                                    <td>{payout.jobRequirements ? payout.jobRequirements.substring(0, 50) + '...' : 'N/A'}</td>
+                                                    <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td><span className={`status-badge ${payout.status}`}>{payout.status?.replace('_', ' ')}</span></td>
                                                     <td>{payout.created_at}</td>
                                                 </tr>
                                             ))}
@@ -205,8 +176,9 @@ const TranscriberPaymentHistory = () => {
                         </div>
                     )}
 
-
-                    <h3 style={{ marginTop: '30px' }}>All Past Transactions</h3> {/* Adjusted margin */}
+                    {/* REMOVED: All Past Transactions table */}
+                    {/*
+                    <h3 style={{ marginTop: '30px' }}>All Past Transactions</h3>
                     {payments.length === 0 ? (
                         <p className="no-data-message">No completed payment transactions found.</p>
                     ) : (
@@ -215,9 +187,9 @@ const TranscriberPaymentHistory = () => {
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Negotiation ID</th>
+                                        <th>Job ID</th>
                                         <th>Client</th>
-                                        <th>Your Pay (80%)</th> {/* UPDATED: Column header */}
+                                        <th>Your Pay (80%)</th>
                                         <th>Status</th>
                                         <th>Details</th>
                                     </tr>
@@ -226,17 +198,24 @@ const TranscriberPaymentHistory = () => {
                                     {payments.map((payment) => (
                                         <tr key={payment.id}>
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
-                                            <td>{payment.negotiation_id.substring(0, 8)}...</td>
+                                            <td>{payment.related_job_id ? payment.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
                                             <td>{payment.client?.full_name || 'N/A'}</td>
-                                            <td>USD {payment.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
-                                            <td>{payment.paystack_status}</td>
-                                            <td>{payment.negotiation?.requirements?.substring(0, 50)}...</td>
+                                            <td>USD {payment.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td><span className={`status-badge ${payment.paystack_status}`}>{payment.paystack_status?.replace('_', ' ')}</span></td>
+                                            <td>
+                                                {payment.related_job_type === 'negotiation' && payment.negotiation?.requirements ?
+                                                    payment.negotiation.requirements.substring(0, 50) + '...' :
+                                                payment.related_job_type === 'direct_upload' && payment.direct_upload_job?.client_instructions ?
+                                                    payment.direct_upload_job.client_instructions.substring(0, 50) + '...' :
+                                                'N/A'}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     )}
+                    */}
                 </div>
             </main>
 

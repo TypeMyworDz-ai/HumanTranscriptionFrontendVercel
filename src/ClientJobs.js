@@ -29,7 +29,7 @@ const ClientJobs = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    const fetchClientJobs = useCallback(async () => {
+    const fetchClientJobs = useCallback(async (showNoJobsToast = true) => { // FIX: Added showNoJobsToast parameter
         const token = localStorage.getItem('token');
         if (!token) {
             if (isAuthenticated) {
@@ -56,7 +56,8 @@ const ClientJobs = () => {
                 const jobs = fetchedNegotiations.filter(n => n.status === 'hired');
                 console.log("Filtered Active Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
                 setActiveJobs(jobs);
-                if (jobs.length === 0) {
+                // FIX: Only show "No active jobs" toast if showNoJobsToast is true
+                if (jobs.length === 0 && showNoJobsToast) { 
                     showToast('No active jobs found yet.', 'info');
                 }
             } else {
@@ -228,7 +229,7 @@ const ClientJobs = () => {
             if (response.ok) {
                 showToast('Job marked as complete successfully! Thank you for your feedback.', 'success');
                 closeMarkJobCompleteModal(); // Close the modal
-                fetchClientJobs(); // Re-fetch jobs to update the list
+                fetchClientJobs(false); // FIX: Pass false to prevent "No active jobs" toast
             } else {
                 showToast(data.error || 'Failed to mark job as complete', 'error');
             }
@@ -267,9 +268,10 @@ const ClientJobs = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    negotiationId: negotiation.id,
-                    amount: negotiation.agreed_price_usd, // UPDATED: Pass agreed_price_usd
-                    email: user.email
+                    jobId: negotiation.id,
+                    amount: negotiation.agreed_price_usd,
+                    jobType: 'negotiation',
+                    clientEmail: user.email
                 })
             })
             .then(response => response.json())
