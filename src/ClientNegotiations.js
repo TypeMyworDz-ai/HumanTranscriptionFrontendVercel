@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import Toast from './Toast';
+import Toast from './Toast'; // Assuming you have a Toast component
 import Modal from './Modal';
 import NegotiationCard from './NegotiationCard';
 import './ClientNegotiations.css';
@@ -289,9 +289,9 @@ const ClientNegotiations = () => {
 
     const confirmCounterBackNegotiation = useCallback(async () => {
         setModalLoading(true);
-        // FIX: Only check for proposedPrice and clientResponse
-        if (!counterBackOfferData.proposedPrice || !counterBackOfferData.clientResponse) {
-            showToast('Please provide both a proposed price and a message for your counter-offer.', 'error'); // FIX: Updated message
+        // FIXED: Removed validation for 'clientResponse' (message)
+        if (!counterBackOfferData.proposedPrice) {
+            showToast('Please provide a proposed price for your counter-offer.', 'error'); // Updated message
             setModalLoading(false);
             return;
         }
@@ -312,7 +312,7 @@ const ClientNegotiations = () => {
                 },
                 body: JSON.stringify({
                     proposed_price_usd: parseFloat(counterBackOfferData.proposedPrice),
-                    client_response: counterBackOfferData.clientResponse,
+                    client_response: counterBackOfferData.clientResponse, // This is now optional
                 })
             });
 
