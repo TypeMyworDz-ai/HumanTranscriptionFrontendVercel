@@ -116,8 +116,8 @@ const TranscriberNegotiations = () => {
                 console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ 
                     id: n.id, 
                     status: n.status, 
-                    clientRating: n.client_info?.client_rating, 
-                    clientJobs: n.client_info?.client_completed_jobs, // Log clientJobs
+                    clientRating: n.client_info?.client_rating, // Corrected log for clientRating
+                    clientJobs: n.client_info?.client_completed_jobs, 
                     dueDate: n.due_date,
                     completed_at: n.completed_at,
                     client_feedback_comment: n.client_feedback_comment,
@@ -625,8 +625,10 @@ const TranscriberNegotiations = () => {
                                     openRejectModal={openRejectModal}
                                     openCompleteJobModal={openCompleteJobModal}
                                     onDownloadFile={handleDownloadFile}
-                                    // FIX: Pass client_completed_jobs to NegotiationCard
+                                    // FIXED: Pass client_completed_jobs to NegotiationCard
                                     clientCompletedJobs={negotiation.client_info?.client_completed_jobs}
+                                    // FIXED: Pass client_rating as clientAverageRating to NegotiationCard
+                                    clientAverageRating={parseFloat(negotiation.client_info?.client_rating) || 0}
                                 />
                             ))
                         )}

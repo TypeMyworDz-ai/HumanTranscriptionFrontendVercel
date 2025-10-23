@@ -98,9 +98,13 @@ const arePropsEqual = (prevProps, nextProps) => {
         console.log(`NegotiationCard: Props changed - onDownloadFile.`);
         return false;
     }
-    // FIX: Compare clientCompletedJobs prop
     if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) {
         console.log(`NegotiationCard: Props changed - clientCompletedJobs.`);
+        return false;
+    }
+    // NEW: Compare clientAverageRating prop
+    if (prevProps.clientAverageRating !== nextProps.clientAverageRating) {
+        console.log(`NegotiationCard: Props changed - clientAverageRating.`);
         return false;
     }
 
@@ -128,7 +132,8 @@ const NegotiationCard = React.memo(({
   openCompleteJobModal, // This prop now opens the modal in ClientJobs.js
   canCounter,
   onDownloadFile, // Destructure onDownloadFile prop
-  clientCompletedJobs // FIX: Destructure clientCompletedJobs prop
+  clientCompletedJobs, // Destructure clientCompletedJobs prop
+  clientAverageRating // NEW: Destructure clientAverageRating prop directly
 }) => { 
   const { user } = useAuth(); 
   const negotiationId = negotiation.id;
@@ -138,6 +143,8 @@ const NegotiationCard = React.memo(({
   const otherParty = isClientViewing ? negotiation.users : negotiation.client_info;
   const otherPartyId = otherParty?.id;
   const otherPartyName = otherParty?.full_name || 'Unknown User';
+  // REMOVED: No longer deriving clientAverageRating internally, it's a direct prop
+  // const clientAverageRating = parseFloat(otherParty?.client_average_rating) || 0; 
 
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
@@ -375,12 +382,14 @@ const NegotiationCard = React.memo(({
                 <span className="completed">{otherParty?.completed_jobs || 0} jobs</span>
               </div>
             ) : (
-              // FIX: Display client's completed jobs
+              // FIXED: Display client's completed jobs and rating correctly
               <div className="client-stats">
                 <span className="client-rating-stars">
-                  {'★'.repeat(Math.floor(otherParty?.client_average_rating || 5.0))}
-                  {'☆'.repeat(5 - Math.floor(otherParty?.client_average_rating || 5.0))}
-                  <span className="rating-number">({(otherParty?.client_average_rating || 5.0).toFixed(1)})</span>
+                  {/* Use clientAverageRating for stars */}
+                  {'★'.repeat(Math.floor(clientAverageRating))}
+                  {'☆'.repeat(5 - Math.floor(clientAverageRating))}
+                  {/* Use clientAverageRating for number display */}
+                  <span className="rating-number">({clientAverageRating.toFixed(1)})</span>
                 </span>
                 <span className="rating-label">Client Rating</span>
                 {clientCompletedJobs !== undefined && ( // Only display if prop is provided
