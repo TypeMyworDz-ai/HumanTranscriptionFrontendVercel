@@ -6,7 +6,7 @@ import NegotiationCard from './NegotiationCard';
 import './ClientNegotiations.css';
 
 import { connectSocket, disconnectSocket } from './ChatService';
-import { useAuth } from './contexts/AuthContext'; // FIX: Corrected import syntax
+import { useAuth } from './contexts/AuthContext';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
@@ -333,8 +333,10 @@ const ClientNegotiations = () => {
     }, [selectedNegotiationId, counterBackOfferData, showToast, closeCounterBackModal, fetchNegotiations, logout]);
 
     const handleProceedToPayment = useCallback(async (negotiation) => {
-        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) {
-            showToast('Missing client email or negotiation details for payment.', 'error');
+        // CRITICAL FIX: Ensure all required parameters are present
+        if (!negotiation?.id || !negotiation?.agreed_price_usd || !user?.email) {
+            showToast('Missing job details or client email for payment. Please try again.', 'error');
+            console.error('handleProceedToPayment: Missing required data for payment initialization. Negotiation:', negotiation, 'User email:', user?.email);
             return;
         }
         if (!PAYSTACK_PUBLIC_KEY) {
@@ -356,8 +358,8 @@ const ClientNegotiations = () => {
                 body: JSON.stringify({
                     jobId: negotiation.id,
                     amount: negotiation.agreed_price_usd,
-                    jobType: 'negotiation', // FIX: Added jobType
-                    clientEmail: user.email // FIX: Changed to 'clientEmail'
+                    jobType: 'negotiation',
+                    clientEmail: user.email // Ensure this is correctly passed
                 })
             });
 
