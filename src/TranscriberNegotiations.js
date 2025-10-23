@@ -116,7 +116,7 @@ const TranscriberNegotiations = () => {
                 console.log("Fetched Negotiations for TranscriberNegotiations:", data.negotiations.map(n => ({ 
                     id: n.id, 
                     status: n.status, 
-                    clientRating: n.client_info?.client_rating, // Corrected log for clientRating
+                    clientRating: n.client_info?.client_rating, 
                     clientJobs: n.client_info?.client_completed_jobs, 
                     dueDate: n.due_date,
                     completed_at: n.completed_at,
@@ -177,21 +177,29 @@ const TranscriberNegotiations = () => {
         console.log(`TranscriberNegotiations: Attempting to connect socket via ChatService for user ID: ${user.id}`);
         const socket = connectSocket(user.id);
 
-        socket.on('new_negotiation_request', handleNegotiationUpdate);
-        socket.on('negotiation_accepted', handleNegotiationUpdate);
-        socket.on('negotiation_rejected', handleNegotiationUpdate);
-        socket.on('negotiation_countered', handleNegotiationUpdate);
-        socket.on('job_completed', handleNegotiationUpdate);
+        if (socket) {
+            socket.on('new_negotiation_request', handleNegotiationUpdate);
+            socket.on('negotiation_accepted', handleNegotiationUpdate);
+            socket.on('negotiation_rejected', handleNegotiationUpdate);
+            socket.on('negotiation_countered', handleNegotiationUpdate);
+            socket.on('job_completed', handleNegotiationUpdate);
+            socket.on('job_hired', handleNegotiationUpdate); // NEW: Listen for 'job_hired' event
+
+            console.log('TranscriberNegotiations: Socket listeners attached.');
+        }
 
 
         return () => {
-            console.log(`TranscriberNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
-            socket.off('new_negotiation_request', handleNegotiationUpdate);
-            socket.off('negotiation_accepted', handleNegotiationUpdate);
-            socket.off('negotiation_rejected', handleNegotiationUpdate);
-            socket.off('negotiation_countered', handleNegotiationUpdate);
-            socket.off('job_completed', handleNegotiationUpdate);
-            disconnectSocket();
+            if (socket) {
+                console.log(`TranscriberNegotiations: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
+                socket.off('new_negotiation_request', handleNegotiationUpdate);
+                socket.off('negotiation_accepted', handleNegotiationUpdate);
+                socket.off('negotiation_rejected', handleNegotiationUpdate);
+                socket.off('negotiation_countered', handleNegotiationUpdate);
+                socket.off('job_completed', handleNegotiationUpdate);
+                socket.off('job_hired', handleNegotiationUpdate); // NEW: Clean up 'job_hired' listener
+                disconnectSocket();
+            }
         };
     }, [user?.id, isAuthenticated, handleNegotiationUpdate]);
 

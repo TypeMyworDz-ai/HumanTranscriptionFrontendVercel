@@ -261,27 +261,34 @@ const TranscriberJobs = () => {
                         {activeJobs.length === 0 ? (
                             <p className="no-data-message">You currently have no active jobs assigned.</p>
                         ) : (
-                            activeJobs.map((job) => (
-                                <NegotiationCard
-                                    key={job.id}
-                                    negotiation={job}
-                                    onDelete={handleDeleteNegotiation}
-                                    onPayment={() => showToast('Payment is handled by client.', 'info')} // Placeholder
-                                    onLogout={logout}
-                                    getStatusColor={getStatusColor}
-                                    getStatusText={getStatusText}
-                                    showToast={showToast}
-                                    currentUserId={user.id}
-                                    currentUserType={user.user_type}
-                                    openAcceptModal={openAcceptModal}
-                                    canAccept={false} // Transcriber cannot accept an already hired job
-                                    canCounter={false} // Transcriber cannot counter an already hired job
-                                    onOpenCounterModal={onOpenCounterModal}
-                                    openRejectModal={openRejectModal}
-                                    onDownloadFile={handleDownloadFile} // NEW: Pass the download function
-                                    // Removed openCompleteJobModal as 'Mark Complete' is now client-side
-                                />
-                            ))
+                            activeJobs.map((job) => {
+                                // NEW: Log the client_info for debugging
+                                console.log(`TranscriberJobs: Client Info for Job ${job.id}:`, job.client_info);
+                                return (
+                                    <NegotiationCard
+                                        key={job.id}
+                                        negotiation={job}
+                                        onDelete={handleDeleteNegotiation}
+                                        onPayment={() => showToast('Payment is handled by client.', 'info')} // Placeholder
+                                        onLogout={logout}
+                                        getStatusColor={getStatusColor}
+                                        getStatusText={getStatusText}
+                                        showToast={showToast}
+                                        currentUserId={user.id}
+                                        currentUserType={user.user_type}
+                                        openAcceptModal={openAcceptModal}
+                                        canAccept={false} // Transcriber cannot accept an already hired job
+                                        canCounter={false} // Transcriber cannot counter an already hired job
+                                        onOpenCounterModal={onOpenCounterModal}
+                                        openRejectModal={openRejectModal}
+                                        onDownloadFile={handleDownloadFile} // NEW: Pass the download function
+                                        // Removed openCompleteJobModal as 'Mark Complete' is now client-side
+                                        // FIXED: Pass client_rating as clientAverageRating to NegotiationCard
+                                        clientAverageRating={parseFloat(job.client_info?.client_rating) || 0}
+                                        clientCompletedJobs={job.client_info?.client_completed_jobs || 0}
+                                    />
+                                );
+                            })
                         )}
                     </div>
                 </div>
