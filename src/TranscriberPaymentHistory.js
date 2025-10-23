@@ -146,7 +146,7 @@ const TranscriberPaymentHistory = () => {
                         <div className="upcoming-payouts-table-container payments-table-container">
                             {upcomingPayouts.map(week => (
                                 <div key={week.date} className="weekly-payout-group">
-                                    <h4>Week Ending: {week.date} (Total: USD {week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4>
+                                    <h4>Week Ending: ${week.date} (Total: USD ${week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4>
                                     <table>
                                         <thead>
                                             <tr>
@@ -164,7 +164,7 @@ const TranscriberPaymentHistory = () => {
                                                     <td>{payout.related_job_id ? payout.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
                                                     <td>{payout.clientName || 'N/A'}</td>
                                                     <td>{payout.jobRequirements ? payout.jobRequirements.substring(0, 50) + '...' : 'N/A'}</td>
-                                                    <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td>USD ${payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td>
                                                         {/* FIXED: Display "Completed (Awaiting Payout)" if job_status is completed */}
                                                         <span className={`status-badge ${payout.job_status === 'completed' ? 'completed' : payout.status}`}>
@@ -204,13 +204,13 @@ const TranscriberPaymentHistory = () => {
                                 <tbody>
                                     {payments.map((payment) => (
                                         <tr key={payment.id}>
-                                            <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
-                                            <td>{payment.related_job_id ? payment.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
-                                            <td>{payment.client?.full_name || 'N/A'}</td>
-                                            <td>USD {payment.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                            <td><span className={`status-badge ${payment.paystack_status}`}>{payment.paystack_status?.replace('_', ' ')}</span></td>
+                                            <td>${new Date(payment.transaction_date).toLocaleDateString()}</td>
+                                            <td>${payment.related_job_id ? payment.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
+                                            <td>${payment.client?.full_name || 'N/A'}</td>
+                                            <td>USD ${payment.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td><span className={`status-badge ${payment.paystack_status}`}>${payment.paystack_status?.replace('_', ' ')}</span></td>
                                             <td>
-                                                {payment.related_job_type === 'negotiation' && payment.negotiation?.requirements ?
+                                                ${payment.related_job_type === 'negotiation' && payment.negotiation?.requirements ?
                                                     payment.negotiation.requirements.substring(0, 50) + '...' :
                                                 payment.related_job_type === 'direct_upload' && payment.direct_upload_job?.client_instructions ?
                                                     payment.direct_upload_job.client_instructions.substring(0, 50) + '...' :
