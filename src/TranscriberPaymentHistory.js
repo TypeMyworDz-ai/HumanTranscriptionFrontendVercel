@@ -1,4 +1,4 @@
-// src/TranscriberPaymentHistory.js - UPDATED to display USD currency and Upcoming Payouts
+// src/TranscriberPaymentHistory.js - UPDATED to display USD currency, Upcoming Payouts, and job status
 // REMOVED: All Past Transactions table
 // FIXED: Upcoming payouts now correctly displayed and grouped by week
 
@@ -165,7 +165,14 @@ const TranscriberPaymentHistory = () => {
                                                     <td>{payout.clientName || 'N/A'}</td>
                                                     <td>{payout.jobRequirements ? payout.jobRequirements.substring(0, 50) + '...' : 'N/A'}</td>
                                                     <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                                    <td><span className={`status-badge ${payout.status}`}>{payout.status?.replace('_', ' ')}</span></td>
+                                                    <td>
+                                                        {/* FIXED: Display "Completed (Awaiting Payout)" if job_status is completed */}
+                                                        <span className={`status-badge ${payout.job_status === 'completed' ? 'completed' : payout.status}`}>
+                                                            {payout.job_status === 'completed' && payout.status === 'awaiting_completion'
+                                                                ? 'Completed (Awaiting Payout)'
+                                                                : payout.status?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
                                                     <td>{payout.created_at}</td>
                                                 </tr>
                                             ))}

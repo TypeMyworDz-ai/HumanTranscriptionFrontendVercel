@@ -1,3 +1,4 @@
+// src/ClientJobs.js - UPDATED to fix modal dismissal and toast message logic
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
@@ -56,7 +57,7 @@ const ClientJobs = () => {
                 const jobs = fetchedNegotiations.filter(n => n.status === 'hired');
                 console.log("Filtered Active Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
                 setActiveJobs(jobs);
-                // FIX: Only show "No active jobs" toast if showNoJobsToast is true
+                // FIX: Only show "No active jobs" toast if showNoJobsToast is true AND there are no jobs
                 if (jobs.length === 0 && showNoJobsToast) { 
                     showToast('No active jobs found yet.', 'info');
                 }
@@ -201,7 +202,7 @@ const ClientJobs = () => {
     // NEW: Function to handle marking a job as complete with feedback (client-side)
     const submitMarkJobComplete = useCallback(async () => {
         if (!jobToComplete?.id) {
-            showToast('No job selected for completion.', 'error');
+            showToast('No job selected for completion.!', 'error');
             return;
         }
 
@@ -231,7 +232,7 @@ const ClientJobs = () => {
                 closeMarkJobCompleteModal(); // Close the modal
                 fetchClientJobs(false); // FIX: Pass false to prevent "No active jobs" toast
             } else {
-                showToast(data.error || 'Failed to mark job as complete', 'error');
+                showToast(data.error || 'Failed to mark job as complete.', 'error');
             }
         } catch (error) {
             console.error('Network error marking job as complete:', error);
