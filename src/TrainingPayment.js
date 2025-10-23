@@ -54,7 +54,11 @@ const TrainingPayment = () => {
         const token = localStorage.getItem('token');
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/payment/initialize-training`, {
+            // NEW: Log the full URL being called
+            const paymentApiUrl = `${BACKEND_API_URL}/api/payment/initialize-training`;
+            console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl}`);
+
+            const response = await fetch(paymentApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -65,9 +69,20 @@ const TrainingPayment = () => {
                     email: user.email
                 })
             });
-            const data = await response.json();
 
-            if (response.ok && data.data?.authorization_url) {
+            // NEW: Improved error handling for non-OK responses
+            if (!response.ok) {
+                const errorText = await response.text(); // Read raw response text
+                console.error('[TrainingPayment] Server responded with an error:', response.status, errorText);
+                showToast(`Failed to initiate payment: ${response.statusText}. Please check backend route.`, 'error');
+                setLoading(false);
+                setPaymentInitiated(false);
+                return; // Stop execution here
+            }
+
+            const data = await response.json(); // Only try to parse as JSON if response is OK
+
+            if (data.data?.authorization_url) {
                 showToast('Redirecting to payment gateway...', 'info');
                 window.location.href = data.data.authorization_url; // Redirect to Paystack
             } else {
