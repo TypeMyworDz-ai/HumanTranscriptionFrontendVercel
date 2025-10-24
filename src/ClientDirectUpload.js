@@ -127,12 +127,6 @@ const ClientDirectUpload = () => {
             formData.append(`instructionFiles`, file);
         });
 
-        // Debugging: Log FormData content for quote request
-        console.log('FormData for quote request:');
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
-
         try {
             const response = await fetch(`${BACKEND_API_URL}/api/direct-upload/job/quote`, {
                 method: 'POST',
@@ -145,7 +139,6 @@ const ClientDirectUpload = () => {
 
             if (response.ok) {
                 setQuoteDetails(data.quoteDetails);
-                console.log("Quote Details received:", data.quoteDetails); // Debugging log
                 setShowQuoteModal(true);
             } else {
                 showToast(data.error || 'Failed to calculate quote.', 'error');
@@ -192,20 +185,14 @@ const ClientDirectUpload = () => {
         formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
         formData.append('deadlineTypeParam', deadlineTypeParam); 
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
-        // FIX: Pass the calculated USD quote using the correct property name
-        formData.append('quote_amount', quoteDetails.quote_amount); // FIX: Changed 'quoteAmountUsd' to 'quote_amount'
-        formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); // Pass price per minute
-        formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); // Pass the calculated deadline
+        formData.append('quote_amount', quoteDetails.quote_amount); 
+        formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); 
+        formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); 
+        formData.append('jobType', 'direct_upload'); // Explicitly set job type
 
         instructionFiles.forEach((file) => {
             formData.append(`instructionFiles`, file);
         });
-
-        // Debugging: Log FormData content for job creation request
-        console.log('FormData for job creation request:');
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
 
         try {
             const createJobResponse = await fetch(`${BACKEND_API_URL}/api/direct-upload/job`, {
@@ -216,7 +203,6 @@ const ClientDirectUpload = () => {
                 body: formData
             });
             const createJobData = await createJobResponse.json();
-            console.log('Backend response for job creation:', createJobData); // Log full backend response
 
             if (!createJobResponse.ok || !createJobData.job) {
                 showToast(createJobData.error || 'Failed to create job entry. Please try again.', 'error');
@@ -235,7 +221,6 @@ const ClientDirectUpload = () => {
                 },
                 body: JSON.stringify({
                     negotiationId: jobId, // Use the new jobId as negotiationId for payment
-                    // FIX: Pass USD amount for payment using the correct property name
                     amount: quoteDetails.quote_amount, 
                     email: user.email
                 })
