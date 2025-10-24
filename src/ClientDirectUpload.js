@@ -127,6 +127,12 @@ const ClientDirectUpload = () => {
             formData.append(`instructionFiles`, file);
         });
 
+        // Debugging: Log FormData content
+        console.log('FormData for quote request:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+
         try {
             const response = await fetch(`${BACKEND_API_URL}/api/direct-upload/job/quote`, {
                 method: 'POST',

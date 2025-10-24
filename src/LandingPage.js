@@ -63,7 +63,7 @@ const LandingPage = () => {
         <div className="action-cards">
           <div className="action-card trainee-card">
             <h3>Train</h3>
-            <p>Become a TypeMyworDz-certified transcriber</p>
+            <p>Become a TypeMyworDz-approved transcriber</p>
             <button onClick={handleTraineeRegister} className="register-btn train-btn">
               Register here
             </button>
