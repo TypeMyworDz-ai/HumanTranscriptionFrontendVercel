@@ -134,7 +134,9 @@ const TrainingPayment = () => {
                     <div className="payment-card">
                         <h2>Unlock Your Training Dashboard</h2>
                         <p className="intro-text">
-                            Welcome to your journey to becoming a TypeMyworDz-certified transcriber!
+                            Welcome to your journey to becoming a TypeMyworDz-approved transcriber!
+                            After successful completion of training, you have a chance of joining 
+                            our active transcribers pool and start earning!
                             To gain full access to the Training Room and Training Materials,
                             a one-time payment of **USD {TRAINING_FEE_USD.toFixed(2)}** is required.
                         </p>
@@ -153,8 +155,7 @@ const TrainingPayment = () => {
                         </div>
 
                         <p className="note-text">
-                            Upon successful payment, you will be automatically redirected to your personalized
-                            Training Dashboard.
+                            Upon successful payment, login to access your Training Dashboard.
                         </p>
                         <Link to="/" className="back-to-home-btn">← Back to Homepage</Link>
                     </div>

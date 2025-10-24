@@ -86,7 +86,7 @@ const TraineeRegister = () => {
     <div className="register-container">
       <Link to="/" className="back-link">← Back to Home</Link>
       <h2>Register as a Trainee</h2>
-      <p>Start your journey to become a certified transcriber.</p>
+      <p>Start your journey to become a top-tier transcriber.</p>
 
       <form onSubmit={handleSubmit} className="register-form">
         <div className="form-group">

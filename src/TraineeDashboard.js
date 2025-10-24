@@ -146,7 +146,7 @@ const TraineeDashboard = () => {
                         <h2 className="dashboard-title">Welcome to Your Training Room!</h2>
                         <p className="dashboard-description">
                             Here you will gain the knowledge and skills to become a top-tier transcriber
-                            who will achieve the needed qualities of becoming a TypeMyworDz-certified transcriber.
+                            who will achieve the needed qualities of becoming a TypeMyworDz-approved transcriber.
                             Dive into our materials and chat with your trainer to accelerate your learning.
                         </p>
                     </div>
