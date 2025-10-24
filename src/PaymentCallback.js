@@ -66,11 +66,12 @@ const PaymentCallback = () => {
                     setPaymentStatus('success');
                     
                     if (jobType === 'training') {
-                        const successMessage = 'Training payment successful! You will now be logged out and redirected to login again to access your training dashboard.';
+                        // NEW: More universal message for training payment
+                        const successMessage = 'Training payment successful! You will now be logged out and redirected to login to access your training dashboard.';
                         setMessage(successMessage);
                         showToast(successMessage, 'success');
                         
-                        console.log("Payment successful. Refreshing user data...");
+                        console.log("Payment successful. Refreshing user data and redirecting to login...");
                         
                         // CRITICAL FIX: Force a complete re-authentication by logging out
                         // This ensures all user data is fresh on next login
@@ -82,9 +83,11 @@ const PaymentCallback = () => {
                             }, 500);
                         }, 3000);
                     } else {
-                        const successMessage = 'Payment successful! Your job is now active.';
+                        // NEW: Universal success message for other payments
+                        const successMessage = 'Payment successful! You will be redirected to your dashboard.';
                         setMessage(successMessage);
                         showToast(successMessage, 'success');
+                        // Automatically redirect for other job types
                         setTimeout(() => navigate('/client-dashboard'), 3000);
                     }
                 } else {
@@ -117,14 +120,19 @@ const PaymentCallback = () => {
         return '';
     };
 
-    // Handle manual logout and redirect
-    const handleManualLogout = () => {
-        console.log("Manual logout and redirect to login...");
-        logout();
-        setTimeout(() => {
-            navigate('/login');
-        }, 500);
-    };
+    // Removed handleManualLogout as it's now conditionally rendered and handled in useEffect
+    // const handleManualLogout = () => {
+    //     console.log("Manual logout and redirect to login...");
+    //     logout();
+    //     setTimeout(() => {
+    //         navigate('/login');
+    //     }, 500);
+    // };
+
+    // Determine if the "Logout and Login Again" button should be shown
+    const relatedJobType = searchParams.get('jobType');
+    const showLogoutAndLoginButton = paymentStatus === 'success' && relatedJobType === 'training';
+
 
     return (
         <div className="payment-callback-container">
@@ -153,12 +161,13 @@ const PaymentCallback = () => {
                     {paymentStatus === 'failed' && (
                         <p>If you believe this is an error, please contact support.</p>
                     )}
-                    {paymentStatus === 'success' && (
+                    {/* NEW: Conditionally render the button for training payments */}
+                    {showLogoutAndLoginButton && (
                         <button 
-                            onClick={handleManualLogout} 
+                            onClick={() => { logout(); navigate('/login'); }} // Directly trigger logout and redirect
                             className="back-to-dashboard-btn"
                         >
-                            Logout and Login Again
+                            Go to Login
                         </button>
                     )}
                     {paymentStatus === 'failed' && (
