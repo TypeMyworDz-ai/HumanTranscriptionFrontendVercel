@@ -431,7 +431,14 @@ const TranscriberTest = () => {
           <div className="transcription-section">
             <h2 className="section-title">Part 2: Transcription Task</h2>
             <div className="audio-section">
-              <p className="audio-instructions"><strong>Instructions:</strong> Listen to the audio below and transcribe exactly what you hear following the guidelines. Use `**text**` for bold and `*text*` for italics.</p>
+              {/* UPDATED: New instructions for transcription task */}
+              <p className="audio-instructions">
+                Instructions: Listen to the audio below and transcribe exactly what you hear following the guidelines.
+                Don't mind the no-bold or rich text functionalities; for the test, we will allow normal/regular font.
+                <br /><br />
+                Download the audio and use our AI <a href="https://typemywordz.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#007bff', textDecoration: 'underline' }}>https://typemywordz.ai</a> to get a transcript
+                and use our editor <a href="https://typemywordz.ai/transcription-editor" target="_blank" rel="noopener noreferrer" style={{ color: '#007bff', textDecoration: 'underline' }}>https://typemywordz.ai/transcription-editor</a> for easy and quick transcription.
+              </p>
 
               {/* NEW: Placeholder for audio element */}
               <div className="audio-player-container">
@@ -445,7 +452,7 @@ const TranscriberTest = () => {
                 <textarea
                   value={testData.transcriptionText}
                   onChange={handleTranscriptionChange}
-                  placeholder="Type your transcription here... Use **double asterisks** for bold and *single asterisks* for italics."
+                  placeholder="Type your transcription here..."
                   rows="10"
                 />
               </div>

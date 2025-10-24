@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -13,7 +13,7 @@ const LandingPage = () => {
     navigate('/client-register');
   };
 
-  // NEW: Handler for Trainee Registration
+  // Handler for Trainee Registration
   const handleTraineeRegister = () => {
     navigate('/trainee-register');
   };
@@ -32,9 +32,14 @@ const LandingPage = () => {
       <div className="top-bar-wrapper">
         <div className="top-nav">
           <div className="logo-section" onClick={handleLogoClick}>
-            <img src="/logo192.png" alt="TypeMyworDz Logo" className="header-logo" /> {/* Use the big logo */}
+            <img src="/logo192.png" alt="TypeMyworDz Logo" className="header-logo" />
             <span className="logo-text">TypeMyworDz</span>
           </div>
+          
+          <a href="https://typemywordz.ai" target="_blank" rel="noopener noreferrer" className="ai-link">
+            Looking for AI transcripts, <span className="highlight">click here</span>
+          </a>
+          
           <button onClick={handleLogin} className="login-btn">
             Login
           </button>
@@ -43,16 +48,19 @@ const LandingPage = () => {
       
       {/* Main Header Section */}
       <header className="landing-header">
-        <h1>TypeMyworDz Human Transcription</h1>
-        <p>Your Marketplace for Quality Transcription Services in Kenya</p>
+        <img src="/an african transcribing.jpg" alt="Professional Transcriber" className="transcriber-image" />
+        <div className="hero-content">
+          <h1>TypeMyworDz Human Transcription</h1>
+          <p>Your Marketplace for Quality Transcription Services in Kenya</p>
+        </div>
       </header>
 
-      {/* Main Action Section - UPDATED for three registration options */}
+      {/* Rest of your component remains unchanged */}
+      {/* Main Action Section */}
       <section className="action-section">
         <h2>I want to:</h2>
         
         <div className="action-cards">
-          {/* NEW: Trainee Registration Card */}
           <div className="action-card trainee-card">
             <h3>Train</h3>
             <p>Become a TypeMyworDz-certified transcriber</p>
@@ -79,19 +87,15 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Company Info Section - Updated Content and Structure */}
+      {/* Company Info Section */}
       <section className="company-info">
         <div className="info-content">
           <div className="info-text">
-            {/* The main section title is here */}
-            <h2 className="section-title">Why Choose TypeMyworDz Marketplace?</h2>
             
-            {/* New section for the benefits list and the intro text below the main heading */}
             <div className="benefits-and-intro">
                 <p className="intro-paragraph">
-                  We connect clients with a diverse pool of vetted Kenyan transcribers, 
-                  offering transparent negotiation, fair pricing, and reliable service. 
-                  Experience high-quality transcription tailored to your needs.
+                  <strong style={{ color: 'red' }}>Why TypeMyworDz?</strong>
+ 
                 </p>
                 
                 <ul className="benefits-list">
@@ -130,7 +134,6 @@ const LandingPage = () => {
           </div>
           <div className="info-visual">
             <div className="visual-placeholder">
-              {/* Replaced SVG with emoji for simplicity */}
               <h3>🤝</h3> 
             </div>
           </div>
@@ -144,6 +147,7 @@ const LandingPage = () => {
           <a href="#privacy">Privacy Policy</a>
           <a href="#about">About Us</a>
           <a href="#contact">Contact</a>
+          <Link to="/guidelines" target="_blank" rel="noopener noreferrer">Guidelines</Link>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
         </div>

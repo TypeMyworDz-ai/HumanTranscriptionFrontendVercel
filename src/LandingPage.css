@@ -1,397 +1,597 @@
-/* LandingPage.css */
+/* --- Base Styles and Variables --- */
+:root {
+  /* Standard color variables */
+  --primary-color: #5d319e; /* Deep Violet/Purple */
+  --secondary-color: #e55d87; /* Magenta/Pink for contrast */
+  --text-color-dark: #333;
+  --text-color-light: #fff;
+  --background-gradient: linear-gradient(135deg, #5d319e 0%, #e55d87 100%);
+  --card-background: #f4f4f9;
+  --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
-/* General Body and HTML styles */
-html, body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f6f8; /* Light gray background */
-    color: #333;
-    line-height: 1.6;
+* {
+  box-sizing: border-box; /* Good practice for responsive design */
+  margin: 0;
+  padding: 0;
 }
 
 .landing-page {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden; /* Prevent horizontal scroll */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  color: var(--text-color-dark);
+  background-color: #fff;
 }
 
-/* Top Navigation Bar */
+/* --- Top Navigation Bar --- */
 .top-bar-wrapper {
-    width: 100%;
-    background-color: #6a1b9a; /* Deep purple */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  height: 60px;
+  padding: 0 20px; /* NEW: Added horizontal padding here */
 }
 
 .top-nav {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 10px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
+  max-width: 1200px;
+  margin: 0 auto;
+  /* padding: 10px 20px; <--- REMOVED PADDING HERE */
+  display: flex;
+  /* KEY CHANGE: Use flexbox for horizontal alignment */
+  justify-content: space-between; 
+  align-items: center;
+  /* position: relative; <--- REMOVED */
+  height: 100%;
 }
 
 .logo-section {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  /* position: absolute; left: 20px; <--- REMOVED ABSOLUTE POSITIONING */
 }
 
 .header-logo {
-    height: 40px; /* Adjust as needed */
-    margin-right: 10px;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
 }
 
 .logo-text {
-    font-size: 1.8em;
-    font-weight: bold;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
 }
 
+/* AI Link - Now centered by flexbox with deep blue background */
+.ai-link {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background-color: #1a237e; /* Deep blue background */
+  padding: 8px 18px;
+  border-radius: 20px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.ai-link:hover {
+  background-color: #0d1257; /* Darker blue on hover */
+  transform: translateY(-2px); /* Only vertical hover effect remains */
+}
+
+/* Style for "click here" text in red */
+.ai-link .highlight {
+  color: #ff5252; /* Bright red color */
+  font-weight: 700;
+}
+
+/* Login Button - Now right-aligned by flexbox */
 .login-btn {
-    background-color: #ffb300; /* Amber */
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  /* position: absolute; right: 20px; <--- REMOVED ABSOLUTE POSITIONING */
+  background-color: var(--secondary-color);
+  color: var(--text-color-light);
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
 }
 
 .login-btn:hover {
-    background-color: #ffa000; /* Darker amber on hover */
+  background-color: #d14972;
 }
 
-/* Main Header Section */
+/* --- Main Header/Hero Section --- */
 .landing-header {
-    background: linear-gradient(135deg, #6a1b9a, #9c27b0); /* Gradient purple */
-    color: white;
-    text-align: center;
-    padding: 80px 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  /* Fallback solid color */
+  background-color: var(--primary-color); 
+  /* Gradient background */
+  background: var(--background-gradient);
+  color: var(--text-color-light);
+  padding: 100px 5%;
+  text-align: center;
+  display: flex;
+  flex-direction: row; 
+  justify-content: space-around;
+  align-items: center;
+}
+
+.hero-content {
+  max-width: 600px;
+  text-align: left;
+  order: 2;
 }
 
 .landing-header h1 {
-    font-size: 3.5em;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
+  font-size: 3rem;
+  margin-bottom: 10px;
+  line-height: 1.1;
+  font-weight: 800;
 }
 
 .landing-header p {
-    font-size: 1.5em;
-    opacity: 0.9;
+  font-size: 1.3rem;
+  opacity: 0.9;
 }
 
-/* Action Section (Work, Hire, Train Cards) */
+.transcriber-image {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-light);
+  margin: 0 40px 0 0;
+  order: 1;
+}
+
+/* --- Action Section (Cards) --- */
 .action-section {
-    text-align: center;
-    padding: 60px 20px;
-    background-color: #ffffff;
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
+  text-align: center;
 }
 
 .action-section h2 {
-    font-size: 2.5em;
-    color: #4a148c; /* Darker purple */
-    margin-bottom: 40px;
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 30px;
 }
 
 .action-cards {
-    display: flex;
-    justify-content: center; /* Center cards horizontally */
-    flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
-    gap: 30px; /* Space between cards */
-    max-width: 1200px; /* Limit width */
-    margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
 }
 
 .action-card {
-    background-color: #f8f9fa; /* Light background for cards */
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    padding: 30px;
-    width: 300px; /* Fixed width for each card */
-    text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Push button to bottom */
+  background-color: var(--card-background);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: var(--shadow-light);
+  flex: 1;
+  min-width: 280px;
+  max-width: 350px;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .action-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .action-card h3 {
-    font-size: 1.8em;
-    color: #6a1b9a; /* Deep purple */
-    margin-bottom: 15px;
+  font-size: 1.8rem;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  color: var(--primary-color);
 }
 
 .action-card p {
-    font-size: 1.1em;
-    color: #555;
-    margin-bottom: 25px;
-    flex-grow: 1; /* Allow paragraph to take up available space */
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.card-icon {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 2rem;
+  opacity: 0.15;
 }
 
 .register-btn {
-    display: inline-block;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    color: white;
-    text-decoration: none; /* For Link components if used */
+  border: none;
+  padding: 12px 25px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color-light);
+  transition: background-color 0.3s ease;
+  width: 100%;
 }
 
-.register-btn.train-btn {
-    background-color: #ff9800; /* Orange for Train */
-}
-.register-btn.train-btn:hover {
-    background-color: #fb8c00;
-    transform: translateY(-2px);
+/* Specific button colors */
+.train-btn {
+  background-color: #f7a072; /* Orange */
 }
 
-.register-btn.work-btn {
-    background-color: #4caf50; /* Green for Work */
-}
-.register-btn.work-btn:hover {
-    background-color: #43a047;
-    transform: translateY(-2px);
+.train-btn:hover {
+  background-color: #e68e61;
 }
 
-.register-btn.hire-btn {
-    background-color: #2196f3; /* Blue for Hire */
-}
-.register-btn.hire-btn:hover {
-    background-color: #1976d2;
-    transform: translateY(-2px);
+.work-btn {
+  background-color: var(--primary-color);
 }
 
-/* Company Info Section */
+.work-btn:hover {
+  background-color: #4b267c;
+}
+
+.hire-btn {
+  background-color: var(--secondary-color);
+}
+
+.hire-btn:hover {
+  background-color: #d14972;
+}
+
+/* --- Company Info Section --- */
 .company-info {
-    background-color: #f0f2f5;
-    padding: 60px 20px;
-    text-align: center;
+  background-color: #f9f9f9;
+  padding: 60px 20px;
+  margin-top: 40px;
+  border-top: 1px solid #eee;
 }
 
 .info-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  align-items: flex-start;
 }
 
 .info-text {
-    flex: 1 1 500px; /* Allows text to grow but not shrink below 500px */
-    text-align: left;
+  flex: 2;
+  min-width: 300px;
 }
 
-.info-text .section-title {
-    font-size: 2.2em;
-    color: #4a148c;
-    margin-bottom: 25px;
+.section-title {
+  color: var(--primary-color);
+  font-size: 2.2rem;
+  margin-bottom: 20px;
 }
 
-.benefits-and-intro .intro-paragraph {
-    font-size: 1.1em;
-    color: #666;
-    margin-bottom: 30px;
-    line-height: 1.8;
+.intro-paragraph {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 30px;
 }
 
 .benefits-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
 .benefits-list li {
-    display: flex;
-    align-items: flex-start; /* Align checkmark to the top of text */
-    margin-bottom: 15px;
-    font-size: 1.1em;
-    color: #444;
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.4;
 }
 
-.benefits-list li .checkmark {
-    font-size: 1.2em;
-    margin-right: 15px;
-    color: #4caf50; /* Green checkmark */
-    flex-shrink: 0; /* Prevent checkmark from shrinking */
+.checkmark {
+  font-size: 1.2rem;
+  margin-right: 10px;
 }
 
-.benefits-list li .benefit-details {
-    text-align: left;
+.benefit-details strong {
+  display: block;
+  color: var(--primary-color);
 }
 
-.benefits-list li .benefit-details strong {
-    display: block; /* Make strong text a block for better spacing */
-    font-size: 1.15em;
-    color: #333;
-    margin-bottom: 3px;
+.benefit-details span {
+  font-size: 0.9rem;
+  color: #777;
 }
-
-.benefits-list li .benefit-details span {
-    font-size: 0.95em;
-    color: #777;
-}
-
 
 .info-visual {
-    flex: 1 1 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .visual-placeholder {
-    background-color: #e0e0e0;
-    border-radius: 12px;
-    width: 250px;
-    height: 200px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em;
-    color: #777;
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: 250px;
+  height: 250px;
+  background-color: var(--secondary-color);
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: var(--shadow-light);
 }
+
 .visual-placeholder h3 {
-    font-size: 4em; /* Larger emoji */
-    margin-bottom: 10px;
-}
-.visual-placeholder p {
-    font-size: 1.2em;
-    font-weight: bold;
+  color: white;
+  font-size: 5rem;
+  margin: 0;
 }
 
-
-/* Footer Links */
+/* --- Footer --- */
 .footer-links {
-    background-color: #333;
-    color: white;
-    padding: 30px 20px;
-    text-align: center;
-    font-size: 0.9em;
+  background-color: var(--primary-color);
+  padding: 20px;
+  text-align: center;
 }
 
 .links-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px 30px;
 }
 
-.footer-links a {
-    color: #a0a0a0;
-    text-decoration: none;
-    transition: color 0.3s ease;
+/* CORRECTED: Selects the rendered <a> tag from Link components */
+.footer-links a { 
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
 }
 
 .footer-links a:hover {
-    color: white;
+  color: var(--text-color-light);
+  text-decoration: underline;
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 900px) {
+  .landing-header {
+    flex-direction: column;
+    padding: 80px 5%;
+  }
+
+  .transcriber-image {
+    order: 1;
+    margin: 0 0 30px 0;
+  }
+
+  .hero-content {
+    order: 2;
+    text-align: center;
+  }
+
+  .landing-header h1 {
+    font-size: 2.5rem;
+  }
+
+  .landing-header p {
+    font-size: 1.1rem;
+  }
+  
+  /* Responsive nav for smaller screens */
+  .top-bar-wrapper {
+    height: auto;
+    padding: 10px 0;
+  }
+  
+  .top-nav {
+    flex-direction: column;
+    height: auto;
+    gap: 15px;
+    padding: 10px;
+  }
+  
+  .logo-section, .ai-link, .login-btn {
+    position: static;
+    transform: none;
+  }
+  
+  .ai-link:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 768px) {
+  .action-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .action-card {
+    max-width: 90%;
+  }
+  
+  .info-content {
+    flex-direction: column;
+  }
+  
+  .benefits-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .info-visual {
+    margin-top: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 1.2rem;
+  }
+  
+  .landing-header h1 {
+    font-size: 2rem;
+  }
+  
+  .top-nav {
+    padding: 10px;
+  }
+}
+
+/* --- Guidelines Page Styles --- */
+.guidelines-page-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+}
+
+.guidelines-header {
+    text-align: center;
+    margin-bottom: 30px;
+    position: relative;
+    border-bottom: 2px solid #eee; /* Added a subtle separator */
+    padding-bottom: 20px;
+    display: flex; /* NEW: Use flexbox for alignment */
+    justify-content: space-between; /* NEW: Distribute items with space between */
+    align-items: center; /* NEW: Vertically align items */
+}
+
+.guidelines-header h1 {
+    color: #333; /* Removed purple, set to a dark grey */
+    font-size: 2.5em;
+    margin-bottom: 0; /* Adjusted margin for flexbox */
+    font-weight: bold; /* Ensure H1 is bold */
+    flex-grow: 1; /* Allow h1 to take available space */
+    text-align: center; /* Center the title within its space */
+}
+
+.guidelines-header .back-to-home-btn {
+    position: static; /* NEW: Remove absolute positioning */
+    background-color: #f0f0f0;
+    color: #333;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: normal; /* Make button text normal weight */
+    transition: background-color 0.3s ease;
+    white-space: nowrap; /* Prevent button text from wrapping */
+    margin-left: auto; /* Push to the right if h1 takes less space */
+}
+
+.guidelines-header .back-to-home-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.guidelines-content section {
+    margin-bottom: 30px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 20px;
+}
+
+.guidelines-content section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.guidelines-content h2 {
+    color: #333; /* Removed purple, set to a dark grey */
+    font-size: 1.8em;
+    margin-bottom: 15px;
+    border-bottom: none; /* Removed purple underline */
+    padding-bottom: 5px;
+    display: inline-block;
+    font-weight: bold; /* Ensure H2 is bold */
+}
+
+.guidelines-content h3 {
+    color: #333; /* Set to dark grey */
+    font-size: 1.4em;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: bold; /* Ensure H3 is bold */
+}
+
+.guidelines-content h4 {
+    color: #333; /* Removed purple, set to a dark grey */
+    font-size: 1.2em;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    font-weight: bold; /* Ensure H4 is bold */
+}
+
+.guidelines-content ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.guidelines-content ol {
+    list-style-type: decimal;
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.guidelines-content li {
+    margin-bottom: 8px;
+}
+
+.guidelines-content strong {
+    color: inherit; /* Inherit color from parent, ensuring it's not purple */
+    font-weight: bold; /* Explicitly ensure strong is bold */
+}
+
+.guidelines-content em {
+    font-style: italic;
+}
+
+.guidelines-content a {
+    color: #007bff; /* Keep standard link blue */
     text-decoration: underline;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 900px) {
-    .landing-header h1 {
-        font-size: 2.8em;
-    }
-
-    .landing-header p {
-        font-size: 1.2em;
-    }
-
-    .action-cards {
-        flex-direction: column; /* Stack cards vertically */
-        align-items: center;
-    }
-
-    .action-card {
-        width: 80%; /* Make cards wider on smaller screens */
-        max-width: 400px; /* Limit max width */
-    }
-
-    .info-content {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .info-text, .info-visual {
-        flex: 1 1 100%; /* Full width for these sections */
-        text-align: center;
-    }
-
-    .info-text .section-title {
-        text-align: center;
-    }
-
-    .benefits-and-intro .intro-paragraph {
-        text-align: center;
-    }
-
-    .benefits-list {
-        align-items: center; /* Center list items */
-    }
-    .benefits-list li {
-        justify-content: center; /* Center content within list item */
-        align-items: center;
-        text-align: center;
-    }
-    .benefits-list li .checkmark {
-        margin-right: 10px;
-    }
-    .benefits-list li .benefit-details strong,
-    .benefits-list li .benefit-details span {
-        display: inline; /* Revert to inline for smaller screens if preferred */
-    }
+.guidelines-content a:hover {
+    text-decoration: none;
 }
 
-@media (max-width: 600px) {
-    .landing-header h1 {
-        font-size: 2em;
-    }
+.guidelines-content p {
+    margin-bottom: 10px;
+}
 
-    .landing-header p {
-        font-size: 1em;
-    }
+/* NEW: Styling for the final NOTE section */
+.guidelines-content .final-note-section {
+    margin-top: 40px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-left: 5px solid #dc3545; /* Red border on the left */
+    background-color: #fff8f8; /* Light red background */
+    border-radius: 5px;
+}
 
-    .action-section h2 {
-        font-size: 2em;
-    }
+.guidelines-content .final-note-section p {
+    margin: 0; /* Remove default paragraph margin */
+}
 
-    .action-card {
-        padding: 20px;
-    }
-
-    .action-card h3 {
-        font-size: 1.5em;
-    }
-
-    .action-card p {
-        font-size: 1em;
-    }
-
-    .register-btn {
-        padding: 10px 20px;
-        font-size: 0.95em;
-    }
+.guidelines-content .final-note-section .red-note {
+    color: #dc3545; /* Red color for the "NOTE:" text */
+    font-weight: bold;
 }
