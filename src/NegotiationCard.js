@@ -151,6 +151,26 @@ const NegotiationCard = React.memo(({
   const [isSendingFile, setIsSendingFile] = useState(false);
   const fileInputRef = useRef(null);
   const chatWindowRef = useRef(null);
+  const [timeLeft, setTimeLeft] = useState(null); // NEW: State for deadline time left
+
+  // Helper to calculate time left
+  const calculateTimeLeft = useCallback(() => {
+    if (!negotiation.due_date) return null;
+    const now = new Date();
+    const dueDate = new Date(negotiation.due_date);
+    const difference = dueDate.getTime() - now.getTime(); // Difference in milliseconds
+
+    if (difference <= 0) {
+      return 'OVERDUE';
+    }
+
+    const hours = Math.floor(difference / (1000 * 60 * 60));
+    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }, [negotiation.due_date]);
+
 
   // Log the negotiation status for debugging
   useEffect(() => {
@@ -161,6 +181,21 @@ const NegotiationCard = React.memo(({
 
   // NEW: Calculate and check overdue status
   const isOverdue = negotiation.due_date && new Date(negotiation.due_date) < new Date();
+
+  // NEW: Effect to update the time left every second
+  useEffect(() => {
+    if (!negotiation.due_date || negotiation.status === 'completed' || negotiation.status === 'rejected' || negotiation.status === 'cancelled') {
+        setTimeLeft(null);
+        return;
+    }
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => {
+        setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [negotiation.due_date, negotiation.status, calculateTimeLeft]);
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
@@ -443,7 +478,15 @@ const NegotiationCard = React.memo(({
           <span className="label">Deadline:</span>
           <span className="value">
             {negotiation.deadline_hours} hours
-            {isOverdue && <span className="due-date-display" style={{ marginLeft: '10px', color: 'red', fontWeight: 'bold' }}> - OVERDUE</span>}
+            {/* NEW: Dynamic deadline counter display */}
+            {timeLeft && timeLeft !== 'OVERDUE' && (
+                <span className="time-left-display" style={{ marginLeft: '10px', color: 'green', fontWeight: 'bold' }}>
+                    ({timeLeft} left)
+                </span>
+            )}
+            {isOverdue && timeLeft === 'OVERDUE' && (
+                <span className="due-date-display" style={{ marginLeft: '10px', color: 'red', fontWeight: 'bold' }}> - OVERDUE</span>
+            )}
           </span>
         </div>
         <div className="detail-row">
@@ -729,7 +772,7 @@ const NegotiationCard = React.memo(({
             )}
             {(negotiation.status === 'rejected' || negotiation.status === 'cancelled' || negotiation.status === 'completed') && (
                 <div className="transcriber-closed-actions">
-                    <span className="info-text">Negotiation {negotiation.status}.</span>
+                    <span className="info-text">Negotiation ${negotiation.status}.</span>
                 </div>
             )}
           </>
