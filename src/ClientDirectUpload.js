@@ -127,7 +127,7 @@ const ClientDirectUpload = () => {
             formData.append(`instructionFiles`, file);
         });
 
-        // Debugging: Log FormData content
+        // Debugging: Log FormData content for quote request
         console.log('FormData for quote request:');
         for (let pair of formData.entries()) {
             console.log(pair[0] + ': ' + pair[1]);
@@ -201,6 +201,12 @@ const ClientDirectUpload = () => {
             formData.append(`instructionFiles`, file);
         });
 
+        // Debugging: Log FormData content for job creation request
+        console.log('FormData for job creation request:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+
         try {
             const createJobResponse = await fetch(`${BACKEND_API_URL}/api/direct-upload/job`, {
                 method: 'POST',
@@ -210,6 +216,7 @@ const ClientDirectUpload = () => {
                 body: formData
             });
             const createJobData = await createJobResponse.json();
+            console.log('Backend response for job creation:', createJobData); // Log full backend response
 
             if (!createJobResponse.ok || !createJobData.job) {
                 showToast(createJobData.error || 'Failed to create job entry. Please try again.', 'error');
