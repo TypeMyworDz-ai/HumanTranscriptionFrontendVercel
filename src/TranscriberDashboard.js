@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import './TranscriberDashboard.css';
+import './TranscriberDashboard.css'; // Keep this import for eventual fix
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';

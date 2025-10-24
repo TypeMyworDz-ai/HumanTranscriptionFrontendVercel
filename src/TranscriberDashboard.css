@@ -64,7 +64,7 @@
     transform: scale(1.05);
 }
 
-.profile-icon {
+.profile-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -231,7 +231,7 @@
     transition: transform 0.4s ease, box-shadow 0.4s ease, background 0.3s ease;
     position: relative;
     overflow: hidden;
-    border: 1px solid #e0eafc; /* Subtle, light border */
+    border: 3px solid red; /* TEMPORARY: VERY DISTINCT RED BORDER FOR DEBUGGING */
     display: flex;
     flex-direction: column;
     justify-content: center;

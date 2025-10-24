@@ -10,7 +10,7 @@
   --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-* {
+.landing-page * { /* Scoped the universal selector */
   box-sizing: border-box; /* Good practice for responsive design */
   margin: 0;
   padding: 0;
@@ -24,7 +24,7 @@
 }
 
 /* --- Top Navigation Bar --- */
-.top-bar-wrapper {
+.landing-page .top-bar-wrapper { /* Scoped */
   background-color: rgba(255, 255, 255, 0.95);
   position: sticky;
   top: 0;
@@ -34,7 +34,7 @@
   padding: 0 20px; /* NEW: Added horizontal padding here */
 }
 
-.top-nav {
+.landing-page .top-nav { /* Scoped */
   max-width: 1200px;
   margin: 0 auto;
   /* padding: 10px 20px; <--- REMOVED PADDING HERE */
@@ -46,27 +46,27 @@
   height: 100%;
 }
 
-.logo-section {
+.landing-page .logo-section { /* Scoped */
   display: flex;
   align-items: center;
   cursor: pointer;
   /* position: absolute; left: 20px; <--- REMOVED ABSOLUTE POSITIONING */
 }
 
-.header-logo {
+.landing-page .header-logo { /* Scoped */
   width: 30px;
   height: 30px;
   margin-right: 10px;
 }
 
-.logo-text {
+.landing-page .logo-text { /* Scoped */
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--primary-color);
 }
 
 /* AI Link - Now centered by flexbox with deep blue background */
-.ai-link {
+.landing-page .ai-link { /* Scoped */
   color: white;
   text-decoration: none;
   font-weight: 600;
@@ -79,19 +79,19 @@
   white-space: nowrap;
 }
 
-.ai-link:hover {
+.landing-page .ai-link:hover { /* Scoped */
   background-color: #0d1257; /* Darker blue on hover */
   transform: translateY(-2px); /* Only vertical hover effect remains */
 }
 
 /* Style for "click here" text in red */
-.ai-link .highlight {
+.landing-page .ai-link .highlight { /* Scoped */
   color: #ff5252; /* Bright red color */
   font-weight: 700;
 }
 
 /* Login Button - Now right-aligned by flexbox */
-.login-btn {
+.landing-page .login-btn { /* Scoped */
   /* position: absolute; right: 20px; <--- REMOVED ABSOLUTE POSITIONING */
   background-color: var(--secondary-color);
   color: var(--text-color-light);
@@ -104,12 +104,12 @@
   transition: background-color 0.3s ease;
 }
 
-.login-btn:hover {
+.landing-page .login-btn:hover { /* Scoped */
   background-color: #d14972;
 }
 
 /* --- Main Header/Hero Section --- */
-.landing-header {
+.landing-page .landing-header { /* Scoped */
   /* Fallback solid color */
   background-color: var(--primary-color); 
   /* Gradient background */
@@ -123,25 +123,25 @@
   align-items: center;
 }
 
-.hero-content {
+.landing-page .hero-content { /* Scoped */
   max-width: 600px;
   text-align: left;
   order: 2;
 }
 
-.landing-header h1 {
+.landing-page .landing-header h1 { /* Scoped */
   font-size: 3rem;
   margin-bottom: 10px;
   line-height: 1.1;
   font-weight: 800;
 }
 
-.landing-header p {
+.landing-page .landing-header p { /* Scoped */
   font-size: 1.3rem;
   opacity: 0.9;
 }
 
-.transcriber-image {
+.landing-page .transcriber-image { /* Scoped */
   width: 250px;
   height: 250px;
   border-radius: 50%;
@@ -153,27 +153,27 @@
 }
 
 /* --- Action Section (Cards) --- */
-.action-section {
+.landing-page .action-section { /* Scoped */
   max-width: 1200px;
   margin: 40px auto;
   padding: 0 20px;
   text-align: center;
 }
 
-.action-section h2 {
+.landing-page .action-section h2 { /* Scoped */
   font-size: 2rem;
   color: var(--primary-color);
   margin-bottom: 30px;
 }
 
-.action-cards {
+.landing-page .action-cards { /* Scoped */
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 30px;
 }
 
-.action-card {
+.landing-page .action-card { /* Scoped */
   background-color: var(--card-background);
   border-radius: 12px;
   padding: 30px;
@@ -187,24 +187,24 @@
   overflow: hidden;
 }
 
-.action-card:hover {
+.landing-page .action-card:hover { /* Scoped */
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-.action-card h3 {
+.landing-page .action-card h3 { /* Scoped */
   font-size: 1.8rem;
   margin-top: 10px;
   margin-bottom: 10px;
   color: var(--primary-color);
 }
 
-.action-card p {
+.landing-page .action-card p { /* Scoped */
   color: #666;
   margin-bottom: 20px;
 }
 
-.card-icon {
+.landing-page .card-icon { /* Scoped */
   position: absolute;
   top: 15px;
   right: 15px;
@@ -212,7 +212,7 @@
   opacity: 0.15;
 }
 
-.register-btn {
+.landing-page .register-btn { /* Scoped */
   border: none;
   padding: 12px 25px;
   border-radius: 6px;
@@ -225,39 +225,39 @@
 }
 
 /* Specific button colors */
-.train-btn {
+.landing-page .train-btn { /* Scoped */
   background-color: #f7a072; /* Orange */
 }
 
-.train-btn:hover {
+.landing-page .train-btn:hover { /* Scoped */
   background-color: #e68e61;
 }
 
-.work-btn {
+.landing-page .work-btn { /* Scoped */
   background-color: var(--primary-color);
 }
 
-.work-btn:hover {
+.landing-page .work-btn:hover { /* Scoped */
   background-color: #4b267c;
 }
 
-.hire-btn {
+.landing-page .hire-btn { /* Scoped */
   background-color: var(--secondary-color);
 }
 
-.hire-btn:hover {
+.landing-page .hire-btn:hover { /* Scoped */
   background-color: #d14972;
 }
 
 /* --- Company Info Section --- */
-.company-info {
+.landing-page .company-info { /* Scoped */
   background-color: #f9f9f9;
   padding: 60px 20px;
   margin-top: 40px;
   border-top: 1px solid #eee;
 }
 
-.info-content {
+.landing-page .info-content { /* Scoped */
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -266,25 +266,25 @@
   align-items: flex-start;
 }
 
-.info-text {
+.landing-page .info-text { /* Scoped */
   flex: 2;
   min-width: 300px;
 }
 
-.section-title {
+.landing-page .section-title { /* Scoped */
   color: var(--primary-color);
   font-size: 2.2rem;
   margin-bottom: 20px;
 }
 
-.intro-paragraph {
+.landing-page .intro-paragraph { /* Scoped */
   font-size: 1.1rem;
   line-height: 1.6;
   color: #555;
   margin-bottom: 30px;
 }
 
-.benefits-list {
+.landing-page .benefits-list { /* Scoped */
   list-style: none;
   padding: 0;
   display: grid;
@@ -292,28 +292,28 @@
   gap: 20px;
 }
 
-.benefits-list li {
+.landing-page .benefits-list li { /* Scoped */
   display: flex;
   align-items: flex-start;
   line-height: 1.4;
 }
 
-.checkmark {
+.landing-page .checkmark { /* Scoped */
   font-size: 1.2rem;
   margin-right: 10px;
 }
 
-.benefit-details strong {
+.landing-page .benefit-details strong { /* Scoped */
   display: block;
   color: var(--primary-color);
 }
 
-.benefit-details span {
+.landing-page .benefit-details span { /* Scoped */
   font-size: 0.9rem;
   color: #777;
 }
 
-.info-visual {
+.landing-page .info-visual { /* Scoped */
   flex: 1;
   min-width: 250px;
   display: flex;
@@ -321,7 +321,7 @@
   align-items: center;
 }
 
-.visual-placeholder {
+.landing-page .visual-placeholder { /* Scoped */
   width: 250px;
   height: 250px;
   background-color: var(--secondary-color);
@@ -332,20 +332,20 @@
   box-shadow: var(--shadow-light);
 }
 
-.visual-placeholder h3 {
+.landing-page .visual-placeholder h3 { /* Scoped */
   color: white;
   font-size: 5rem;
   margin: 0;
 }
 
 /* --- Footer --- */
-.footer-links {
+.landing-page .footer-links { /* Scoped */
   background-color: var(--primary-color);
   padding: 20px;
   text-align: center;
 }
 
-.links-container {
+.landing-page .links-container { /* Scoped */
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
@@ -355,104 +355,105 @@
 }
 
 /* CORRECTED: Selects the rendered <a> tag from Link components */
-.footer-links a { 
+.landing-page .footer-links a { /* Scoped */
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
   font-size: 0.9rem;
   transition: color 0.3s ease;
 }
 
-.footer-links a:hover {
+.landing-page .footer-links a:hover { /* Scoped */
   color: var(--text-color-light);
   text-decoration: underline;
 }
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 900px) {
-  .landing-header {
+  .landing-page .landing-header { /* Scoped */
     flex-direction: column;
     padding: 80px 5%;
   }
 
-  .transcriber-image {
+  .landing-page .transcriber-image { /* Scoped */
     order: 1;
     margin: 0 0 30px 0;
   }
 
-  .hero-content {
+  .landing-page .hero-content { /* Scoped */
     order: 2;
     text-align: center;
   }
 
-  .landing-header h1 {
+  .landing-page .landing-header h1 { /* Scoped */
     font-size: 2.5rem;
   }
 
-  .landing-header p {
+  .landing-page .landing-header p { /* Scoped */
     font-size: 1.1rem;
   }
   
   /* Responsive nav for smaller screens */
-  .top-bar-wrapper {
+  .landing-page .top-bar-wrapper { /* Scoped */
     height: auto;
     padding: 10px 0;
   }
   
-  .top-nav {
+  .landing-page .top-nav { /* Scoped */
     flex-direction: column;
     height: auto;
     gap: 15px;
     padding: 10px;
   }
   
-  .logo-section, .ai-link, .login-btn {
+  .landing-page .logo-section, .landing-page .ai-link, .landing-page .login-btn { /* Scoped */
     position: static;
     transform: none;
   }
   
-  .ai-link:hover {
+  .landing-page .ai-link:hover { /* Scoped */
     transform: translateY(-2px);
   }
 }
 
 @media (max-width: 768px) {
-  .action-cards {
+  .landing-page .action-cards { /* Scoped */
     flex-direction: column;
     align-items: center;
   }
 
-  .action-card {
+  .landing-page .action-card { /* Scoped */
     max-width: 90%;
   }
   
-  .info-content {
+  .landing-page .info-content { /* Scoped */
     flex-direction: column;
   }
   
-  .benefits-list {
+  .landing-page .benefits-list { /* Scoped */
     grid-template-columns: 1fr;
   }
   
-  .info-visual {
+  .landing-page .info-visual { /* Scoped */
     margin-top: 30px;
   }
 }
 
 @media (max-width: 480px) {
-  .logo-text {
+  .landing-page .logo-text { /* Scoped */
     font-size: 1.2rem;
   }
   
-  .landing-header h1 {
+  .landing-page .landing-header h1 { /* Scoped */
     font-size: 2rem;
   }
   
-  .top-nav {
+  .landing-page .top-nav { /* Scoped */
     padding: 10px;
   }
 }
 
 /* --- Guidelines Page Styles --- */
+/* These styles are for a separate component and should NOT be scoped to .landing-page */
 .guidelines-page-container {
     max-width: 800px;
     margin: 20px auto;
