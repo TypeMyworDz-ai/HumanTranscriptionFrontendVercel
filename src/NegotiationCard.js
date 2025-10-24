@@ -155,12 +155,32 @@ const NegotiationCard = React.memo(({
 
   // Helper to calculate time left
   const calculateTimeLeft = useCallback(() => {
-    if (!negotiation.due_date) return null;
+    console.log(`[NegotiationCard: ${negotiationId}] calculateTimeLeft triggered.`);
+    console.log(`[NegotiationCard: ${negotiationId}] Raw due_date:`, negotiation.due_date);
+
+    if (!negotiation.due_date) {
+        console.log(`[NegotiationCard: ${negotiationId}] No due_date found.`);
+        return null;
+    }
+
     const now = new Date();
     const dueDate = new Date(negotiation.due_date);
+
+    console.log(`[NegotiationCard: ${negotiationId}] Current time (now):`, now.toISOString());
+    console.log(`[NegotiationCard: ${negotiationId}] Due Date object:`, dueDate.toISOString());
+    console.log(`[NegotiationCard: ${negotiationId}] Is dueDate valid?`, !isNaN(dueDate.getTime()));
+
+
+    if (isNaN(dueDate.getTime())) {
+        console.error(`[NegotiationCard: ${negotiationId}] Invalid dueDate object created from: ${negotiation.due_date}`);
+        return 'Invalid Date';
+    }
+
     const difference = dueDate.getTime() - now.getTime(); // Difference in milliseconds
+    console.log(`[NegotiationCard: ${negotiationId}] Time difference (ms):`, difference);
 
     if (difference <= 0) {
+      console.log(`[NegotiationCard: ${negotiationId}] Deadline is OVERDUE.`);
       return 'OVERDUE';
     }
 
@@ -168,8 +188,10 @@ const NegotiationCard = React.memo(({
     const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-    return `${hours}h ${minutes}m ${seconds}s`;
-  }, [negotiation.due_date]);
+    const result = `${hours}h ${minutes}m ${seconds}s`;
+    console.log(`[NegotiationCard: ${negotiationId}] Time left calculated:`, result);
+    return result;
+  }, [negotiation.due_date, negotiationId]); // Added negotiationId to dependencies
 
 
   // Log the negotiation status for debugging
@@ -184,18 +206,31 @@ const NegotiationCard = React.memo(({
 
   // NEW: Effect to update the time left every second
   useEffect(() => {
+    console.log(`[NegotiationCard: ${negotiationId}] useEffect for deadline counter triggered.`);
+    console.log(`[NegotiationCard: ${negotiationId}] Current negotiation status: ${negotiation.status}`);
+    console.log(`[NegotiationCard: ${negotiationId}] Has due_date: ${!!negotiation.due_date}`);
+
+
     if (!negotiation.due_date || negotiation.status === 'completed' || negotiation.status === 'rejected' || negotiation.status === 'cancelled') {
+        console.log(`[NegotiationCard: ${negotiationId}] Stopping deadline counter. Status: ${negotiation.status}, Due Date present: ${!!negotiation.due_date}`);
         setTimeLeft(null);
         return;
     }
 
+    // Initial calculation
     setTimeLeft(calculateTimeLeft());
+    
+    // Set up interval for updates
     const timer = setInterval(() => {
         setTimeLeft(calculateTimeLeft());
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [negotiation.due_date, negotiation.status, calculateTimeLeft]);
+    // Cleanup on unmount or dependency change
+    return () => {
+        console.log(`[NegotiationCard: ${negotiationId}] Clearing deadline counter interval.`);
+        clearInterval(timer);
+    }
+  }, [negotiation.due_date, negotiation.status, calculateTimeLeft, negotiationId]); // Added negotiationId to dependencies
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
