@@ -220,9 +220,10 @@ const ClientDirectUpload = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    negotiationId: jobId, // Use the new jobId as negotiationId for payment
+                    jobId: jobId, // Use the new jobId
                     amount: quoteDetails.quote_amount, 
-                    email: user.email
+                    clientEmail: user.email, // Corrected parameter name
+                    jobType: 'direct_upload' // Explicitly set job type for payment initialization
                 })
             });
             const initializePaymentData = await initializePaymentResponse.json();
