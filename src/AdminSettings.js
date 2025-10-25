@@ -38,7 +38,11 @@ const AdminSettings = () => {
             if (response.ok && data.settings) {
                 setSettingsId(data.settings.id); // Store the ID
                 // Ensure pricing_rules is an array, default to empty if null/undefined
-                setPricingRules(data.settings.pricing_rules || []); 
+                // Also ensure each rule has special_requirements as an array
+                setPricingRules(data.settings.pricing_rules?.map(rule => ({
+                    ...rule,
+                    special_requirements: rule.special_requirements || [] // Default to empty array
+                })) || []); 
                 console.log("Fetched Pricing Rules:", data.settings.pricing_rules || []); // Debugging log
             } else {
                 showToast(data.error || 'Failed to fetch settings.', 'error');
@@ -98,6 +102,18 @@ const AdminSettings = () => {
         setPricingRules(updatedRules);
     }, [pricingRules]);
 
+    // Handler for special requirements checkbox changes within a rule
+    const handleRuleSpecialRequirementsChange = useCallback((index, value, checked) => {
+        const updatedRules = [...pricingRules];
+        const currentRequirements = updatedRules[index].special_requirements || [];
+        if (checked) {
+            updatedRules[index].special_requirements = [...currentRequirements, value];
+        } else {
+            updatedRules[index].special_requirements = currentRequirements.filter(req => req !== value);
+        }
+        setPricingRules(updatedRules);
+    }, [pricingRules]);
+
     // Handler to add a new pricing rule
     const addRule = useCallback(() => {
         setPricingRules(prevRules => [
@@ -107,6 +123,7 @@ const AdminSettings = () => {
                 name: '',
                 audio_quality: 'standard', // UPDATED: Changed to audio_quality
                 deadline_type: 'standard', 
+                special_requirements: [], // NEW: Initialize as an empty array
                 price_per_minute_usd: 0.00,
                 min_duration_minutes: 0, 
                 max_duration_minutes: null, 
@@ -203,6 +220,29 @@ const AdminSettings = () => {
                                         <option value="standard">Standard</option>
                                         <option value="urgent">Urgent</option>
                                     </select>
+                                </div>
+                                {/* NEW: Special Requirements Selection */}
+                                <div className="form-group special-requirements-group">
+                                    <label>Special Requirements (for this rule):</label>
+                                    <div className="checkbox-group">
+                                        <label>
+                                            <input type="checkbox" name="timestamps" value="timestamps" checked={rule.special_requirements?.includes('timestamps')} onChange={(e) => handleRuleSpecialRequirementsChange(index, 'timestamps', e.target.checked)} />
+                                            Timestamps
+                                        </label>
+                                        <label>
+                                            <input type="checkbox" name="full_verbatim" value="full_verbatim" checked={rule.special_requirements?.includes('full_verbatim')} onChange={(e) => handleRuleSpecialRequirementsChange(index, 'full_verbatim', e.target.checked)} />
+                                            Full Verbatim
+                                        </label>
+                                        <label>
+                                            <input type="checkbox" name="speaker_identification" value="speaker_identification" checked={rule.special_requirements?.includes('speaker_identification')} onChange={(e) => handleRuleSpecialRequirementsChange(index, 'speaker_identification', e.target.checked)} />
+                                            Speaker Identification
+                                        </label>
+                                        <label>
+                                            <input type="checkbox" name="clean_verbatim" value="clean_verbatim" checked={rule.special_requirements?.includes('clean_verbatim')} onChange={(e) => handleRuleSpecialRequirementsChange(index, 'clean_verbatim', e.target.checked)} />
+                                            Clean Verbatim
+                                        </label>
+                                    </div>
+                                    <small className="help-text">Select requirements that this pricing rule applies to. Leave unchecked for rules that apply regardless of these options.</small>
                                 </div>
                                 <div className="form-group">
                                     <label>Price Per Minute (USD):</label>
