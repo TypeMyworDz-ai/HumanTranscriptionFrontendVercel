@@ -129,7 +129,8 @@ const ClientPaymentHistory = () => {
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Negotiation ID</th>
+                                        <th>Job Type</th> {/* NEW: Added Job Type column */}
+                                        <th>Job ID</th>    {/* NEW: Added Job ID column */}
                                         <th>Transcriber</th>
                                         <th>Amount</th>
                                         <th>Status</th>
@@ -140,11 +141,22 @@ const ClientPaymentHistory = () => {
                                     {payments.map((payment) => (
                                         <tr key={payment.id}>
                                             <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
-                                            <td>{payment.negotiation_id ? `${payment.negotiation_id.substring(0, 8)}...` : 'N/A'}</td> {/* ADDED: Check for negotiation_id before substring */}
+                                            <td>{payment.related_job_type?.replace('_', ' ') || 'N/A'}</td> {/* Display job type */}
+                                            {/* Conditionally display job ID based on type */}
+                                            <td>
+                                                {payment.related_job_type === 'negotiation' && payment.negotiation_id?.substring(0, 8)}
+                                                {payment.related_job_type === 'direct_upload' && payment.direct_upload_job_id?.substring(0, 8)}
+                                                {payment.related_job_type === 'training' && payment.client_id?.substring(0, 8)} {/* For training, client_id is the relevant ID */}
+                                                ...
+                                            </td>
                                             <td>{payment.transcriber?.full_name || 'N/A'}</td>
                                             <td>USD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
                                             <td>{payment.paystack_status}</td>
-                                            <td>{payment.negotiation?.requirements ? `${payment.negotiation.requirements.substring(0, 50)}...` : 'N/A'}</td> {/* ADDED: Check for negotiation.requirements before substring */}
+                                            {/* Conditionally display job requirements/instructions */}
+                                            <td>
+                                                {payment.related_job_type === 'negotiation' && payment.negotiation?.requirements ? `${payment.negotiation.requirements.substring(0, 50)}...` :
+                                                 payment.related_job_type === 'direct_upload' && payment.direct_upload_job?.client_instructions ? `${payment.direct_upload_job.client_instructions.substring(0, 50)}...` : 'N/A'}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

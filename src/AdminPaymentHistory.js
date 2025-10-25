@@ -84,7 +84,7 @@ const AdminPaymentHistory = () => {
     }
 
     return (
-        <div className="admin-payment-history-container">
+        <div className="admin-management-container">
             <header className="admin-management-header">
                 <div className="header-content">
                     <h1>Payment Management</h1>
@@ -96,7 +96,7 @@ const AdminPaymentHistory = () => {
             </header>
             <main className="admin-management-main">
                 <div className="back-link-container">
-                    <Link to="/admin/dashboard" className="back-link">← Back to Admin Dashboard</Link>
+                    <Link to="/admin-dashboard" className="back-link">← Back to Admin Dashboard</Link>
                 </div>
 
                 {/* NEW SECTION: Transcriber Upcoming Payouts */}
@@ -147,6 +147,7 @@ const AdminPaymentHistory = () => {
                                 <tr>
                                     <th>Payment ID</th>
                                     <th>Job Type</th>
+                                    <th>Job ID</th> {/* NEW: Added Job ID column */}
                                     <th>Client Name</th>
                                     <th>Transcriber Name</th>
                                     <th>Amount Paid (USD)</th>
@@ -162,6 +163,13 @@ const AdminPaymentHistory = () => {
                                     <tr key={payment.id}>
                                         <td>{payment.id?.substring(0, 8)}...</td>
                                         <td>{payment.related_job_type?.replace('_', ' ') || 'N/A'}</td>
+                                        {/* NEW: Conditionally display job ID based on type */}
+                                        <td>
+                                            {payment.related_job_type === 'negotiation' && payment.negotiation_id?.substring(0, 8)}
+                                            {payment.related_job_type === 'direct_upload' && payment.direct_upload_job_id?.substring(0, 8)}
+                                            {payment.related_job_type === 'training' && payment.client_id?.substring(0, 8)}
+                                            ...
+                                        </td>
                                         <td>{payment.client?.full_name || (payment.related_job_type === 'training' ? payment.trainee_info?.full_name : 'N/A')}</td>
                                         <td>{payment.transcriber?.full_name || (payment.related_job_type === 'training' ? payment.trainee_info?.full_name : 'N/A')}</td>
                                         <td>USD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

@@ -114,10 +114,8 @@ const TranscriberPaymentHistory = () => {
             <main className="payment-history-main">
                 <div className="payment-history-content">
                     <div className="page-header">
-                        <div className="header-text">
-                            <h2>Your Earnings Overview</h2>
-                            <p>Track all your completed jobs and earnings on the platform.</p>
-                        </div>
+                        <h2 className="header-text">Your Earnings Overview</h2>
+                        <p>Track all your completed jobs and earnings on the platform.</p>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
                         </Link>
@@ -139,17 +137,18 @@ const TranscriberPaymentHistory = () => {
                     </div>
 
                     {/* NEW: Upcoming Payments Table */}
-                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts ({totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h3>
+                    <h3 style={{ marginTop: '30px' }}>Upcoming Payouts (USD {totalUpcomingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h3>
                     {upcomingPayouts.length === 0 ? (
                         <p className="no-data-message">No upcoming payouts found for the current week.</p>
                     ) : (
                         <div className="upcoming-payouts-table-container payments-table-container">
                             {upcomingPayouts.map(week => (
                                 <div key={week.date} className="weekly-payout-group">
-                                    <h4>Week Ending: ${week.date} (Total: USD ${week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4>
+                                    <h4>Week Ending: {week.date} (Total: USD {week.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</h4>
                                     <table>
                                         <thead>
                                             <tr>
+                                                <th>Job Type</th> {/* NEW: Added Job Type column */}
                                                 <th>Job ID</th>
                                                 <th>Client</th>
                                                 <th>Requirements</th>
@@ -161,10 +160,17 @@ const TranscriberPaymentHistory = () => {
                                         <tbody>
                                             {week.payouts.map(payout => (
                                                 <tr key={payout.id}>
-                                                    <td>{payout.related_job_id ? payout.related_job_id.substring(0, 8) + '...' : 'N/A'}</td>
+                                                    <td>{payout.related_job_type?.replace('_', ' ') || 'N/A'}</td> {/* Display job type */}
+                                                    {/* Conditionally display job ID based on type */}
+                                                    <td>
+                                                        {payout.related_job_type === 'negotiation' && payout.negotiation_id?.substring(0, 8)}
+                                                        {payout.related_job_type === 'direct_upload' && payout.direct_upload_job_id?.substring(0, 8)}
+                                                        {payout.related_job_type === 'training' && payout.client_id?.substring(0, 8)} {/* For training, client_id is the relevant ID */}
+                                                        ...
+                                                    </td>
                                                     <td>{payout.clientName || 'N/A'}</td>
                                                     <td>{payout.jobRequirements ? payout.jobRequirements.substring(0, 50) + '...' : 'N/A'}</td>
-                                                    <td>USD ${payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td>
                                                         {/* FIXED: Display "Completed (Awaiting Payout)" if job_status is completed */}
                                                         <span className={`status-badge ${payout.job_status === 'completed' ? 'completed' : payout.status}`}>
@@ -185,7 +191,7 @@ const TranscriberPaymentHistory = () => {
 
                     {/* REMOVED: All Past Transactions table */}
                     {/*
-                    <h3 style={{ marginTop: '30px' }}>All Past Transactions</h3>
+                    <h3>All Past Transactions</h3>
                     {payments.length === 0 ? (
                         <p className="no-data-message">No completed payment transactions found.</p>
                     ) : (
