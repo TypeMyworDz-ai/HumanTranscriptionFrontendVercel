@@ -18,7 +18,7 @@ const ClientDirectUpload = () => {
     const [quoteLoading, setQuoteLoading] = useState(false); // For quote calculation
     const [showQuoteModal, setShowQuoteModal] = useState(false);
     // FIX: quoteDetails will now contain quote_amount, price_per_minute_usd, etc.
-    const [quoteDetails, setQuoteDetails] = useState(null); 
+    const [quoteDetails, setQuoteDetails] = useState(null);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     // Form data states
@@ -28,7 +28,7 @@ const ClientDirectUpload = () => {
     // UPDATED: Renamed to audioQualityParam and values adjusted
     const [audioQualityParam, setAudioQualityParam] = useState('standard'); // 'excellent', 'good', 'standard', 'difficult'
     // UPDATED: Renamed to deadlineTypeParam, values: 'flexible', 'standard', 'urgent'
-    const [deadlineTypeParam, setDeadlineTypeParam] = useState('standard'); 
+    const [deadlineTypeParam, setDeadlineTypeParam] = useState('standard');
     const [specialRequirements, setSpecialRequirements] = useState([]); // Array of selected special requirements
 
     const fileInputRef = useRef(null);
@@ -59,8 +59,8 @@ const ClientDirectUpload = () => {
         const file = e.target.files[0];
         if (file) {
             // UPDATED: File size limit to 500MB
-            if (file.size > 500 * 1024 * 1024) { 
-                showToast('Main audio/video file must be smaller than 500MB', 'error');
+            if (file.size > 500 * 1024 * 1024) {
+                showToast(`Main audio/video file must be smaller than 500MB`, 'error');
                 e.target.value = null; // Clear input
                 setAudioVideoFile(null);
                 return;
@@ -120,9 +120,9 @@ const ClientDirectUpload = () => {
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
         formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
-        formData.append('deadlineTypeParam', deadlineTypeParam); 
+        formData.append('deadlineTypeParam', deadlineTypeParam);
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
-        
+
         instructionFiles.forEach((file) => {
             formData.append(`instructionFiles`, file);
         });
@@ -183,11 +183,11 @@ const ClientDirectUpload = () => {
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
         formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
-        formData.append('deadlineTypeParam', deadlineTypeParam); 
+        formData.append('deadlineTypeParam', deadlineTypeParam);
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
-        formData.append('quote_amount', quoteDetails.quote_amount); 
-        formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd); 
-        formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours); 
+        formData.append('quote_amount', quoteDetails.quote_amount);
+        formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd);
+        formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours);
         formData.append('jobType', 'direct_upload'); // Explicitly set job type
 
         instructionFiles.forEach((file) => {
@@ -221,8 +221,8 @@ const ClientDirectUpload = () => {
                 },
                 body: JSON.stringify({
                     jobId: jobId, // Use the new jobId
-                    amount: quoteDetails.quote_amount, 
-                    clientEmail: user.email, // Corrected parameter name
+                    amount: quoteDetails.quote_amount,
+                    email: user.email, // FIX: Corrected parameter name from 'clientEmail' to 'email'
                     jobType: 'direct_upload' // Explicitly set job type for payment initialization
                 })
             });
