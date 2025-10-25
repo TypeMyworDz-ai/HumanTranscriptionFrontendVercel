@@ -147,6 +147,14 @@ const TranscriberDashboard = () => {
     const token = localStorage.getItem('token');
     if (!token || !user?.id) return;
 
+    // NEW: Add a check for user.is_online before fetching direct jobs
+    // This ensures the backend check for 'is_online' is likely to pass.
+    if (!user.is_online) {
+        console.log('TranscriberDashboard: User is not online, skipping fetch for direct jobs.');
+        setAvailableDirectJobsCount(0);
+        return Promise.resolve(0);
+    }
+
     try {
       const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -155,7 +163,7 @@ const TranscriberDashboard = () => {
       if (response.ok && data.jobs) {
         setAvailableDirectJobsCount(data.jobs.length);
       } else {
-        console.warn('TranscriberDashboard: Expected 403 for direct jobs or failed to fetch: ', data.error);
+        console.warn('TranscriberDashboard: Expected 403 or 409 for direct jobs or failed to fetch: ', data.error);
         setAvailableDirectJobsCount(0);
         return Promise.resolve(0);
       }
@@ -164,7 +172,7 @@ const TranscriberDashboard = () => {
       setAvailableDirectJobsCount(0);
       return Promise.resolve(0);
     }
-  }, [user?.id, setAvailableDirectJobsCount]);
+  }, [user?.id, user?.is_online, setAvailableDirectJobsCount]); // Added user.is_online to dependencies
 
 
   const handleSocketConnect = useCallback((socketInstance) => {
@@ -182,8 +190,8 @@ const TranscriberDashboard = () => {
     fetchNegotiationsData();
     fetchTranscriberStatus();
     fetchTranscriberPaymentHistory();
-    if (user?.average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.average_rating, fetchAvailableDirectJobsCount]);
+    if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount(); // Use correct rating field
+  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]);
 
 
   const handleUnreadMessageCountUpdate = useCallback((data) => {
@@ -212,8 +220,8 @@ const TranscriberDashboard = () => {
       fetchNegotiationsData();
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
-      if (user?.average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.average_rating, fetchAvailableDirectJobsCount]);
+      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount(); // Use correct rating field
+  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]); // CORRECTED: Added user?.transcriber_average_rating to dependencies
 
   const handleJobHired = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Job hired!', data);
@@ -221,23 +229,23 @@ const TranscriberDashboard = () => {
       fetchNegotiationsData();
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
-      if (user?.average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.average_rating, fetchAvailableDirectJobsCount]);
+      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount(); // Use correct rating field
+  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]);
 
   const handleNewDirectJobAvailable = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: New direct job available!', data);
       showToast(data.message || `A new direct upload job is available!`, 'info');
-      if (user?.average_rating >= 4) fetchAvailableDirectJobsCount();
+      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount(); // Use correct rating field
       playNotificationSound();
-  }, [showToast, user?.average_rating, fetchAvailableDirectJobsCount, playNotificationSound]);
+  }, [showToast, user?.transcriber_average_rating, fetchAvailableDirectJobsCount, playNotificationSound]);
 
   const handleDirectJobStatusUpdate = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Direct job status update!', data);
       showToast(`Direct job ${data.jobId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
-      if (user?.average_rating >= 4) fetchAvailableDirectJobsCount();
+      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount(); // Use correct rating field
       fetchTranscriberStatus();
       fetchNegotiationsData();
-  }, [showToast, user?.average_rating, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchNegotiationsData]);
+  }, [showToast, user?.transcriber_average_rating, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchNegotiationsData]);
 
 
   useEffect(() => {
@@ -255,7 +263,7 @@ const TranscriberDashboard = () => {
     // FIX: Access transcriber_status and transcriber_user_level from the user object
     const transcriberStatus = user.transcriber_status || '';
     const transcriberUserLevel = user.transcriber_user_level || '';
-    const transcriberRating = user.average_rating || 0;
+    const transcriberRating = user.transcriber_average_rating || 0; // CORRECTED: Use transcriber_average_rating
 
     // FIX: Update authorization check to use transcriber_status and transcriber_user_level
     const hasActiveTranscriberStatus = isTranscriber && (transcriberStatus === 'active_transcriber' || transcriberUserLevel === 'proofreader');
@@ -283,7 +291,14 @@ const TranscriberDashboard = () => {
     ];
 
     if (transcriberRating >= 4) {
-        fetches.push(fetchAvailableDirectJobsCount().catch(e => { console.error("Error in fetchAvailableDirectJobsCount:", e); return 0; }));
+        // Only fetch direct jobs if user.is_online is true. This prevents premature calls
+        // before the backend has updated the online status after socket connection.
+        if (user.is_online) {
+            fetches.push(fetchAvailableDirectJobsCount().catch(e => { console.error("Error in fetchAvailableDirectJobsCount:", e); return 0; }));
+        } else {
+            console.log(`TranscriberDashboard: User is not online, skipping initial fetch for direct jobs. Will re-fetch on status change.`);
+            setAvailableDirectJobsCount(0);
+        }
     } else {
         console.log(`TranscriberDashboard: Skipping fetch for direct jobs as rating (${transcriberRating}) is below 4-star.`);
         setAvailableDirectJobsCount(0);
@@ -366,7 +381,7 @@ const TranscriberDashboard = () => {
   const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length;
   const activeCount = negotiations.filter(n => n.status === 'hired').length;
   const completedCount = negotiations.filter(n => n.status === 'completed').length;
-  const transcriberRating = user.average_rating || 0;
+  const transcriberRating = user.transcriber_average_rating || 0; // CORRECTED: Use transcriber_average_rating
   const firstLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
 

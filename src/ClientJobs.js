@@ -290,7 +290,7 @@ const ClientJobs = () => {
     const handleProceedToPayment = useCallback((job) => { // Changed negotiation to job
         // Check if the job is in 'accepted_awaiting_payment' status (for negotiations) or 'pending_review' (for direct uploads before payment)
         if (job.status === 'accepted_awaiting_payment' || job.status === 'pending_review') { 
-            if (!user?.email || !job?.id || !job?.agreed_price_usd && !job?.quote_amount) { // Handle both agreed_price_usd and quote_amount
+            if (!user?.email || !job?.id || (!(job?.agreed_price_usd) && !(job?.quote_amount))) { // FIX: Clarified order of operations with parentheses
                 showToast('Missing client email or job details for payment.', 'error');
                 return;
             }

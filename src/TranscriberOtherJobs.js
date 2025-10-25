@@ -59,9 +59,13 @@ const TranscriberOtherJobs = () => {
                     showToast('No direct upload jobs available for you right now.', 'info');
                 }
             } else {
-                showToast(data.error || 'Failed to load available jobs.', 'error');
-                if (response.status === 403) { // Specific message for rating below 4-star
+                // FIX: Specific handling for 409 (Conflict) status for availability issues
+                if (response.status === 409) {
+                    showToast(data.error || 'You are not eligible to view these jobs due to your current status.', 'error');
+                } else if (response.status === 403) { // Specific message for rating below 4-star
                     showToast('You must be a 4-star or 5-star transcriber to access these jobs.', 'error');
+                } else {
+                    showToast(data.error || 'Failed to load available jobs.', 'error');
                 }
             }
         } catch (error) {
@@ -258,8 +262,9 @@ const TranscriberOtherJobs = () => {
                                             <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{marginLeft: '5px'}}>{file}</a>
                                         ))}</p>
                                     )}
-                                    <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p>
-                                    <p><strong>Your 80% Pay:</strong> USD {(job.quote_amount * 0.8).toLocaleString()}</p>
+                                    {/* REMOVED: Display of client's quote_amount */}
+                                    {/* <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p> */}
+                                    <p><strong>Your Pay:</strong> USD {job.transcriber_pay?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* CORRECTED: Display transcriber_pay */}
                                     <p><strong>Deadline:</strong> {job.agreed_deadline_hours} hours</p>
                                     <p><strong>Quality:</strong> {job.quality_param}</p>
                                     <p><strong>Requirements:</strong> {job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</p>

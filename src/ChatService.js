@@ -77,7 +77,7 @@ export const connectSocket = (userId) => {
  * Sends a message (text or file attachment) to the server via HTTP POST.
  * Handles different endpoints based on message type (negotiation vs. direct chat).
  * @param {object} messageData - The message object.
- *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, trainingRoomId?: string, senderUserType?: string, fileUrl?: string, fileName?: string, timestamp: string }
+ *   Expected format: { senderId: string, receiverId: string, messageText?: string, negotiationId?: string, directUploadJobId?: string, trainingRoomId?: string, senderUserType?: string, fileUrl?: string, fileName?: string, timestamp: string }
  * @returns {Promise<object>} The response data from the server.
  * @throws {Error} If authentication token is missing or network error occurs.
  */
@@ -97,12 +97,12 @@ export const sendMessage = async (messageData) => {
   };
 
   // Determine the correct backend endpoint and payload structure
-  if (messageData.negotiationId) {
-    endpoint = `${BACKEND_API_URL}/api/messages/negotiation/send`;
+  if (messageData.negotiationId || messageData.directUploadJobId) { // Handles both negotiation and direct upload jobs
+    endpoint = `${BACKEND_API_URL}/api/messages/job/send`; // Use the new generic job message endpoint
     payload = {
       ...payload, // Spread base payload
       receiverId: messageData.receiverId,
-      negotiationId: messageData.negotiationId,
+      jobId: messageData.negotiationId || messageData.directUploadJobId, // Pass the relevant job ID
     };
   } else if (messageData.trainingRoomId) { // NEW: Handle training room messages
     // Both admin and trainee use the generic send-message endpoints for training room
