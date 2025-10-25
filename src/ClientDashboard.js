@@ -87,7 +87,8 @@ const ClientDashboard = () => {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch(`${BACKEND_API_URL}/api/direct-upload-jobs/client`, { // NEW: Fetch direct upload jobs for the client
+        // FIX: Changed the API endpoint to match the backend route
+        fetch(`${BACKEND_API_URL}/api/client/direct-jobs`, { 
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -117,12 +118,12 @@ const ClientDashboard = () => {
 
       // NEW: Process direct upload jobs
       if (directUploadJobsResponse.ok) {
-          activeJobs += directUploadJobsData.directUploadJobs.filter(d => 
+          activeJobs += directUploadJobsData.jobs.filter(d => 
               d.status === 'available_for_transcriber' || // New status after payment
               d.status === 'taken' || 
               d.status === 'in_progress'
           ).length;
-          completedJobs += directUploadJobsData.directUploadJobs.filter(d => d.status === 'completed').length;
+          completedJobs += directUploadJobsData.jobs.filter(d => d.status === 'completed').length;
       } else {
           console.error('Failed to fetch direct upload jobs:', directUploadJobsData.error);
           showToast(directUploadJobsData.error || 'Failed to load direct upload jobs.', 'error');
