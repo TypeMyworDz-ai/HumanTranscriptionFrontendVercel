@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal'; // Assuming you have a Modal component
 import { useAuth } from './contexts/AuthContext';
-import { getSocketInstance } from './ChatService'; // Removed disconnectSocket
+import { connectSocket } from './ChatService'; // Removed disconnectSocket, getSocketInstance
 import './TranscriberOtherJobs.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -46,8 +46,6 @@ const TranscriberOtherJobs = () => {
 
         setLoading(true);
         try {
-            // This endpoint should now return jobs with status 'available_for_transcriber'
-            // and filter by transcriber rating (4 or 5) on the backend.
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -59,10 +57,9 @@ const TranscriberOtherJobs = () => {
                     showToast('No direct upload jobs available for you right now.', 'info');
                 }
             } else {
-                // FIX: Specific handling for 409 (Conflict) status for availability issues
                 if (response.status === 409) {
                     showToast(data.error || 'You are not eligible to view these jobs due to your current status.', 'error');
-                } else if (response.status === 403) { // Specific message for rating below 4-star
+                } else if (response.status === 403) {
                     showToast('You must be a 4-star or 5-star transcriber to access these jobs.', 'error');
                 } else {
                     showToast(data.error || 'Failed to load available jobs.', 'error');
@@ -95,7 +92,8 @@ const TranscriberOtherJobs = () => {
             return;
         }
 
-        const socket = getSocketInstance();
+        // Connect or get the existing socket instance
+        const socket = connectSocket(user.id);
         if (!socket) {
             console.warn("TranscriberOtherJobs: Socket.IO not connected, real-time updates may not work.");
             return;
@@ -113,7 +111,6 @@ const TranscriberOtherJobs = () => {
             fetchAvailableJobs(); // Refresh the list
         };
 
-        // NEW: Listener for when a direct upload job is taken by *any* transcriber
         const handleDirectJobTaken = (data) => {
             console.log('TranscriberOtherJobs Real-time: Direct job taken event received!', data);
             showToast(`Direct job ${data.jobId?.substring(0, 8)}... has been taken.`, 'info');
@@ -122,12 +119,13 @@ const TranscriberOtherJobs = () => {
 
         socket.on('new_direct_job_available', handleNewDirectJobAvailable);
         socket.on('direct_job_status_update', handleDirectJobStatusUpdate);
-        socket.on('direct_upload_job_taken', handleDirectJobTaken); // NEW: Listen for 'direct_upload_job_taken'
+        socket.on('direct_upload_job_taken', handleDirectJobTaken);
 
         return () => {
             socket.off('new_direct_job_available', handleNewDirectJobAvailable);
             socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-            socket.off('direct_upload_job_taken', handleDirectJobTaken); // Clean up new listener
+            socket.off('direct_upload_job_taken', handleDirectJobTaken);
+            // REMOVED: disconnectSocket() from here. It should only be called on explicit logout.
         };
     }, [user?.id, isAuthenticated, fetchAvailableJobs, showToast]);
 
@@ -170,7 +168,7 @@ const TranscriberOtherJobs = () => {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(data.message || 'Job successfully taken!', 'success');
+                showToast(data.message || 'Job successfully taken! You are now working on this job.', 'success');
                 closeTakeJobModal();
                 navigate('/transcriber-dashboard'); // Redirect to dashboard to show active job
             } else {
@@ -212,6 +210,14 @@ const TranscriberOtherJobs = () => {
         }
     }, [selectedJobId, logout, showToast, closeCompleteJobModal, fetchAvailableJobs]);
 
+    // Helper function to format status text for display
+    const formatStatusText = (status) => {
+        if (status === 'available_for_transcriber') {
+            return 'Available';
+        }
+        return status.replace(/_/g, ' ');
+    };
+
 
     if (authLoading || !isAuthenticated || !user || loading) {
         return (
@@ -247,42 +253,83 @@ const TranscriberOtherJobs = () => {
                         </Link>
                     </div>
 
-                    <div className="jobs-list-grid">
-                        {availableJobs.length === 0 ? (
-                            <p className="no-data-message">No direct upload jobs available for you right now.</p>
-                        ) : (
-                            availableJobs.map(job => (
-                                <div key={job.id} className="job-card">
-                                    <h3>Job ID: {job.id.substring(0, 8)}...</h3>
-                                    <p><strong>Client:</strong> {job.client?.full_name || 'Unknown Client'}</p>
-                                    <p><strong>File:</strong> <a href={`${BACKEND_API_URL}${job.file_url}`} target="_blank" rel="noopener noreferrer">{job.file_name}</a> ({job.audio_length_minutes?.toFixed(1)} mins)</p>
-                                    <p><strong>Instructions:</strong> {job.client_instructions || 'No specific instructions.'}</p>
-                                    {job.instruction_files && job.instruction_files.length > 0 && (
-                                        <p><strong>Additional Files:</strong> {job.instruction_files.split(',').map((file, i) => (
-                                            <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{marginLeft: '5px'}}>{file}</a>
-                                        ))}</p>
-                                    )}
-                                    {/* REMOVED: Display of client's quote_amount */}
-                                    {/* <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p> */}
-                                    <p><strong>Your Pay:</strong> USD {job.transcriber_pay?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* CORRECTED: Display transcriber_pay */}
-                                    <p><strong>Deadline:</strong> {job.agreed_deadline_hours} hours</p>
-                                    <p><strong>Quality:</strong> {job.quality_param}</p>
-                                    <p><strong>Requirements:</strong> {job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</p>
-                                    <p><strong>Status:</strong> <span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span></p>
-
-                                    <div className="job-actions">
-                                        {/* UPDATED: Only show 'Take Job' button if status is 'available_for_transcriber' */}
-                                        {job.status === 'available_for_transcriber' && (
-                                            <button onClick={() => openTakeJobModal(job.id)} className="take-job-btn">Take Job</button>
-                                        )}
-                                        {job.status === 'in_progress' && (
-                                            <button onClick={() => openCompleteJobModal(job.id)} className="complete-job-btn">Mark as Complete</button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                    {availableJobs.length === 0 ? (
+                        <p className="no-data-message">No direct upload jobs available for you right now.</p>
+                    ) : (
+                        <div className="jobs-table-container">
+                            <table className="jobs-table">
+                                <colgroup>
+                                    <col style={{ width: '6%' }} /> {/* Job ID */}
+                                    <col style={{ width: '8%' }} /> {/* Client */}
+                                    <col style={{ width: '12%' }} /> {/* File Name */}
+                                    <col style={{ width: '7%' }} /> {/* Audio Length */}
+                                    <col style={{ width: '12%' }} /> {/* Instructions */}
+                                    <col style={{ width: '12%' }} /> {/* Additional Files */}
+                                    <col style={{ width: '8%' }} /> {/* Your Pay */}
+                                    <col style={{ width: '6%' }} /> {/* TAT (hrs) */} {/* MODIFIED: Renamed header */}
+                                    <col style={{ width: '6%' }} /> {/* Quality */}
+                                    <col style={{ width: 8 }} /> {/* Requirements */}
+                                    <col style={{ width: '10%' }} /> {/* Status */} {/* MODIFIED: Increased width */}
+                                    <col style={{ width: '10%' }} /> {/* Actions */}
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>Job ID</th>
+                                        <th>Client</th>
+                                        <th>File Name</th>
+                                        <th>Audio Length (mins)</th>
+                                        <th>Instructions</th>
+                                        <th>Additional Files</th>
+                                        <th>Your Pay (USD)</th>
+                                        <th>TAT (hrs)</th> {/* MODIFIED: Renamed header */}
+                                        <th>Quality</th>
+                                        <th>Requirements</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {availableJobs.map(job => (
+                                        <tr key={job.id}>
+                                            <td>{job.id.substring(0, 8)}...</td>
+                                            <td>{job.client?.full_name || 'N/A'}</td>
+                                            <td>
+                                                <a href={`${BACKEND_API_URL}${job.file_url}`} target="_blank" rel="noopener noreferrer">
+                                                    {job.file_name}
+                                                </a>
+                                            </td>
+                                            <td>{job.audio_length_minutes?.toFixed(1)}</td>
+                                            <td>{job.client_instructions || 'N/A'}</td>
+                                            <td>
+                                                {job.instruction_files && job.instruction_files.length > 0 ? (
+                                                    job.instruction_files.split(',').map((file, i) => (
+                                                        <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                                                            {file}
+                                                        </a>
+                                                    ))
+                                                ) : 'N/A'}
+                                            </td>
+                                            <td>USD {job.transcriber_pay?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td>{job.agreed_deadline_hours}</td>
+                                            <td>{job.quality_param}</td>
+                                            <td>{job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</td>
+                                            <td><span className={`status-badge ${job.status}`}>{formatStatusText(job.status)}</span></td>
+                                            <td>
+                                                <div className="job-actions">
+                                                    {job.status === 'available_for_transcriber' && (
+                                                        <button onClick={() => openTakeJobModal(job.id)} className="take-job-btn">Take Job</button>
+                                                    )}
+                                                    {job.status === 'in_progress' && (
+                                                        <button onClick={() => openCompleteJobModal(job.id)} className="complete-job-btn">Mark as Complete</button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </main>
 
@@ -297,7 +344,7 @@ const TranscriberOtherJobs = () => {
                     loading={modalLoading}
                 >
                     <p>Are you sure you want to take this job? Once taken, it will be assigned to you.</p>
-                    <p>You will be marked as busy and unavailable for other jobs until this one is completed.</p>
+                    <p>You will be assigned this job and will not be able to take other jobs until it is completed.</p>
                 </Modal>
             )}
 

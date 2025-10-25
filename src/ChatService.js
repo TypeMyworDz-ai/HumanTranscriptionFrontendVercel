@@ -24,6 +24,15 @@ export const connectSocket = (userId) => {
       console.log(`ChatService: Disconnecting old socket for userId: ${activeSocketState.userId || 'unknown'} before connecting new one for userId: ${userId}`);
       globalSocketInstance.disconnect();
     }
+    // If an instance exists but is disconnected, and it's for the same user, just connect it.
+    // If it's for a different user, it will be recreated.
+    if (globalSocketInstance && !globalSocketInstance.connected && activeSocketState.userId === userId) {
+        console.log(`ChatService: Reusing existing disconnected socket for userId: ${userId}.`);
+        globalSocketInstance.connect(); // Just connect the existing instance
+        activeSocketState.userId = userId; // Ensure state is updated
+        return globalSocketInstance;
+    }
+
 
     // Create a new socket instance
     globalSocketInstance = io(BACKEND_API_URL, {
@@ -204,8 +213,9 @@ export const disconnectSocket = () => {
     console.log('ChatService: Explicitly disconnecting socket.');
     globalSocketInstance.disconnect();
   }
-  activeSocketState.userId = null;
-  globalSocketInstance = null; // Clear the instance on explicit disconnect
+  // IMPORTANT: Do NOT set globalSocketInstance = null here.
+  // We want to retain the instance so connectSocket can reuse it if needed.
+  activeSocketState.userId = null; // Only clear the active user ID
 };
 
 /**

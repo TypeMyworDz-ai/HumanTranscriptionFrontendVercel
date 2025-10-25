@@ -42,7 +42,7 @@ const TranscriberNegotiations = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
 
-    const [isTranscriberAvailable, setIsTranscriberAvailable] = useState(true);
+    // Removed isTranscriberAvailable state as it will be derived from user.is_online and transcriberCurrentJobId
     const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
 
@@ -64,7 +64,7 @@ const TranscriberNegotiations = () => {
     const fetchTranscriberDetailedStatus = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token || !user?.id) {
-            setIsTranscriberAvailable(false);
+            // setIsTranscriberAvailable(false); // Removed
             setTranscriberCurrentJobId(null);
             return;
         }
@@ -75,19 +75,19 @@ const TranscriberNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok && data.user) {
-                setIsTranscriberAvailable(data.user.is_available || true);
+                // setIsTranscriberAvailable(data.user.is_available || true); // Removed
                 setTranscriberCurrentJobId(data.user.current_job_id || null);
             } else {
                 console.error('Failed to fetch transcriber detailed status:', data.error);
-                setIsTranscriberAvailable(true);
+                // setIsTranscriberAvailable(true); // Removed
                 setTranscriberCurrentJobId(null);
             }
         } catch (error) {
             console.error('Network error fetching transcriber detailed status:', error);
-            setIsTranscriberAvailable(true);
+            // setIsTranscriberAvailable(true); // Removed
             setTranscriberCurrentJobId(null);
         }
-    }, [user?.id, setIsTranscriberAvailable, setTranscriberCurrentJobId]);
+    }, [user?.id, setTranscriberCurrentJobId]); // Removed setIsTranscriberAvailable from dependencies
 
 
     const fetchNegotiations = useCallback(async () => {
@@ -363,7 +363,7 @@ const TranscriberNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    reason: rejectReason || 'Transcriber rejected the offer.'
+                    reason: rejectReason || 'Transcriber rejected the offer.ᐟ'
                 })
             });
 
@@ -542,7 +542,8 @@ const TranscriberNegotiations = () => {
         );
     }
 
-    const canTranscriberAccept = isTranscriberAvailable && !transcriberCurrentJobId;
+    // Derived availability: Transcriber is available if online AND has no current job
+    const canTranscriberAccept = user?.is_online && !transcriberCurrentJobId;
 
     const query = new URLSearchParams(location.search);
     const statusFilter = query.get('status');
@@ -636,7 +637,7 @@ const TranscriberNegotiations = () => {
                                     // FIXED: Pass client_completed_jobs to NegotiationCard
                                     clientCompletedJobs={negotiation.client_info?.client_completed_jobs}
                                     // FIXED: Pass client_rating as clientAverageRating to NegotiationCard
-                                    clientAverageRating={parseFloat(negotiation.client_info?.client_rating) || 0}
+                                    clientAverageRating={parseFloat(negotiation.client_info?.client_average_rating) || 0}
                                 />
                             ))
                         )}
