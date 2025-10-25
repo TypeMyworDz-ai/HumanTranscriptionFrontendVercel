@@ -79,47 +79,68 @@ const ClientDashboard = () => {
         return;
     }
     try {
-      // FIX: Client's rating and completed jobs are now directly in the 'user' object
-      // Access user data from the 'user' object passed via useAuth, which is updated on login/profile update
-      const clientRating = user.client_average_rating || 5.0; // Use client_average_rating from user object
-      // const clientCompletedJobs = user.client_completed_jobs || 0; // This was the problematic line
+      const clientRating = user.client_average_rating || 5.0; 
 
-      const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const [negotiationsResponse, directUploadJobsResponse] = await Promise.all([
+        fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch(`${BACKEND_API_URL}/api/direct-upload-jobs/client`, { // NEW: Fetch direct upload jobs for the client
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+      ]);
+      
       const negotiationsData = await negotiationsResponse.json();
+      const directUploadJobsData = await directUploadJobsResponse.json(); // NEW: Parse direct upload jobs data
+
+      let pendingNegotiations = 0;
+      let activeJobs = 0;
+      let completedJobs = 0;
+
       if (negotiationsResponse.ok) {
-        // UPDATED: Include 'accepted_awaiting_payment' in pendingNegotiations count
-        const pendingNegotiations = negotiationsData.negotiations.filter(n => 
+        pendingNegotiations = negotiationsData.negotiations.filter(n => 
             n.status === 'pending' || 
             n.status === 'transcriber_counter' || 
             n.status === 'client_counter' ||
-            n.status === 'accepted_awaiting_payment' // NEW: Include this status for pending count
+            n.status === 'accepted_awaiting_payment' 
         ).length; 
-        const activeJobs = negotiationsData.negotiations.filter(n => n.status === 'hired').length; // Changed to filter only 'hired'
-        // FIX: Calculate completedJobs directly from negotiationsData for consistency
-        const completedJobs = negotiationsData.negotiations.filter(n => n.status === 'completed').length;
-
-
-        setClientStats({
-          pendingNegotiations,
-          activeJobs,
-          completedJobs: completedJobs, // FIX: Use calculated completedJobs from negotiationsData
-          clientRating // Use the clientRating from user object
-        });
+        activeJobs += negotiationsData.negotiations.filter(n => n.status === 'hired').length;
+        completedJobs += negotiationsData.negotiations.filter(n => n.status === 'completed').length;
       } else {
         console.error('Failed to fetch negotiations:', negotiationsData.error);
         showToast(negotiationsData.error || 'Failed to load negotiations.', 'error');
       }
+
+      // NEW: Process direct upload jobs
+      if (directUploadJobsResponse.ok) {
+          activeJobs += directUploadJobsData.directUploadJobs.filter(d => 
+              d.status === 'available_for_transcriber' || // New status after payment
+              d.status === 'taken' || 
+              d.status === 'in_progress'
+          ).length;
+          completedJobs += directUploadJobsData.directUploadJobs.filter(d => d.status === 'completed').length;
+      } else {
+          console.error('Failed to fetch direct upload jobs:', directUploadJobsData.error);
+          showToast(directUploadJobsData.error || 'Failed to load direct upload jobs.', 'error');
+      }
+
+      setClientStats({
+        pendingNegotiations,
+        activeJobs,
+        completedJobs: completedJobs, 
+        clientRating 
+      });
     } catch (error) {
       console.error('Failed to fetch client stats:', error);
       showToast('Network error while fetching dashboard data.', 'error');
     } finally {
       // setLoading(false); // This will be set by the main useEffect after all data is fetched
     }
-  }, [showToast, user]); // FIX: Add user to dependency array
+  }, [showToast, user]); 
 
   // NEW: Fetch Client Payment History
   const fetchClientPaymentHistory = useCallback(async () => {
@@ -134,13 +155,12 @@ const ClientDashboard = () => {
       if (response.ok && data.summary) {
         setTotalClientPayments(data.summary.totalPayments || 0);
       } else {
-        // FIX: Removed extra comma
         console.error('Failed to fetch client payment history:', data.error);
       }
     } catch (error) {
       console.error('Network error fetching client payment history:', error);
     }
-  }, [user]); // FIX: Add user to dependency array
+  }, [user]); 
 
 
   // --- Main Data Management and Socket Setup useEffect ---
@@ -213,16 +233,22 @@ const ClientDashboard = () => {
 
     const handleJobCompleted = (data) => {
         console.log('ClientDashboard Real-time: Job completed event received!', data);
-        showToast(data.message || `Job ${data.negotiationId} was completed!`, 'success');
+        showToast(data.message || `Job ${data.negotiationId || data.directUploadJobId} was completed!`, 'success'); // Updated to handle directUploadJobId
         fetchClientStats(user.id, localStorage.getItem('token')); // Refresh stats to update completed jobs count
         fetchClientPaymentHistory();
     };
 
     const handlePaymentSuccessful = (data) => {
         console.log('ClientDashboard Real-time: Payment successful event received!', data);
-        showToast(data.message || `Payment for negotiation ${data.negotiationId} was successful!`, 'success');
+        showToast(data.message || `Payment for job ${data.relatedJobId} was successful!`, 'success'); // Updated to use relatedJobId
         fetchClientStats(user.id, localStorage.getItem('token'));
         fetchClientPaymentHistory();
+    };
+
+    const handleJobTaken = (data) => { // NEW: Handler for 'job_taken' event
+        console.log('ClientDashboard Real-time: Job taken event received!', data);
+        showToast(data.message || `Your direct upload job ${data.jobId} has been taken by a transcriber!`, 'info');
+        fetchClientStats(user.id, localStorage.getItem('token'));
     };
 
     // Attach listeners directly to the socket instance
@@ -234,6 +260,8 @@ const ClientDashboard = () => {
     socket.on('newChatMessage', handleNewChatMessage);
     socket.on('job_completed', handleJobCompleted);
     socket.on('payment_successful', handlePaymentSuccessful);
+    socket.on('job_taken', handleJobTaken); // NEW: Listen for 'job_taken' event
+
 
     return () => {
       console.log(`ClientDashboard: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);

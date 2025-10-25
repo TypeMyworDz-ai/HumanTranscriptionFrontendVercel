@@ -46,6 +46,8 @@ const TranscriberOtherJobs = () => {
 
         setLoading(true);
         try {
+            // This endpoint should now return jobs with status 'available_for_transcriber'
+            // and filter by transcriber rating (4 or 5) on the backend.
             const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -107,12 +109,21 @@ const TranscriberOtherJobs = () => {
             fetchAvailableJobs(); // Refresh the list
         };
 
+        // NEW: Listener for when a direct upload job is taken by *any* transcriber
+        const handleDirectJobTaken = (data) => {
+            console.log('TranscriberOtherJobs Real-time: Direct job taken event received!', data);
+            showToast(`Direct job ${data.jobId?.substring(0, 8)}... has been taken.`, 'info');
+            fetchAvailableJobs(); // Refresh the list to remove the taken job
+        };
+
         socket.on('new_direct_job_available', handleNewDirectJobAvailable);
         socket.on('direct_job_status_update', handleDirectJobStatusUpdate);
+        socket.on('direct_upload_job_taken', handleDirectJobTaken); // NEW: Listen for 'direct_upload_job_taken'
 
         return () => {
             socket.off('new_direct_job_available', handleNewDirectJobAvailable);
             socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
+            socket.off('direct_upload_job_taken', handleDirectJobTaken); // Clean up new listener
         };
     }, [user?.id, isAuthenticated, fetchAvailableJobs, showToast]);
 
@@ -159,7 +170,8 @@ const TranscriberOtherJobs = () => {
                 closeTakeJobModal();
                 navigate('/transcriber-dashboard'); // Redirect to dashboard to show active job
             } else {
-                showToast(data.error || 'Failed to take job.', 'error');
+                showToast(data.error || 'Failed to take job. This job might have been taken by another transcriber.', 'error');
+                fetchAvailableJobs(); // Refresh the list if taking failed (e.g., job already taken)
             }
         } catch (error) {
             console.error('Error taking job:', error);
@@ -167,7 +179,7 @@ const TranscriberOtherJobs = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedJobId, logout, navigate, showToast, closeTakeJobModal]);
+    }, [selectedJobId, logout, navigate, showToast, closeTakeJobModal, fetchAvailableJobs]);
 
     const confirmCompleteJob = useCallback(async () => {
         setModalLoading(true);
@@ -246,15 +258,16 @@ const TranscriberOtherJobs = () => {
                                             <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{marginLeft: '5px'}}>{file}</a>
                                         ))}</p>
                                     )}
-                                    <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p> {/* FIX: Changed KES to USD */}
-                                    <p><strong>Your 80% Pay:</strong> USD {(job.quote_amount * 0.8).toLocaleString()}</p> {/* FIX: Changed KES to USD */}
+                                    <p><strong>Quote:</strong> USD {job.quote_amount.toLocaleString()}</p>
+                                    <p><strong>Your 80% Pay:</strong> USD {(job.quote_amount * 0.8).toLocaleString()}</p>
                                     <p><strong>Deadline:</strong> {job.agreed_deadline_hours} hours</p>
                                     <p><strong>Quality:</strong> {job.quality_param}</p>
                                     <p><strong>Requirements:</strong> {job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</p>
                                     <p><strong>Status:</strong> <span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span></p>
 
                                     <div className="job-actions">
-                                        {job.status === 'pending_review' && (
+                                        {/* UPDATED: Only show 'Take Job' button if status is 'available_for_transcriber' */}
+                                        {job.status === 'available_for_transcriber' && (
                                             <button onClick={() => openTakeJobModal(job.id)} className="take-job-btn">Take Job</button>
                                         )}
                                         {job.status === 'in_progress' && (

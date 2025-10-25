@@ -5,7 +5,7 @@ import Toast from './Toast'; // Assuming you have a Toast component
 import NegotiationCard from './NegotiationCard'; // To display individual job details
 import Modal from './Modal'; // Import the Modal component
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket } from './ChatService'; // Removed disconnectSocket and getSocketInstance
+import { connectSocket, disconnectSocket } from './ChatService'; // Added disconnectSocket
 import './ClientJobs.css'; // You'll need to create this CSS file
 import './AdminManagement.css'; // Reusing some modal styles from AdminManagement.css
 
@@ -21,7 +21,7 @@ const ClientJobs = () => {
 
     // NEW: State for Mark Job Complete Modal
     const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
-    const [jobToComplete, setJobToComplete] = useState(null);
+    const [jobToComplete, setJobToComplete] = useState(null); // Stores the entire job object
     const [clientFeedbackComment, setClientFeedbackComment] = useState('');
     const [clientFeedbackRating, setClientFeedbackRating] = useState(5); // Default rating
     const [completeJobModalLoading, setCompleteJobModalLoading] = useState(false);
@@ -43,26 +43,47 @@ const ClientJobs = () => {
 
         setLoading(true);
         try {
-            // Reusing the getClientNegotiations endpoint and filtering on frontend
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
+            const [negotiationsResponse, directUploadJobsResponse] = await Promise.all([
+                fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${BACKEND_API_URL}/api/client/direct-jobs`, { // Fetch direct upload jobs
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
 
-            if (response.ok) {
-                const fetchedNegotiations = data.negotiations || [];
-                // Filter for only 'hired' status for Active Jobs.
-                const jobs = fetchedNegotiations.filter(n => n.status === 'hired');
-                console.log("Filtered Active Jobs:", jobs.map(j => ({ id: j.id, status: j.status }))); // Log for debugging
-                setActiveJobs(jobs);
-                // FIX: Only show "No active jobs" toast if showNoJobsToast is true AND there are no jobs
-                if (jobs.length === 0 && showNoJobsToast) { 
-                    showToast('No active jobs found yet.', 'info');
-                }
+            const negotiationsData = await negotiationsResponse.json();
+            const directUploadJobsData = await directUploadJobsResponse.json();
+
+            let combinedActiveJobs = [];
+
+            if (negotiationsResponse.ok) {
+                const fetchedNegotiations = negotiationsData.negotiations || [];
+                const activeNegotiations = fetchedNegotiations.filter(n => n.status === 'hired');
+                combinedActiveJobs = [...combinedActiveJobs, ...activeNegotiations];
             } else {
-                showToast(data.error || 'Failed to load active jobs.', 'error');
+                console.error('Failed to fetch negotiations:', negotiationsData.error);
+                showToast(negotiationsData.error || 'Failed to load negotiations.', 'error');
+            }
+
+            if (directUploadJobsResponse.ok) {
+                const fetchedDirectUploadJobs = directUploadJobsData.jobs || [];
+                const activeDirectUploadJobs = fetchedDirectUploadJobs.filter(d => 
+                    d.status === 'available_for_transcriber' || 
+                    d.status === 'taken' || 
+                    d.status === 'in_progress'
+                );
+                combinedActiveJobs = [...combinedActiveJobs, ...activeDirectUploadJobs];
+            } else {
+                console.error('Failed to fetch direct upload jobs:', directUploadJobsData.error);
+                showToast(directUploadJobsData.error || 'Failed to load direct upload jobs.', 'error');
+            }
+
+            console.log("Combined Active Jobs:", combinedActiveJobs.map(j => ({ id: j.id, status: j.status, type: j.negotiation_files ? 'negotiation' : 'direct_upload' })));
+            setActiveJobs(combinedActiveJobs);
+
+            if (combinedActiveJobs.length === 0 && showNoJobsToast) { 
+                showToast('No active jobs found yet.', 'info');
             }
         } catch (error) {
             console.error('Network error fetching client jobs:', error);
@@ -75,21 +96,22 @@ const ClientJobs = () => {
     // Function to handle job status updates received via Socket.IO
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        showToast(`Job status updated for ID: ${data.negotiationId?.substring(0, 8)}.`, 'info'); 
+        const jobId = data.negotiationId || data.jobId; // Handle both negotiationId and jobId
+        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info'); 
         fetchClientJobs(); 
     }, [showToast, fetchClientJobs]);
 
     const handleNewChatMessageForActiveJobs = useCallback((data) => {
         console.log('ClientJobs Real-time: New chat message received!', data);
-        const receivedNegotiationId = data.negotiation_id;
+        const relatedJobId = data.negotiation_id || data.direct_upload_job_id; // Handle both types
         
         setActiveJobs(prevJobs => {
-            const isForActiveJob = prevJobs.some(job => job.id === receivedNegotiationId);
+            const isForActiveJob = prevJobs.some(job => job.id === relatedJobId);
 
             if (!isForActiveJob) return prevJobs; 
 
             return prevJobs.map(job => {
-                if (job.id === receivedNegotiationId) {
+                if (job.id === relatedJobId) {
                     return {
                         ...job,
                         last_message_text: data.message || 'New file uploaded.', 
@@ -100,7 +122,7 @@ const ClientJobs = () => {
             });
         });
 
-        showToast(`New message for job ${receivedNegotiationId} from ${data.sender_name || 'Transcriber'}!`, 'info');
+        showToast(`New message for job ${relatedJobId?.substring(0, 8)} from ${data.sender_name || 'Transcriber'}!`, 'info');
     }, [showToast]);
 
     useEffect(() => {
@@ -117,9 +139,12 @@ const ClientJobs = () => {
         // Socket.IO setup for this component
         const socket = connectSocket(user.id);
         if (socket) {
-            // Listen for events relevant to active jobs (completion/cancellation)
-            socket.on('job_completed', handleJobUpdate);
+            // Listen for events relevant to active jobs (completion/cancellation/taken)
+            socket.on('job_completed', handleJobUpdate); // Negotiation completed
+            socket.on('direct_job_completed', handleJobUpdate); // Direct upload completed
             socket.on('negotiation_cancelled', handleJobUpdate);
+            socket.on('direct_job_taken', handleJobUpdate); // Direct upload job taken by transcriber
+            socket.on('payment_successful', handleJobUpdate); // Payment successful (for direct upload status change)
             // Listen for job-specific chat messages
             socket.on('newChatMessage', handleNewChatMessageForActiveJobs); 
 
@@ -130,39 +155,49 @@ const ClientJobs = () => {
             if (socket) {
                 console.log(`ClientJobs: Cleaning up socket listeners for user ID: ${user.id}`);
                 socket.off('job_completed', handleJobUpdate);
+                socket.off('direct_job_completed', handleJobUpdate);
                 socket.off('negotiation_cancelled', handleJobUpdate);
+                socket.off('direct_job_taken', handleJobUpdate);
+                socket.off('payment_successful', handleJobUpdate);
                 socket.off('newChatMessage', handleNewChatMessageForActiveJobs); 
+                disconnectSocket(); // Disconnect when component unmounts
             }
         };
 
     }, [isAuthenticated, authLoading, user, navigate, fetchClientJobs, handleJobUpdate, handleNewChatMessageForActiveJobs]);
 
     // Utility functions for NegotiationCard (can be shared or defined here)
-    const getStatusColor = useCallback((status, isClientViewing) => {
+    const getStatusColor = useCallback((status) => {
         const colors = {
             'pending': '#007bff',
             'transcriber_counter': '#ffc107',
-            'accepted_awaiting_payment': '#28a745', // Updated status color
+            'accepted_awaiting_payment': '#28a745', 
             'rejected': '#dc3545',
-            'hired': '#007bff',
+            'hired': '#007bff', // For negotiation jobs
+            'available_for_transcriber': '#17a2b8', // For direct upload jobs
+            'taken': '#6c757d', // For direct upload jobs
+            'in_progress': '#6c757d', // For direct upload jobs
             'cancelled': '#dc3545',
             'completed': '#6f42c1'
         };
         return colors[status] || '#6c757d';
     }, []);
 
-    const getStatusText = useCallback((status, isClientViewing) => {
+    const getStatusText = useCallback((status) => {
         const texts = {
             'pending': 'Waiting for Transcriber',
             'transcriber_counter': 'Transcriber Countered',
             'client_counter': 'Client Countered',
-            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', // Updated status text
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', 
             'rejected': 'Rejected',
             'hired': 'Job Active - Paid',
+            'available_for_transcriber': 'Available for Transcriber',
+            'taken': 'Taken by Transcriber',
+            'in_progress': 'In Progress',
             'cancelled': 'Cancelled',
             'completed': 'Completed'
         };
-        return texts[status] || status;
+        return texts[status] || status.replace(/_/g, ' ');
     }, []);
 
     // Placeholder for delete negotiation (if clients can cancel active jobs directly from here)
@@ -202,7 +237,7 @@ const ClientJobs = () => {
     // NEW: Function to handle marking a job as complete with feedback (client-side)
     const submitMarkJobComplete = useCallback(async () => {
         if (!jobToComplete?.id) {
-            showToast('No job selected for completion.!', 'error');
+            showToast('No job selected for completion!', 'error');
             return;
         }
 
@@ -214,7 +249,15 @@ const ClientJobs = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`, {
+            let apiUrl;
+            // Determine if it's a negotiation job or a direct upload job
+            if (jobToComplete.negotiation_files) { // Assuming negotiation_files is unique to negotiation jobs
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
+            } else { // It's a direct upload job
+                apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToComplete.id}/complete`;
+            }
+
+            const response = await fetch(apiUrl, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -244,12 +287,11 @@ const ClientJobs = () => {
 
 
     // Placeholder for payment (should already be handled in ClientNegotiations)
-    const handleProceedToPayment = useCallback((negotiation) => {
-        // Check if the negotiation is in 'accepted_awaiting_payment' status
-        if (negotiation.status === 'accepted_awaiting_payment') {
-            // Redirect to payment flow or show payment modal
-            if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) { // UPDATED: Use agreed_price_usd
-                showToast('Missing client email or negotiation details for payment.', 'error');
+    const handleProceedToPayment = useCallback((job) => { // Changed negotiation to job
+        // Check if the job is in 'accepted_awaiting_payment' status (for negotiations) or 'pending_review' (for direct uploads before payment)
+        if (job.status === 'accepted_awaiting_payment' || job.status === 'pending_review') { 
+            if (!user?.email || !job?.id || !job?.agreed_price_usd && !job?.quote_amount) { // Handle both agreed_price_usd and quote_amount
+                showToast('Missing client email or job details for payment.', 'error');
                 return;
             }
             
@@ -269,9 +311,9 @@ const ClientJobs = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    jobId: negotiation.id,
-                    amount: negotiation.agreed_price_usd,
-                    jobType: 'negotiation',
+                    jobId: job.id,
+                    amount: job.agreed_price_usd || job.quote_amount, // Use appropriate amount field
+                    jobType: job.negotiation_files ? 'negotiation' : 'direct_upload', // Infer jobType
                     clientEmail: user.email
                 })
             })
@@ -296,7 +338,7 @@ const ClientJobs = () => {
     }, [showToast, user, logout]);
 
     // NEW: Function to handle downloading negotiation files
-    const handleDownloadFile = useCallback(async (negotiationId, fileName) => {
+    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { // Added jobType parameter
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('Authentication token missing. Please log in again.', 'error');
@@ -305,8 +347,16 @@ const ClientJobs = () => {
         }
 
         try {
-            // Construct the API endpoint URL
-            const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${negotiationId}/download/${fileName}`;
+            let downloadUrl;
+            if (jobType === 'negotiation') {
+                downloadUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
+            } else if (jobType === 'direct_upload') {
+                // Assuming direct upload files are served from a generic /uploads/direct_upload_files/
+                downloadUrl = `${BACKEND_API_URL}/uploads/direct_upload_files/${fileName}`;
+            } else {
+                showToast('Unknown job type for download.', 'error');
+                return;
+            }
             
             const response = await fetch(downloadUrl, {
                 method: 'GET',
@@ -389,18 +439,17 @@ const ClientJobs = () => {
                             activeJobs.map((job) => (
                                 <NegotiationCard
                                     key={job.id}
-                                    negotiation={job}
+                                    negotiation={job} // Pass the job object, which can be either negotiation or direct_upload
                                     onDelete={handleDeleteNegotiation} // Pass placeholder
-                                    onPayment={handleProceedToPayment} // Updated to handle payment for 'accepted_awaiting_payment'
+                                    onPayment={handleProceedToPayment} 
                                     onLogout={logout}
                                     getStatusColor={getStatusColor}
                                     getStatusText={getStatusText}
                                     showToast={showToast}
                                     currentUserId={user.id}
                                     currentUserType={user.user_type}
-                                    openCompleteJobModal={openMarkJobCompleteModal} // Pass the new modal open function
-                                    onDownloadFile={handleDownloadFile} // NEW: Pass the download function
-                                    // No modals needed here for active jobs typically
+                                    openCompleteJobModal={openMarkJobCompleteModal} 
+                                    onDownloadFile={handleDownloadFile} 
                                 />
                             ))
                         )}

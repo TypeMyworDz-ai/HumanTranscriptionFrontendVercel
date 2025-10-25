@@ -238,12 +238,12 @@ const Login = () => {
 
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <p>Don't have an account, register:</p>
-        <Link to="/client-register" style={{ marginRight: '10px' }}>As Client</Link>
+        <Link to="/client-register" style={{ marginRight: '10px' }}>As a Client</Link>
         <span>|</span>
-        <Link to="/worker-register" style={{ marginLeft: '10px' }} >As Worker</Link>
+        <Link to="/worker-register" style={{ marginLeft: '10px' }} >As a Worker</Link>
         {/* NEW: Link for Trainee Registration */}
         <span style={{ margin: '0 10px' }}>|</span>
-        <Link to="/trainee-register">As Trainee</Link>
+        <Link to="/trainee-register">As a Trainee</Link>
       </div>
 
       <Toast
