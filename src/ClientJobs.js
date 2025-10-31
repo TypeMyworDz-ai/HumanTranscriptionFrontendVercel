@@ -1,4 +1,5 @@
-// src/ClientJobs.js - UPDATED to fix modal dismissal and toast message logic
+// src/ClientJobs.js - UPDATED to fix modal dismissal and toast message logic,
+// add logging for missing transcriber_id, and enable 'Mark as Complete' for client on direct upload jobs.
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
@@ -19,7 +20,7 @@ const ClientJobs = () => {
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
-    // NEW: State for Mark Job Complete Modal
+    // NEW: State for Mark Job Complete Modal (Client's action for Negotiation Jobs)
     const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
     const [jobToComplete, setJobToComplete] = useState(null); // Stores the entire job object
     const [clientFeedbackComment, setClientFeedbackComment] = useState('');
@@ -30,7 +31,7 @@ const ClientJobs = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    const fetchClientJobs = useCallback(async (showNoJobsToast = true) => { // FIX: Added showNoJobsToast parameter
+    const fetchClientJobs = useCallback(async (showNoJobsToast = true) => {
         const token = localStorage.getItem('token');
         if (!token) {
             if (isAuthenticated) {
@@ -52,13 +53,14 @@ const ClientJobs = () => {
                 })
             ]);
 
-            const negotiationsData = await negotiationsResponse.json();
-            const directUploadJobsData = await directUploadJobsResponse.json();
+            const negotiationsData = await (negotiationsResponse.ok ? negotiationsResponse.json() : Promise.resolve({ negotiations: [] }));
+            const directUploadJobsData = await (directUploadJobsResponse.ok ? directUploadJobsResponse.json() : Promise.resolve({ jobs: [] }));
 
             let combinedActiveJobs = [];
 
             if (negotiationsResponse.ok) {
                 const fetchedNegotiations = negotiationsData.negotiations || [];
+                // Client views 'hired' negotiation jobs as active
                 const activeNegotiations = fetchedNegotiations.filter(n => n.status === 'hired');
                 combinedActiveJobs = [...combinedActiveJobs, ...activeNegotiations];
             } else {
@@ -68,21 +70,27 @@ const ClientJobs = () => {
 
             if (directUploadJobsResponse.ok) {
                 const fetchedDirectUploadJobs = directUploadJobsData.jobs || [];
-                const activeDirectUploadJobs = fetchedDirectUploadJobs.filter(d => 
-                    d.status === 'available_for_transcriber' || 
-                    d.status === 'taken' || 
-                    d.status === 'in_progress'
+                // Client views direct upload jobs that are taken, in progress, or completed by transcriber as active
+                const activeDirectUploadJobs = fetchedDirectUploadJobs.filter(d =>
+                    d.status === 'available_for_transcriber' ||
+                    d.status === 'taken' ||
+                    d.status === 'in_progress' ||
+                    d.status === 'completed' // Include 'completed' status for direct upload jobs here
                 );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeDirectUploadJobs];
             } else {
-                console.error('Failed to fetch direct upload jobs:', directUploadJobsData.error);
+                console.error('Failed to fetch direct upload jobs::', directUploadJobsData.error);
                 showToast(directUploadJobsData.error || 'Failed to load direct upload jobs.', 'error');
             }
 
-            console.log("Combined Active Jobs:", combinedActiveJobs.map(j => ({ id: j.id, status: j.status, type: j.negotiation_files ? 'negotiation' : 'direct_upload' })));
+            console.log("ClientJobs: Combined Active Jobs:", combinedActiveJobs.map(j => ({
+                id: j.id,
+                status: j.status,
+                type: j.negotiation_id ? 'negotiation' : (j.file_name ? 'direct_upload' : 'unknown')
+            })));
             setActiveJobs(combinedActiveJobs);
 
-            if (combinedActiveJobs.length === 0 && showNoJobsToast) { 
+            if (combinedActiveJobs.length === 0 && showNoJobsToast) {
                 showToast('No active jobs found yet.', 'info');
             }
         } catch (error) {
@@ -93,28 +101,29 @@ const ClientJobs = () => {
         }
     }, [isAuthenticated, logout, showToast]);
 
+
     // Function to handle job status updates received via Socket.IO
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        const jobId = data.negotiationId || data.jobId; // Handle both negotiationId and jobId
-        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info'); 
-        fetchClientJobs(); 
+        const jobId = data.negotiationId || data.jobId;
+        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
+        fetchClientJobs();
     }, [showToast, fetchClientJobs]);
 
     const handleNewChatMessageForActiveJobs = useCallback((data) => {
         console.log('ClientJobs Real-time: New chat message received!', data);
-        const relatedJobId = data.negotiation_id || data.direct_upload_job_id; // Handle both types
-        
+        const relatedJobId = data.negotiation_id || data.direct_upload_job_id;
+
         setActiveJobs(prevJobs => {
             const isForActiveJob = prevJobs.some(job => job.id === relatedJobId);
 
-            if (!isForActiveJob) return prevJobs; 
+            if (!isForActiveJob) return prevJobs;
 
             return prevJobs.map(job => {
                 if (job.id === relatedJobId) {
                     return {
                         ...job,
-                        last_message_text: data.message || 'New file uploaded.', 
+                        last_message_text: data.message || 'New file uploaded.',
                         last_message_timestamp: new Date().toISOString(),
                     };
                 }
@@ -130,7 +139,7 @@ const ClientJobs = () => {
 
         if (!isAuthenticated || !user || user.user_type !== 'client') {
             console.warn("ClientJobs: Unauthorized access or not a client. Redirecting.");
-            navigate('/'); // Redirect to home or login
+            navigate('/');
             return;
         }
 
@@ -140,13 +149,13 @@ const ClientJobs = () => {
         const socket = connectSocket(user.id);
         if (socket) {
             // Listen for events relevant to active jobs (completion/cancellation/taken)
-            socket.on('job_completed', handleJobUpdate); // Negotiation completed
-            socket.on('direct_job_completed', handleJobUpdate); // Direct upload completed
+            socket.on('job_completed', handleJobUpdate); // Negotiation completed by transcriber
+            socket.on('direct_job_completed', handleJobUpdate); // Direct upload completed by transcriber
             socket.on('negotiation_cancelled', handleJobUpdate);
             socket.on('direct_job_taken', handleJobUpdate); // Direct upload job taken by transcriber
             socket.on('payment_successful', handleJobUpdate); // Payment successful (for direct upload status change)
             // Listen for job-specific chat messages
-            socket.on('newChatMessage', handleNewChatMessageForActiveJobs); 
+            socket.on('newChatMessage', handleNewChatMessageForActiveJobs);
 
             console.log('ClientJobs: Socket listeners attached for active jobs.');
         }
@@ -159,7 +168,7 @@ const ClientJobs = () => {
                 socket.off('negotiation_cancelled', handleJobUpdate);
                 socket.off('direct_job_taken', handleJobUpdate);
                 socket.off('payment_successful', handleJobUpdate);
-                socket.off('newChatMessage', handleNewChatMessageForActiveJobs); 
+                socket.off('newChatMessage', handleNewChatMessageForActiveJobs);
                 disconnectSocket(); // Disconnect when component unmounts
             }
         };
@@ -171,14 +180,15 @@ const ClientJobs = () => {
         const colors = {
             'pending': '#007bff',
             'transcriber_counter': '#ffc107',
-            'accepted_awaiting_payment': '#28a745', 
+            'accepted_awaiting_payment': '#28a745',
             'rejected': '#dc3545',
             'hired': '#007bff', // For negotiation jobs
             'available_for_transcriber': '#17a2b8', // For direct upload jobs
             'taken': '#6c757d', // For direct upload jobs
             'in_progress': '#6c757d', // For direct upload jobs
             'cancelled': '#dc3545',
-            'completed': '#6f42c1'
+            'completed': '#6f42c1', // Transcriber completed
+            'client_completed': '#6f42c1' // Client completed
         };
         return colors[status] || '#6c757d';
     }, []);
@@ -188,31 +198,46 @@ const ClientJobs = () => {
             'pending': 'Waiting for Transcriber',
             'transcriber_counter': 'Transcriber Countered',
             'client_counter': 'Client Countered',
-            'accepted_awaiting_payment': 'Accepted - Awaiting Payment', 
+            'accepted_awaiting_payment': 'Accepted - Awaiting Payment',
             'rejected': 'Rejected',
             'hired': 'Job Active - Paid',
             'available_for_transcriber': 'Available for Transcriber',
             'taken': 'Taken by Transcriber',
             'in_progress': 'In Progress',
             'cancelled': 'Cancelled',
-            'completed': 'Completed'
+            'completed': 'Completed by Transcriber', // NEW: Clarify for client
+            'client_completed': 'Completed by Client'
         };
         return texts[status] || status.replace(/_/g, ' ');
     }, []);
 
     // Placeholder for delete negotiation (if clients can cancel active jobs directly from here)
-    const handleDeleteNegotiation = useCallback(async (negotiationId) => {
+    const handleDeleteNegotiation = useCallback(async (jobId) => {
         // Implement deletion logic if needed
         showToast('Deletion not implemented for active jobs in this view.', 'info');
     }, [showToast]);
 
-    // NEW: Open the modal to mark a job as complete
+    // NEW: Open the modal to mark a job as complete (Client's action for Negotiation Jobs)
     const openMarkJobCompleteModal = useCallback((job) => {
-        setJobToComplete(job);
-        setClientFeedbackComment(''); // Reset comment
-        setClientFeedbackRating(5); // Reset rating
-        setShowCompleteJobModal(true);
-    }, []);
+        // Allow client to mark negotiation jobs as complete if status is 'hired' or 'in_progress' or 'completed'
+        // Also allow client to mark direct upload jobs as complete if status is 'completed' (by transcriber)
+        const isNegotiationJob = job.negotiation_id;
+        const isDirectUploadJob = job.file_name;
+
+        if (isNegotiationJob && (job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed')) {
+            setJobToComplete(job);
+            setClientFeedbackComment(''); // Reset comment
+            setClientFeedbackRating(5); // Reset rating
+            setShowCompleteJobModal(true);
+        } else if (isDirectUploadJob && job.status === 'completed') { // Client can mark direct upload job complete if transcriber submitted it
+            setJobToComplete(job);
+            setClientFeedbackComment(''); // Reset comment
+            setClientFeedbackRating(5); // Reset rating
+            setShowCompleteJobModal(true);
+        } else {
+            showToast('This job cannot be marked complete at this time.', 'info');
+        }
+    }, [showToast]);
 
     // NEW: Close the modal
     const closeMarkJobCompleteModal = useCallback(() => {
@@ -251,10 +276,14 @@ const ClientJobs = () => {
         try {
             let apiUrl;
             // Determine if it's a negotiation job or a direct upload job
-            if (jobToComplete.negotiation_files) { // Assuming negotiation_files is unique to negotiation jobs
+            if (jobToComplete.negotiation_id) { // Use negotiation_id to identify negotiation jobs
                 apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
-            } else { // It's a direct upload job
+            } else if (jobToComplete.file_name) { // Use file_name to identify direct upload jobs
                 apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToComplete.id}/complete`;
+            } else {
+                showToast('Unknown job type for completion.', 'error');
+                setCompleteJobModalLoading(false);
+                return;
             }
 
             const response = await fetch(apiUrl, {
@@ -278,7 +307,7 @@ const ClientJobs = () => {
                 showToast(data.error || 'Failed to mark job as complete.', 'error');
             }
         } catch (error) {
-            console.error('Network error marking job as complete:', error);
+            console.error('Network error marking job as complete: ', error);
             showToast('Network error while marking job as complete. Please try again.', 'error');
         } finally {
             setCompleteJobModalLoading(false);
@@ -287,14 +316,14 @@ const ClientJobs = () => {
 
 
     // Placeholder for payment (should already be handled in ClientNegotiations)
-    const handleProceedToPayment = useCallback((job) => { // Changed negotiation to job
+    const handleProceedToPayment = useCallback((job) => {
         // Check if the job is in 'accepted_awaiting_payment' status (for negotiations) or 'pending_review' (for direct uploads before payment)
-        if (job.status === 'accepted_awaiting_payment' || job.status === 'pending_review') { 
-            if (!user?.email || !job?.id || (!(job?.agreed_price_usd) && !(job?.quote_amount))) { // FIX: Clarified order of operations with parentheses
+        if (job.status === 'accepted_awaiting_payment' || (job.jobType === 'direct_upload' && job.status === 'pending_review')) {
+            if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
                 showToast('Missing client email or job details for payment.', 'error');
                 return;
             }
-            
+
             const token = localStorage.getItem('token');
             if (!token) {
                 showToast('Authentication token missing. Please log in again.', 'error');
@@ -303,7 +332,7 @@ const ClientJobs = () => {
             }
 
             setLoading(true);
-            
+
             fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
                 method: 'POST',
                 headers: {
@@ -312,8 +341,8 @@ const ClientJobs = () => {
                 },
                 body: JSON.stringify({
                     jobId: job.id,
-                    amount: job.agreed_price_usd || job.quote_amount, // Use appropriate amount field
-                    jobType: job.negotiation_files ? 'negotiation' : 'direct_upload', // Infer jobType
+                    amount: job.agreed_price_usd || job.quote_amount,
+                    jobType: job.negotiation_id ? 'negotiation' : 'direct_upload',
                     clientEmail: user.email
                 })
             })
@@ -333,12 +362,12 @@ const ClientJobs = () => {
                 setLoading(false);
             });
         } else {
-            showToast('Payment already processed for active jobs.', 'info');
+            showToast('Payment already processed or not applicable for this job status.', 'info'); // Updated message
         }
     }, [showToast, user, logout]);
 
-    // NEW: Function to handle downloading negotiation files
-    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { // Added jobType parameter
+    // NEW: Function to handle downloading files
+    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('Authentication token missing. Please log in again.', 'error');
@@ -351,13 +380,12 @@ const ClientJobs = () => {
             if (jobType === 'negotiation') {
                 downloadUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
             } else if (jobType === 'direct_upload') {
-                // Assuming direct upload files are served from a generic /uploads/direct_upload_files/
-                downloadUrl = `${BACKEND_API_URL}/uploads/direct_upload_files/${fileName}`;
+                downloadUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`; // Corrected direct upload download route
             } else {
                 showToast('Unknown job type for download.', 'error');
                 return;
             }
-            
+
             const response = await fetch(downloadUrl, {
                 method: 'GET',
                 headers: {
@@ -366,18 +394,15 @@ const ClientJobs = () => {
             });
 
             if (response.ok) {
-                // Get the blob from the response
                 const blob = await response.blob();
-                // Create a temporary URL for the blob
                 const url = window.URL.createObjectURL(blob);
-                // Create a temporary link element
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = fileName; // Set the download filename
+                a.download = fileName;
                 document.body.appendChild(a);
-                a.click(); // Programmatically click the link to trigger download
-                a.remove(); // Clean up the link element
-                window.URL.revokeObjectURL(url); // Clean up the temporary URL
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
                 showToast(`Downloading ${fileName}...`, 'success');
             } else {
                 const errorData = await response.json();
@@ -418,13 +443,13 @@ const ClientJobs = () => {
                         <div className="header-text">
                             <h2>Your Current Transcription Projects</h2>
                             <p>
-                                <span style={{ color: 'red', textTransform: 'uppercase', fontWeight: 'bold' }}>Note:</span>
-                                <ol>
-                                    <li>Track the progress of your job here. Client can ask about progress of their job or clarify something. This chat is solely dedicated for the transcriber to upload transcripts ONLY when they finish the job.</li>
-                                    <li>This Chat is moderated. Exchange of personal information is highly discouraged.</li>
-                                    <li>For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
-                                </ol>
+                                <strong>Note:</strong>
                             </p>
+                            <ol>
+                                <li>Track the progress of your job here. Client can ask about progress of their job or clarify something. This chat is solely dedicated for the transcriber to upload transcripts ONLY when they finish the job.</li>
+                                <li>This Chat is moderated. Exchange of personal information is highly discouraged.</li>
+                                <li>For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
+                            </ol>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
@@ -436,28 +461,53 @@ const ClientJobs = () => {
                         {activeJobs.length === 0 ? (
                             <p className="no-data-message">You currently have no active jobs.</p>
                         ) : (
-                            activeJobs.map((job) => (
-                                <NegotiationCard
-                                    key={job.id}
-                                    negotiation={job} // Pass the job object, which can be either negotiation or direct_upload
-                                    onDelete={handleDeleteNegotiation} // Pass placeholder
-                                    onPayment={handleProceedToPayment} 
-                                    onLogout={logout}
-                                    getStatusColor={getStatusColor}
-                                    getStatusText={getStatusText}
-                                    showToast={showToast}
-                                    currentUserId={user.id}
-                                    currentUserType={user.user_type}
-                                    openCompleteJobModal={openMarkJobCompleteModal} 
-                                    onDownloadFile={handleDownloadFile} 
-                                />
-                            ))
+                            activeJobs.map((job) => {
+                                const jobType = job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown');
+
+                                // --- START: DEBUGGING LOG AND DEFENSIVE CHECK ---
+                                if (jobType === 'direct_upload') {
+                                    console.log(`ClientJobs: Full Direct Upload Job Object for ${job.id}:`, job);
+                                    // Ensure transcriber_id is present at the top level or within the nested 'transcriber' object
+                                    if (!job.transcriber_id && !job.transcriber?.id) {
+                                        console.error(`ClientJobs: Direct upload job ${job.id} (Type: ${jobType}) is missing 'transcriber_id' or 'transcriber.id'. Messaging will not work.`);
+                                        return (
+                                            <p key={job.id} className="error-message">
+                                                Error: Direct upload job {job.id} cannot be displayed correctly (missing transcriber information for messaging). Please check backend data.
+                                            </p>
+                                        );
+                                    }
+                                }
+                                // --- END: DEBUGGING LOG AND DEFENSIVE CHECK ---
+
+                                console.log(`ClientJobs: Rendering Job ${job.id} (Type: ${jobType}). Client Info:`, job.client_info || job.client);
+                                return (
+                                    <NegotiationCard
+                                        key={job.id}
+                                        job={job}
+                                        jobType={jobType}
+                                        onDelete={handleDeleteNegotiation}
+                                        onPayment={handleProceedToPayment}
+                                        onLogout={logout}
+                                        getStatusColor={getStatusColor}
+                                        getStatusText={getStatusText}
+                                        showToast={showToast}
+                                        currentUserId={user.id}
+                                        currentUserType={user.user_type}
+                                        // Client-side specific modals/actions
+                                        openCompleteJobModal={openMarkJobCompleteModal} // Only for client to mark negotiation job complete
+                                        onDownloadFile={handleDownloadFile}
+                                        // Pass client's own rating and completed jobs to display if needed for transcriber info
+                                        clientAverageRating={parseFloat(user.client_average_rating) || 0}
+                                        clientCompletedJobs={parseFloat(user.client_completed_jobs) || 0}
+                                    />
+                                );
+                            })
                         )}
                     </div>
                 </div>
             </main>
 
-            {/* NEW: Mark Job Complete with Feedback Modal */}
+            {/* NEW: Mark Job Complete with Feedback Modal (Client's action for Negotiation Jobs) */}
             {showCompleteJobModal && jobToComplete && (
                 <Modal
                     show={showCompleteJobModal}
@@ -504,7 +554,7 @@ const ClientJobs = () => {
                 type={toast.type}
                 isVisible={toast.isVisible}
                 onClose={hideToast}
-                duration={toast.type === 'success' ? 2000 : 4000}
+                duration={toast.type === 'error' ? 4000 : 3000}
             />
         </div>
     );

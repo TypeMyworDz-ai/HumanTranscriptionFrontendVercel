@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal'; // Assuming you have a Modal component
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket } from './ChatService'; // Removed disconnectSocket, getSocketInstance
+import { connectSocket } from './ChatService';
 import './TranscriberOtherJobs.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -20,7 +20,7 @@ const TranscriberOtherJobs = () => {
 
     // State for Modals
     const [showTakeJobModal, setShowTakeJobModal] = useState(false);
-    const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
+    // Removed showCompleteJobModal as it's not used here
     const [selectedJobId, setSelectedJobId] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
 
@@ -50,6 +50,9 @@ const TranscriberOtherJobs = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
+
+            // NEW LOG: Log the raw data received from the backend
+            console.log("[TranscriberOtherJobs] Raw data from /api/transcriber/direct-jobs/available:", data);
 
             if (response.ok) {
                 setAvailableJobs(data.jobs || []);
@@ -106,7 +109,7 @@ const TranscriberOtherJobs = () => {
         };
 
         const handleDirectJobStatusUpdate = (data) => {
-            console.log('TranscriberOtherJobs Real-time: Direct job status update!', data);
+            console.log('TranscriberOtherJobs Real-time: Direct job status update! (for OtherJobs)', data); // Clarified log
             showToast(`Direct job ${data.jobId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
             fetchAvailableJobs(); // Refresh the list
         };
@@ -125,7 +128,6 @@ const TranscriberOtherJobs = () => {
             socket.off('new_direct_job_available', handleNewDirectJobAvailable);
             socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
             socket.off('direct_upload_job_taken', handleDirectJobTaken);
-            // REMOVED: disconnectSocket() from here. It should only be called on explicit logout.
         };
     }, [user?.id, isAuthenticated, fetchAvailableJobs, showToast]);
 
@@ -142,16 +144,7 @@ const TranscriberOtherJobs = () => {
         setModalLoading(false);
     }, []);
 
-    const openCompleteJobModal = useCallback((jobId) => {
-        setSelectedJobId(jobId);
-        setShowCompleteJobModal(true);
-    }, []);
-
-    const closeCompleteJobModal = useCallback(() => {
-        setShowCompleteJobModal(false);
-        setSelectedJobId(null);
-        setModalLoading(false);
-    }, []);
+    // Removed openCompleteJobModal and closeCompleteJobModal as they are not used here
 
 
     // --- API Actions ---
@@ -183,32 +176,7 @@ const TranscriberOtherJobs = () => {
         }
     }, [selectedJobId, logout, navigate, showToast, closeTakeJobModal, fetchAvailableJobs]);
 
-    const confirmCompleteJob = useCallback(async () => {
-        setModalLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) { logout(); return; }
-
-        try {
-            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/${selectedJobId}/complete`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-
-            if (response.ok) {
-                showToast(data.message || 'Job marked as complete!', 'success');
-                closeCompleteJobModal();
-                fetchAvailableJobs(); // Refresh list, this job should disappear
-            } else {
-                showToast(data.error || 'Failed to mark job as complete.', 'error');
-            }
-        } catch (error) {
-            console.error('Error completing job:', error);
-            showToast('Network error while completing job.', 'error');
-        } finally {
-            setModalLoading(false);
-        }
-    }, [selectedJobId, logout, showToast, closeCompleteJobModal, fetchAvailableJobs]);
+    // Removed confirmCompleteJob as it's not used here
 
     // Helper function to format status text for display
     const formatStatusText = (status) => {
@@ -266,10 +234,10 @@ const TranscriberOtherJobs = () => {
                                     <col style={{ width: '12%' }} /> {/* Instructions */}
                                     <col style={{ width: '12%' }} /> {/* Additional Files */}
                                     <col style={{ width: '8%' }} /> {/* Your Pay */}
-                                    <col style={{ width: '6%' }} /> {/* TAT (hrs) */} {/* MODIFIED: Renamed header */}
+                                    <col style={{ width: '6%' }} /> {/* TAT (hrs) */}
                                     <col style={{ width: '6%' }} /> {/* Quality */}
                                     <col style={{ width: 8 }} /> {/* Requirements */}
-                                    <col style={{ width: '10%' }} /> {/* Status */} {/* MODIFIED: Increased width */}
+                                    <col style={{ width: '10%' }} /> {/* Status */}
                                     <col style={{ width: '10%' }} /> {/* Actions */}
                                 </colgroup>
                                 <thead>
@@ -281,7 +249,7 @@ const TranscriberOtherJobs = () => {
                                         <th>Instructions</th>
                                         <th>Additional Files</th>
                                         <th>Your Pay (USD)</th>
-                                        <th>TAT (hrs)</th> {/* MODIFIED: Renamed header */}
+                                        <th>TAT (hrs)</th>
                                         <th>Quality</th>
                                         <th>Requirements</th>
                                         <th>Status</th>
@@ -294,7 +262,7 @@ const TranscriberOtherJobs = () => {
                                             <td>{job.id.substring(0, 8)}...</td>
                                             <td>{job.client?.full_name || 'N/A'}</td>
                                             <td>
-                                                <a href={`${BACKEND_API_URL}${job.file_url}`} target="_blank" rel="noopener noreferrer">
+                                                <a href={`${BACKEND_API_URL}/api/direct-jobs/${job.id}/download/${job.file_name}`} target="_blank" rel="noopener noreferrer">
                                                     {job.file_name}
                                                 </a>
                                             </td>
@@ -303,7 +271,7 @@ const TranscriberOtherJobs = () => {
                                             <td>
                                                 {job.instruction_files && job.instruction_files.length > 0 ? (
                                                     job.instruction_files.split(',').map((file, i) => (
-                                                        <a key={i} href={`${BACKEND_API_URL}/uploads/direct_upload_files/${file}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                                                        <a key={i} href={`${BACKEND_API_URL}/api/direct-jobs/${job.id}/download/${file}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
                                                             {file}
                                                         </a>
                                                     ))
@@ -311,16 +279,13 @@ const TranscriberOtherJobs = () => {
                                             </td>
                                             <td>USD {job.transcriber_pay?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                             <td>{job.agreed_deadline_hours}</td>
-                                            <td>{job.quality_param}</td>
+                                            <td>{job.audio_quality_param}</td>
                                             <td>{job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</td>
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusText(job.status)}</span></td>
                                             <td>
                                                 <div className="job-actions">
                                                     {job.status === 'available_for_transcriber' && (
                                                         <button onClick={() => openTakeJobModal(job.id)} className="take-job-btn">Take Job</button>
-                                                    )}
-                                                    {job.status === 'in_progress' && (
-                                                        <button onClick={() => openCompleteJobModal(job.id)} className="complete-job-btn">Mark as Complete</button>
                                                     )}
                                                 </div>
                                             </td>
@@ -348,8 +313,8 @@ const TranscriberOtherJobs = () => {
                 </Modal>
             )}
 
-            {/* Complete Job Modal */}
-            {showCompleteJobModal && (
+            {/* Removed Complete Job Modal as it's not used here */}
+            {/* {showCompleteJobModal && (
                 <Modal
                     show={showCompleteJobModal}
                     title="Confirm Job Completion"
@@ -361,7 +326,7 @@ const TranscriberOtherJobs = () => {
                     <p>Are you sure you want to mark this job as complete?</p>
                     <p>The client will be notified, and you will become available for new jobs.</p>
                 </Modal>
-            )}
+            )} */}
 
             <Toast
                 message={toast.message}

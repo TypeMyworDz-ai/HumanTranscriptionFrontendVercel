@@ -128,11 +128,81 @@
     padding-bottom: 10px;
 }
 
-.completed-jobs-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 40px;
+/* NEW: Table-specific styles */
+.completed-jobs-list-table {
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    overflow-x: auto; /* Ensures table is scrollable on small screens */
 }
+
+.completed-jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+    min-width: 800px; /* Ensure a minimum width for readability */
+}
+
+.completed-jobs-table th,
+.completed-jobs-table td {
+    padding: 15px 20px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.completed-jobs-table th {
+    background-color: #f8f9fa;
+    color: #555;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85em;
+}
+
+.completed-jobs-table tbody tr:nth-child(even) {
+    background-color: #fdfdfd;
+}
+
+.completed-jobs-table tbody tr:hover {
+    background-color: #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.8em;
+    display: inline-block;
+    min-width: 120px; /* Ensure consistent width */
+    text-align: center;
+}
+
+.action-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    margin-right: 5px;
+}
+
+.action-btn.delete-btn {
+    background-color: #dc3545;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.action-btn:last-child {
+    margin-right: 0;
+}
+
 
 .no-data-message {
     text-align: center;
@@ -162,9 +232,7 @@
     .client-completed-jobs-main {
         padding: 50px 25px;
     }
-    .completed-jobs-list {
-        gap: 30px;
-    }
+    /* .completed-jobs-list-table will handle internal scrolling */
 }
 
 @media (max-width: 768px) {
@@ -184,10 +252,7 @@
     .client-completed-jobs-content h3 {
         font-size: 1.6rem;
     }
-    .completed-jobs-list {
-        grid-template-columns: 1fr;
-        gap: 25px;
-    }
+    /* .completed-jobs-list-table provides horizontal scroll, no need for grid changes */
 }
 
 @media (max-width: 480px) {

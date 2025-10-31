@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
-import NegotiationCard from './NegotiationCard';
+// import NegotiationCard from './NegotiationCard'; // We will no longer directly use NegotiationCard here
 import { useAuth } from './contexts/AuthContext';
-import { connectSocket } from './ChatService';
-import './ClientCompletedJobs.css';
+import { connectSocket, disconnectSocket } from './ChatService';
+import './ClientCompletedJobs.css'; // You'll need to create/update this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+// Helper function to format timestamp robustly for display
+const formatDisplayTimestamp = (isoTimestamp) => {
+    if (!isoTimestamp) return 'N/A';
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+        return 'Invalid Date';
+    }
+};
 
 const ClientCompletedJobs = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -32,33 +47,72 @@ const ClientCompletedJobs = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            // Fetch completed negotiation jobs
+            const negotiationResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/client`, {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await response.json();
+            const negotiationData = await (negotiationResponse.ok ? negotiationResponse.json() : Promise.resolve({ negotiations: [] }));
+            const fetchedNegotiations = negotiationData.negotiations || [];
+            const completedNegotiationJobs = fetchedNegotiations.filter(n => n.status === 'completed');
 
-            if (response.ok) {
-                const fetchedNegotiations = data.negotiations || [];
-                const jobs = fetchedNegotiations.filter(n => n.status === 'completed');
-                console.log("ClientCompletedJobs: Filtered Completed Jobs:", jobs.map(j => ({ id: j.id, status: j.status, completed_at: j.completed_at, client_feedback_comment: j.client_feedback_comment, client_feedback_rating: j.client_feedback_rating }))); // Log for debugging
-                
-                // Use functional update for setCompletedJobs with deep comparison
-                setCompletedJobs(prevJobs => {
-                    if (JSON.stringify(jobs) !== JSON.stringify(prevJobs)) {
-                        console.log("ClientCompletedJobs: Updating completedJobs state. New data differs from previous.");
-                        return jobs;
-                    }
-                    console.log("ClientCompletedJobs: Not updating completedJobs state. Data is identical.");
-                    return prevJobs; // No change, return previous state
-                });
+            // Fetch client-completed direct upload jobs
+            const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/client/direct-jobs`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const directUploadData = await (directUploadResponse.ok ? directUploadResponse.json() : Promise.resolve({ jobs: [] }));
+            const fetchedDirectUploadJobs = directUploadData.jobs || [];
+            const clientCompletedDirectUploadJobs = fetchedDirectUploadJobs.filter(j => j.status === 'client_completed');
 
-                if (jobs.length === 0) {
-                    showToast('No completed jobs found yet.', 'info');
+            // Combine and add jobType identifier
+            const combinedJobs = [
+                ...completedNegotiationJobs.map(job => ({
+                    ...job,
+                    jobType: 'negotiation',
+                    transcriber_name: job.transcriber_info?.full_name || 'Unknown Transcriber',
+                    transcriber_rating: job.transcriber_info?.transcriber_average_rating || 0,
+                    agreed_price_usd: job.agreed_price_usd,
+                    deadline_hours: job.deadline_hours,
+                    requirements: job.requirements,
+                    file_name: job.negotiation_files
+                })),
+                ...clientCompletedDirectUploadJobs.map(job => ({
+                    ...job,
+                    jobType: 'direct_upload',
+                    transcriber_name: job.transcriber?.full_name || 'Unknown Transcriber',
+                    transcriber_rating: job.transcriber?.transcriber_average_rating || 0,
+                    agreed_price_usd: job.quote_amount,
+                    deadline_hours: job.agreed_deadline_hours,
+                    requirements: job.client_instructions,
+                    file_name: job.file_name
+                }))
+            ];
+
+            console.log("ClientCompletedJobs: Combined Completed Jobs:", combinedJobs.map(j => ({
+                id: j.id,
+                status: j.status,
+                jobType: j.jobType,
+                completed_at: j.completed_at || j.client_completed_at,
+                client_feedback_comment: j.client_feedback_comment,
+                client_feedback_rating: j.client_feedback_rating,
+                transcriber_name: j.transcriber_name, // Now correctly mapped
+                transcriber_rating: j.transcriber_rating, // Now correctly mapped
+                agreed_price_usd: j.agreed_price_usd,
+                deadline_hours: j.deadline_hours,
+                requirements: j.requirements,
+                file_name: j.file_name
+            })));
+
+            setCompletedJobs(prevJobs => {
+                if (JSON.stringify(combinedJobs) !== JSON.stringify(prevJobs)) {
+                    console.log("ClientCompletedJobs: Updating completedJobs state. New data differs from previous.");
+                    return combinedJobs;
                 }
-            } else {
-                showToast(data.error || 'Failed to load completed jobs.', 'error');
+                console.log("ClientCompletedJobs: Not updating completedJobs state. Data is identical.");
+                return prevJobs;
+            });
+
+            if (combinedJobs.length === 0) {
+                showToast('No completed jobs found yet.', 'info');
             }
         } catch (error) {
             console.error('Network error fetching client completed jobs:', error);
@@ -71,8 +125,9 @@ const ClientCompletedJobs = () => {
 
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientCompletedJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
-        showToast(`Job status updated for ID: ${data.negotiationId}.`, 'info'); 
-        fetchClientCompletedJobs(); 
+        const jobId = data.negotiationId || data.jobId;
+        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
+        fetchClientCompletedJobs();
     }, [showToast, fetchClientCompletedJobs]);
 
 
@@ -93,7 +148,8 @@ const ClientCompletedJobs = () => {
         if (isAuthenticated && user && user.user_type === 'client' && user.id) {
             const socket = connectSocket(user.id);
             if (socket) {
-                socket.on('job_completed', handleJobUpdate);
+                socket.on('job_completed', handleJobUpdate); // For negotiation jobs
+                socket.on('direct_job_client_completed', handleJobUpdate); // For direct upload jobs
                 console.log('ClientCompletedJobs: Socket listeners attached for completed jobs.');
             }
 
@@ -101,40 +157,31 @@ const ClientCompletedJobs = () => {
                 if (socket) {
                     console.log(`ClientCompletedJobs: Cleaning up socket listeners for user ID: ${user.id}`);
                     socket.off('job_completed', handleJobUpdate);
+                    socket.off('direct_job_client_completed', handleJobUpdate);
+                    disconnectSocket();
                 }
             };
         }
     }, [isAuthenticated, user, handleJobUpdate]);
 
 
-    const getStatusColor = useCallback((status, isClientViewing) => {
+    const getStatusColor = useCallback((status) => { // Removed isClientViewing as it's always client here
         const colors = {
-            'pending': '#007bff',
-            'transcriber_counter': '#ffc107',
-            'accepted_awaiting_payment': '#28a745',
-            'rejected': '#dc3545',
-            'hired': '#007bff',
-            'cancelled': '#dc3545',
-            'completed': '#6f42c1'
+            'completed': '#6f42c1', // Transcriber completed
+            'client_completed': '#6f42c1' // Client completed
         };
         return colors[status] || '#6c757d';
     }, []);
 
-    const getStatusText = useCallback((status, isClientViewing) => {
+    const getStatusText = useCallback((status) => { // Removed isClientViewing as it's always client here
         const texts = {
-            'pending': 'Waiting for Transcriber',
-            'transcriber_counter': 'Transcriber Countered',
-            'client_counter': 'Client Countered',
-            'accepted_awaiting_payment': 'Accepted - Awaiting Payment',
-            'rejected': 'Rejected',
-            'hired': 'Job Active - Paid',
-            'cancelled': 'Cancelled',
-            'completed': 'Completed'
+            'completed': 'Completed by Transcriber',
+            'client_completed': 'Completed by Client'
         };
         return texts[status] || status;
     }, []);
 
-    const handleDeleteNegotiation = useCallback(async (negotiationId) => {
+    const handleDeleteJob = useCallback(async (jobId, jobType) => { // Renamed from handleDeleteNegotiation for clarity
         if (!window.confirm('Are you sure you want to delete this completed job from your list? This action cannot be undone.')) {
             return;
         }
@@ -145,7 +192,20 @@ const ClientCompletedJobs = () => {
                 logout();
                 return;
             }
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationId}`, {
+
+            let apiUrl;
+            if (jobType === 'negotiation') {
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}`;
+            } else if (jobType === 'direct_upload') {
+                // Assuming a delete endpoint for direct upload jobs if needed
+                showToast('Direct upload jobs cannot be deleted from this view.', 'error');
+                return; // Prevent deletion for now
+            } else {
+                showToast('Unknown job type for deletion.', 'error');
+                return;
+            }
+
+            const response = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -164,8 +224,7 @@ const ClientCompletedJobs = () => {
         }
     }, [showToast, logout, fetchClientCompletedJobs]);
 
-    // NEW: Function to handle downloading negotiation files
-    const handleDownloadFile = useCallback(async (negotiationId, fileName) => {
+    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('Authentication token missing. Please log in again.', 'error');
@@ -174,9 +233,10 @@ const ClientCompletedJobs = () => {
         }
 
         try {
-            // Construct the API endpoint URL
-            const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${negotiationId}/download/${fileName}`;
-            
+            const downloadUrl = jobType === 'direct_upload'
+                ? `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`
+                : `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
+
             const response = await fetch(downloadUrl, {
                 method: 'GET',
                 headers: {
@@ -185,18 +245,15 @@ const ClientCompletedJobs = () => {
             });
 
             if (response.ok) {
-                // Get the blob from the response
                 const blob = await response.blob();
-                // Create a temporary URL for the blob
                 const url = window.URL.createObjectURL(blob);
-                // Create a temporary link element
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = fileName; // Set the download filename
+                a.download = fileName;
                 document.body.appendChild(a);
-                a.click(); // Programmatically click the link to trigger download
-                a.remove(); // Clean up the link element
-                window.URL.revokeObjectURL(url); // Clean up the temporary URL
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
                 showToast(`Downloading ${fileName}...`, 'success');
             } else {
                 const errorData = await response.json();
@@ -244,28 +301,87 @@ const ClientCompletedJobs = () => {
                     </div>
 
                     <h3>Completed Jobs ({completedJobs.length})</h3>
-                    <div className="completed-jobs-list">
+                    <div className="completed-jobs-list-table">
                         {completedJobs.length === 0 ? (
                             <p className="no-data-message">You currently have no completed jobs.</p>
                         ) : (
-                            completedJobs.map((job) => {
-                                console.log(`ClientCompletedJobs: Rendering NegotiationCard for job ID: ${job.id}.`);
-                                return (
-                                    <NegotiationCard
-                                        key={job.id}
-                                        negotiation={job}
-                                        onDelete={handleDeleteNegotiation}
-                                        onPayment={() => showToast('Payment already processed.', 'info')}
-                                        onLogout={logout}
-                                        getStatusColor={getStatusColor}
-                                        getStatusText={getStatusText}
-                                        showToast={showToast}
-                                        currentUserId={user.id}
-                                        currentUserType={user.user_type}
-                                        onDownloadFile={handleDownloadFile} // NEW: Pass the download function
-                                    />
-                                );
-                            })
+                            <table className="completed-jobs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Job ID</th>
+                                        <th>Transcriber</th>
+                                        <th>Agreed Price</th>
+                                        <th>Deadline</th>
+                                        <th>Status</th>
+                                        <th>Completed On</th>
+                                        <th>Your Feedback</th>
+                                        <th>Transcriber Rating</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {completedJobs.map((job) => (
+                                        <tr key={job.id}>
+                                            <td>{job.id?.substring(0, 8)}...</td>
+                                            <td>
+                                                {job.transcriber_name || 'N/A'} {/* Display transcriber name */}
+                                                {job.transcriber_rating > 0 && (
+                                                    <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
+                                                        ({'★'.repeat(Math.floor(job.transcriber_rating))} {(job.transcriber_rating).toFixed(1)})
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td>{job.deadline_hours} hours</td>
+                                            <td>
+                                                <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
+                                                    {getStatusText(job.status)}
+                                                </span>
+                                            </td>
+                                            <td>{formatDisplayTimestamp(job.completed_at || job.client_completed_at)}</td>
+                                            <td>
+                                                {job.client_feedback_comment || 'N/A'}
+                                                {job.client_feedback_rating > 0 && (
+                                                    <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
+                                                        ({'★'.repeat(job.client_feedback_rating)})
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {job.transcriber_rating > 0 ? (
+                                                    <span>
+                                                        {'★'.repeat(Math.floor(job.transcriber_rating))} ({job.transcriber_rating.toFixed(1)})
+                                                    </span>
+                                                ) : 'N/A'}
+                                            </td>
+                                            <td>
+                                                {job.file_name && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDownloadFile(job.id, job.file_name, job.jobType);
+                                                        }}
+                                                        className="action-btn download-btn"
+                                                        title="Download File"
+                                                    >
+                                                        ⬇️
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteJob(job.id, job.jobType);
+                                                    }}
+                                                    className="action-btn delete-btn"
+                                                    title="Delete Job"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         )}
                     </div>
                 </div>

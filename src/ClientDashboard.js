@@ -1,4 +1,5 @@
 // frontend/client/src/ClientDashboard.js - UPDATED for improved Profile Link UI/UX and consistent card styling
+// FIXED: Corrected 'My Completed Jobs' count to include direct upload jobs.
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -21,7 +22,7 @@ const ClientDashboard = () => {
     clientRating: 5.0 // This will be updated from user.client_average_rating
   });
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const [totalClientPayments, setTotalClientPayments] = useState(0); 
+  const [totalClientPayments, setTotalClientPayments] = useState(0);
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -100,7 +101,7 @@ const ClientDashboard = () => {
 
       let pendingNegotiations = 0;
       let activeJobs = 0;
-      let completedJobs = 0;
+      let completedJobsCount = 0; // Renamed to avoid conflict with state variable
 
       if (negotiationsResponse.ok) {
         pendingNegotiations = negotiationsData.negotiations.filter(n => 
@@ -110,7 +111,7 @@ const ClientDashboard = () => {
             n.status === 'accepted_awaiting_payment' 
         ).length; 
         activeJobs += negotiationsData.negotiations.filter(n => n.status === 'hired').length;
-        completedJobs += negotiationsData.negotiations.filter(n => n.status === 'completed').length;
+        completedJobsCount += negotiationsData.negotiations.filter(n => n.status === 'completed').length;
       } else {
         console.error('Failed to fetch negotiations:', negotiationsData.error);
         showToast(negotiationsData.error || 'Failed to load negotiations.', 'error');
@@ -123,7 +124,8 @@ const ClientDashboard = () => {
               d.status === 'taken' || 
               d.status === 'in_progress'
           ).length;
-          completedJobs += directUploadJobsData.jobs.filter(d => d.status === 'completed').length;
+          // CHANGED: Also count direct upload jobs that are 'client_completed'
+          completedJobsCount += directUploadJobsData.jobs.filter(d => d.status === 'client_completed').length;
       } else {
           console.error('Failed to fetch direct upload jobs:', directUploadJobsData.error);
           showToast(directUploadJobsData.error || 'Failed to load direct upload jobs.', 'error');
@@ -132,7 +134,7 @@ const ClientDashboard = () => {
       setClientStats({
         pendingNegotiations,
         activeJobs,
-        completedJobs: completedJobs, 
+        completedJobs: completedJobsCount, // Use the aggregated count
         clientRating 
       });
     } catch (error) {

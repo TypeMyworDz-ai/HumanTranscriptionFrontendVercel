@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import './TranscriberDashboard.css'; // Keep this import for eventual fix
+import './TranscriberDashboard.css';
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';
 import { BACKEND_API_URL } from './config';
 
 const TranscriberDashboard = () => {
-  const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth();
+  const { user, isAuthenticated, authLoading, isAuthReady, logout, updateUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [currentJobId, setCurrentJobId] = useState(null); // Keep currentJobId to derive availability
-  const [negotiations, setNegotiations] = useState([]);
+  const [negotiations, setNegotiations] = useState([]); // Still holds negotiation data
+  const [directUploadJobs, setDirectUploadJobs] = useState([]); // NEW: State for direct upload jobs
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [availableDirectJobsCount, setAvailableDirectJobsCount] = useState(0);
+  const [activeDirectUploadJobsCount, setActiveDirectUploadJobsCount] = useState(0);
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -46,6 +47,7 @@ const TranscriberDashboard = () => {
     }));
   }, []);
 
+  // fetchTranscriberStatus is re-added here as it is a dependency of this callback. The issue is more likely in the main useEffect's dependencies.
   const fetchTranscriberStatus = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token || !user?.id) return;
@@ -56,7 +58,8 @@ const TranscriberDashboard = () => {
       });
       const data = await response.json();
       if (response.ok && data.user) {
-        setCurrentJobId(data.user.current_job_id || null);
+        updateUser(data.user);
+        return data.user;
       } else {
         console.error('Failed to fetch transcriber status:', data.error);
         return Promise.reject(new Error(data.error || 'Failed to fetch transcriber status.'));
@@ -65,7 +68,7 @@ const TranscriberDashboard = () => {
       console.error('Network error fetching transcriber status:', error);
       return Promise.reject(error);
     }
-  }, [user?.id, setCurrentJobId]);
+  }, [user?.id, updateUser]); // updateUser is correctly a dependency here as it's called internally.
 
   const fetchUnreadMessageCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -86,39 +89,40 @@ const TranscriberDashboard = () => {
     }
   }, [user?.id]);
 
-  const fetchNegotiationsData = useCallback(async () => {
+  // UPDATED: Fetch all negotiations and direct upload jobs for the dashboard counts
+  const fetchAllTranscriberJobsForCounts = useCallback(async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      if (isAuthenticated) {
-        console.warn("TranscriberDashboard: Token missing for API call despite authenticated state. Forcing logout.");
-        logout();
-      }
-      return Promise.reject(new Error('Authentication token missing.'));
+    if (!token || !user?.id) {
+        if (isAuthenticated) {
+            console.warn("TranscriberDashboard: Token or userId missing for API call despite authenticated state. Forcing logout.");
+            logout();
+        }
+        return Promise.reject(new Error('Authentication token or userId missing.'));
     }
 
-    setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setNegotiations(data.negotiations);
-      } else {
-        console.error('Error in fetchNegotiationsData:', data.error);
-        showToast(data.error || 'Failed to load negotiations.', 'error');
-        return Promise.reject(new Error(data.error || 'Failed to load negotiations.'));
-      }
+      const [negotiationResponse, directUploadResponse] = await Promise.all([
+        fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/all`, { // Use the new 'all' endpoint
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      const negotiationData = await (negotiationResponse.ok ? negotiationResponse.json() : Promise.resolve({ negotiations: [] }));
+      const directUploadData = await (directUploadResponse.ok ? directUploadResponse.json() : Promise.resolve({ jobs: [] }));
+
+      setNegotiations(negotiationData.negotiations || []);
+      setDirectUploadJobs(directUploadData.jobs || []); // Set direct upload jobs state
+
     } catch (error) {
-      console.error('Network error while fetching negotiations.', error);
-      showToast('Network error while fetching negotiations.', 'error');
+      console.error('Network error while fetching all transcriber jobs for counts:', error);
+      showToast('Network error while fetching dashboard data.', 'error');
       return Promise.reject(error);
-    } finally {
-        setLoading(false); // Ensure loading is reset even if fetchTranscriberPaymentHistory fails
     }
-  }, [isAuthenticated, logout, showToast, setNegotiations]);
+  }, [isAuthenticated, logout, showToast, user?.id]);
+
 
   const fetchTranscriberPaymentHistory = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -146,72 +150,68 @@ const TranscriberDashboard = () => {
     if (!token || !user?.id) return;
 
     try {
-      // NEW: Fetch the latest user status directly before making the call for jobs
-      const userStatusResponse = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const userStatusData = await userStatusResponse.json();
-
-      if (!userStatusResponse.ok || !userStatusData.user) {
-        console.error('TranscriberDashboard: Failed to fetch latest user status for direct jobs:', userStatusData.error);
-        setAvailableDirectJobsCount(0);
-        return Promise.resolve(0);
-      }
-
-      const latestUser = userStatusData.user;
-
-      // REMOVED: !latestUser.is_online from the eligibility check for viewing direct jobs
-      // Only current_job_id restricts viewing as per instruction
-      if (latestUser.current_job_id) {
-          console.log(`TranscriberDashboard: User is not eligible to view direct jobs based on latest status: current_job_id=${latestUser.current_job_id}`);
-          setAvailableDirectJobsCount(0);
-          return Promise.resolve(0);
-      }
-
-      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available?_=${new Date().getTime()}`, {
+      // Removed redundant frontend eligibility checks. Backend is the single source of truth.
+      const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/available`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (response.ok && data.jobs) {
         setAvailableDirectJobsCount(data.jobs.length);
       } else {
-        console.warn('TranscriberDashboard: Expected 403 or 409 for direct jobs or failed to fetch: ', data.error);
+        console.warn('TranscriberDashboard: Failed to fetch available direct jobs or user not eligible: ', data.error);
         setAvailableDirectJobsCount(0);
-        return Promise.resolve(0);
       }
     } catch (error) {
       console.error('Network error fetching available direct jobs count:', error);
       setAvailableDirectJobsCount(0);
-      return Promise.resolve(0);
     }
   }, [user?.id, setAvailableDirectJobsCount]);
 
+  // NEW: Fetch active direct upload jobs count for dashboard display
+  const fetchActiveDirectUploadJobsCount = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id) return;
 
-  const handleSocketConnect = useCallback((socketInstance) => {
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs`, { // This endpoint returns jobs with status 'taken'
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok && data.jobs) {
+            setActiveDirectUploadJobsCount(data.jobs.length);
+        } else {
+            console.error('TranscriberDashboard: Failed to fetch active direct upload jobs count:', data.error);
+            setActiveDirectUploadJobsCount(0);
+        }
+    } catch (error) {
+        console.error('Network error fetching active direct upload jobs count:', error);
+        setActiveDirectUploadJobsCount(0);
+    }
+  }, [user?.id, setActiveDirectUploadJobsCount]);
+
+
+  const handleSocketConnect = useCallback(async (socketInstance) => {
     if (user?.id) {
         socketInstance.emit('joinUserRoom', user.id);
         console.log(`TranscriberDashboard: Sent joinUserRoom event for userId: ${user.id}`);
-        // NEW: After socket connects and backend sets online status, re-fetch status and available jobs
-        fetchTranscriberStatus();
-        // Introduce a small delay before fetching direct jobs to allow backend to update online status
-        setTimeout(() => {
-            if (user?.transcriber_average_rating >= 4) {
-                fetchAvailableDirectJobsCount();
-            }
-        }, 500); // 500ms delay
+        
+        fetchAvailableDirectJobsCount();
+        fetchActiveDirectUploadJobsCount();
     } else {
         console.warn('TranscriberDashboard: userId not provided in activeSocketState, cannot join user room.');
     }
-  }, [user?.id, fetchTranscriberStatus, fetchAvailableDirectJobsCount, user?.transcriber_average_rating]);
+  }, [user?.id, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+
 
   const handleNegotiationUpdate = useCallback((data) => {
     console.log('TranscriberDashboard Real-time: Negotiation update received!', data);
     showToast(`Negotiation ${data.negotiationId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
-    fetchNegotiationsData();
+    fetchAllTranscriberJobsForCounts(); // Re-fetch all jobs for counts
     fetchTranscriberStatus();
     fetchTranscriberPaymentHistory();
-    if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]);
+    fetchAvailableDirectJobsCount();
+    fetchActiveDirectUploadJobsCount();
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
 
 
   const handleUnreadMessageCountUpdate = useCallback((data) => {
@@ -237,35 +237,39 @@ const TranscriberDashboard = () => {
   const handleJobCompleted = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Job completed!', data);
       showToast(data.message || `Job ${data.negotiationId?.substring(0, 8)}... was completed!`, 'success');
-      fetchNegotiationsData();
+      fetchAllTranscriberJobsForCounts(); // Re-fetch all jobs for counts
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
-      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]);
+      fetchAvailableDirectJobsCount();
+      fetchActiveDirectUploadJobsCount();
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
 
   const handleJobHired = useCallback((data) => {
-      console.log('TranscriberDashboard Real-time: Job hired!', data);
+      console.log('TranscriberDashboard Real-time: Job hired! (Negotiation)', data);
       showToast(data.message || `Job ${data.negotiationId?.substring(0, 8)}... has been hired!`, 'success');
-      fetchNegotiationsData();
+      fetchAllTranscriberJobsForCounts(); // Re-fetch all jobs for counts
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
-      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount();
-  }, [showToast, fetchNegotiationsData, fetchTranscriberStatus, fetchTranscriberPaymentHistory, user?.transcriber_average_rating, fetchAvailableDirectJobsCount]);
+      fetchAvailableDirectJobsCount();
+      fetchActiveDirectUploadJobsCount();
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
 
   const handleNewDirectJobAvailable = useCallback((data) => {
-      console.log('TranscriberDashboard Real-time: New direct job available!', data);
+      console.log('TranscriberDashboard Real-time: New direct job available!!', data);
       showToast(data.message || `A new direct upload job is available!`, 'info');
-      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount();
+      fetchAvailableDirectJobsCount();
+      fetchActiveDirectUploadJobsCount();
       playNotificationSound();
-  }, [showToast, user?.transcriber_average_rating, fetchAvailableDirectJobsCount, playNotificationSound]);
+  }, [showToast, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount, playNotificationSound]);
 
   const handleDirectJobStatusUpdate = useCallback((data) => {
-      console.log('TranscriberDashboard Real-time: Direct job status update!', data);
+      console.log('TranscriberDashboard Real-time: Direct job status update!.', data);
       showToast(`Direct job ${data.jobId?.substring(0, 8)}... status updated to ${data.newStatus}.`, 'info');
-      if (user?.transcriber_average_rating >= 4) fetchAvailableDirectJobsCount();
+      fetchAvailableDirectJobsCount();
       fetchTranscriberStatus();
-      fetchNegotiationsData();
-  }, [showToast, user?.transcriber_average_rating, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchNegotiationsData]);
+      fetchAllTranscriberJobsForCounts(); // Re-fetch all jobs for counts
+      fetchActiveDirectUploadJobsCount();
+  }, [showToast, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchAllTranscriberJobsForCounts, fetchActiveDirectUploadJobsCount]);
 
 
   useEffect(() => {
@@ -282,7 +286,6 @@ const TranscriberDashboard = () => {
     const isTranscriber = user.user_type === 'transcriber';
     const transcriberStatus = user.transcriber_status || '';
     const transcriberUserLevel = user.transcriber_user_level || '';
-    const transcriberRating = user.transcriber_average_rating || 0;
 
     const hasActiveTranscriberStatus = isTranscriber && (transcriberStatus === 'active_transcriber' || transcriberUserLevel === 'proofreader');
 
@@ -302,18 +305,12 @@ const TranscriberDashboard = () => {
     }
 
     const fetches = [
-        fetchNegotiationsData().catch(e => { console.error("Error in fetchNegotiationsData:", e); return []; }),
+        fetchAllTranscriberJobsForCounts(), // Use the new function to fetch both types of jobs
         fetchUnreadMessageCount().catch(e => { console.error("Error in fetchUnreadMessageCount:", e); return 0; }),
-        fetchTranscriberStatus().catch(e => { console.error("Error in fetchTranscriberStatus:", e); return {}; }),
         fetchTranscriberPaymentHistory().catch(e => { console.error("Error in fetchTranscriberPaymentHistory:", e); return 0; }),
+        fetchActiveDirectUploadJobsCount().catch(e => { console.error("Error in fetchActiveDirectUploadJobsCount:", e); return 0; }),
+        fetchAvailableDirectJobsCount().catch(e => { console.error("Error in fetchAvailableDirectJobsCount:", e); return 0; }),
     ];
-
-    if (transcriberRating >= 4) {
-        fetches.push(fetchAvailableDirectJobsCount().catch(e => { console.error("Error in fetchAvailableDirectJobsCount:", e); return 0; }));
-    } else {
-        console.log(`TranscriberDashboard: Skipping fetch for direct jobs as rating (${transcriberRating}) is below 4-star.`);
-        setAvailableDirectJobsCount(0);
-    }
 
     Promise.all(fetches).finally(() => {
         setLoading(false);
@@ -322,8 +319,9 @@ const TranscriberDashboard = () => {
     console.log(`TranscriberDashboard: Attempting to connect socket via ChatService for user ID: ${user.id}`);
     const socket = connectSocket(user.id);
 
-    socket.on('connect', () => handleSocketConnect(socket));
-
+    // Define a stable function for the socket 'connect' event listener
+    const onSocketConnect = () => handleSocketConnect(socket);
+    socket.on('connect', onSocketConnect);
 
     socket.on('new_negotiation_request', handleNegotiationUpdate);
     socket.on('negotiation_accepted', handleNegotiationUpdate);
@@ -351,21 +349,21 @@ const TranscriberDashboard = () => {
       socket.off('job_hired', handleJobHired);
       socket.off('new_direct_job_available', handleNewDirectJobAvailable);
       socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
-      socket.off('connect', handleSocketConnect);
-      // REMOVED: disconnectSocket() from here. It should only be called on explicit logout.
+      // Use the stable function for cleanup
+      socket.off('connect', onSocketConnect); 
+      disconnectSocket();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, user, authLoading, navigate, logout, showToast, fetchNegotiationsData, fetchUnreadMessageCount, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate, handleSocketConnect]);
+  }, [isAuthReady, user?.id, navigate, logout, showToast, fetchAllTranscriberJobsForCounts, fetchUnreadMessageCount, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount, playNotificationSound, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate, handleSocketConnect, updateUser, isAuthenticated]);
 
 
   const handleLogout = useCallback(async () => {
     logout();
-    disconnectSocket(); // Only disconnect on explicit logout
+    disconnectSocket();
   }, [logout]);
 
-  // Derived state for availability display
-  // Transcriber is available if they are online (user.is_online) AND not currently assigned a job (currentJobId is null)
-  const isCurrentlyAvailable = user?.is_online && !currentJobId; 
+  // Removed isCurrentlyAvailable derived state entirely.
+  // The 'Available' display is removed from JSX.
 
   if (!isAuthenticated || !user) {
     return <div>Not authenticated. Redirecting...</div>;
@@ -385,15 +383,22 @@ const TranscriberDashboard = () => {
     );
   }
 
-  const pendingCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length;
-  const activeCount = negotiations.filter(n => n.status === 'hired').length;
-  const completedCount = negotiations.filter(n => n.status === 'completed').length;
+  const pendingNegotiationCount = negotiations.filter(n => n.status === 'pending' || n.status === 'transcriber_counter' || n.status === 'client_counter' || n.status === 'accepted_awaiting_payment').length;
+  const activeNegotiationCount = negotiations.filter(n => n.status === 'hired').length;
+  // UPDATED: Calculate total completed jobs from both negotiation and direct upload jobs
+  const completedJobsCount = negotiations.filter(n => n.status === 'completed').length +
+                           directUploadJobs.filter(d => d.status === 'completed' || d.status === 'client_completed').length;
+  
+  // NEW: Combine active negotiation and active direct upload jobs for total active count
+  const totalActiveJobsCount = activeNegotiationCount + activeDirectUploadJobsCount;
+
   const transcriberRating = user.transcriber_average_rating || 0;
   const firstLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
 
   return (
     <div className="transcriber-dashboard-container">
+      <audio ref={audioRef} src="/notification.mp3" preload="auto" /> {/* Add audio element for notifications */}
       <header className="transcriber-dashboard-header">
         <div className="header-content">
           <h1>Transcriber Dashboard</h1>
@@ -419,24 +424,13 @@ const TranscriberDashboard = () => {
                         <p>Manage your profile, view negotiation requests, and track your transcription jobs.</p>
                     </div>
 
-                    {/* REMOVED: The 'Available' button/status toggle functionality */}
-                    {/* UPDATED: Derived Status Display, centered */}
-                    <div className="status-display-container">
-                        <span className={`status-pill ${isCurrentlyAvailable ? 'status-available' : 'status-busy'}`}>
-                            {isCurrentlyAvailable ? 'Available' : 'Busy'}
-                        </span>
-                        {currentJobId && (
-                            <span className="job-id-display"> (Job ID: {currentJobId.substring(0, 8)}...)</span>
-                        )}
-                        {!user?.is_online && (
-                             <span className="offline-indicator"> (Offline)</span>
-                        )}
-                    </div>
+                    {/* REMOVED: The 'Available' status display completely */}
+                    {/* The status display logic for 'Online' and 'Offline' will be handled elsewhere if needed */}
 
                     <div className="dashboard-sections-grid">
                         <Link to="/transcriber-negotiations" className="dashboard-card">
                             <div className="card-icon">👋</div>
-                            <h3>Negotiation Room ({pendingCount})</h3>
+                            <h3>Negotiation Room ({pendingNegotiationCount})</h3>
                             <p>Review and manage all ongoing negotiation offers from clients.</p>
                         </Link>
 
@@ -448,19 +442,19 @@ const TranscriberDashboard = () => {
 
                         <Link to="/transcriber-jobs" className="dashboard-card">
                             <div className="card-icon">📝</div>
-                            <h3>My Active Jobs ({activeCount})</h3>
+                            <h3>My Active Jobs ({totalActiveJobsCount})</h3> {/* UPDATED: Display total active jobs */}
                             <p>See jobs you're currently working on.</p>
                         </Link>
 
                         <Link to="/transcriber-negotiations?status=completed" className="dashboard-card">
                             <div className="card-icon">✅</div>
-                            <h3>My Completed Jobs ({completedCount})</h3>
+                            <h3>My Completed Jobs ({completedJobsCount})</h3> {/* UPDATED: Uses new combined count */}
                             <p>View your finished projects and earnings.</p>
                         </Link>
 
                         <Link to={`/transcriber-profile/${user.id}`} className="dashboard-card">
-                            <div className="card-icon">⭐</div>
-                            <h3>Profile & Ratings</h3>
+                            <div className="card-icon">⭐</div
+                            ><h3>Profile & Ratings</h3>
                             <p>Update your profile and check client feedback.</p>
                         </Link>
 
@@ -479,8 +473,8 @@ const TranscriberDashboard = () => {
                         )}
                         
                         <Link to="/trainee/materials" className="dashboard-card"> 
-                            <div className="card-icon">📚</div>
-                            <h3>Knowledge Base</h3>
+                            <div className="card-icon">📚</div
+                            ><h3>Knowledge Base</h3>
                             <p>Access training materials and helpful resources.</p>
                         </Link>
                     </div>
@@ -494,7 +488,6 @@ const TranscriberDashboard = () => {
                 onClose={hideToast}
                 duration={toast.type === 'error' ? 4000 : 3000}
             />
-            <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
         </div>
     );
 };

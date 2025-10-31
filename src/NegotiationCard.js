@@ -23,90 +23,41 @@ const formatDisplayTimestamp = (isoTimestamp) => {
 
 // Custom comparison function for React.memo
 const arePropsEqual = (prevProps, nextProps) => {
-    // Compare negotiation prop deeply
-    if (JSON.stringify(prevProps.negotiation) !== JSON.stringify(nextProps.negotiation)) {
-        console.log(`NegotiationCard: Props changed - negotiation. Prev:`, prevProps.negotiation, `Next:`, nextProps.negotiation);
+    // Compare job prop deeply
+    if (JSON.stringify(prevProps.job) !== JSON.stringify(nextProps.job)) {
+        console.log(`NegotiationCard: Props changed - job. Prev:`, prevProps.job, `Next:`, nextProps.job);
+        return false;
+    }
+    // Compare jobType prop
+    if (prevProps.jobType !== nextProps.jobType) {
+        console.log(`NegotiationCard: Props changed - jobType.`);
         return false;
     }
 
     // Compare simple props
-    if (prevProps.onDelete !== nextProps.onDelete) {
-        console.log(`NegotiationCard: Props changed - onDelete.`);
-        return false;
-    }
-    if (prevProps.onPayment !== nextProps.onPayment) {
-        console.log(`NegotiationCard: Props changed - onPayment.`);
-        return false;
-    }
-    if (prevProps.onLogout !== nextProps.onLogout) {
-        console.log(`NegotiationCard: Props changed - onLogout.`);
-        return false;
-    }
-    if (prevProps.getStatusColor !== nextProps.getStatusColor) {
-        console.log(`NegotiationCard: Props changed - getStatusColor.`);
-        return false;
-    }
-    if (prevProps.getStatusText !== nextProps.getStatusText) {
-        console.log(`NegotiationCard: Props changed - getStatusText.`);
-        return false;
-    }
-    if (prevProps.showToast !== nextProps.showToast) {
-        console.log(`NegotiationCard: Props changed - showToast.`);
-        return false;
-    }
-    if (prevProps.currentUserId !== nextProps.currentUserId) {
-        console.log(`NegotiationCard: Props changed - currentUserId.`);
-        return false;
-    }
-    if (prevProps.currentUserType !== nextProps.currentUserType) {
-        console.log(`NegotiationCard: Props changed - currentUserType.`);
-        return false;
-    }
-    if (prevProps.openAcceptCounterModal !== nextProps.openAcceptCounterModal) {
-        console.log(`NegotiationCard: Props changed - openAcceptCounterModal.`);
-        return false;
-    }
-    if (prevProps.openRejectCounterModal !== nextProps.openRejectCounterModal) {
-        console.log(`NegotiationCard: Props changed - openRejectCounterModal.`);
-        return false;
-    }
-    if (prevProps.openCounterBackModal !== nextProps.openCounterBackModal) {
-        console.log(`NegotiationCard: Props changed - openCounterBackModal.`);
-        return false;
-    }
-    if (prevProps.openAcceptModal !== nextProps.openAcceptModal) {
-        console.log(`NegotiationCard: Props changed - openAcceptModal.`);
-        return false;
-    }
-    if (prevProps.onOpenCounterModal !== nextProps.onOpenCounterModal) {
-        console.log(`NegotiationCard: Props changed - onOpenCounterModal.`);
-        return false;
-    }
-    if (prevProps.openRejectModal !== nextProps.openRejectModal) {
-        console.log(`NegotiationCard: Props changed - openRejectModal.`);
-        return false;
-    }
-    if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) {
-        console.log(`NegotiationCard: Props changed - openCompleteJobModal.`);
-        return false;
-    }
-    if (prevProps.canCounter !== nextProps.canCounter) {
-        console.log(`NegotiationCard: Props changed - canCounter.`);
-        return false;
-    }
-    if (prevProps.onDownloadFile !== nextProps.onDownloadFile) {
-        console.log(`NegotiationCard: Props changed - onDownloadFile.`);
-        return false;
-    }
-    if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) {
-        console.log(`NegotiationCard: Props changed - clientCompletedJobs.`);
-        return false;
-    }
-    // NEW: Compare clientAverageRating prop
-    if (prevProps.clientAverageRating !== nextProps.clientAverageRating) {
-        console.log(`NegotiationCard: Props changed - clientAverageRating.`);
-        return false;
-    }
+    if (prevProps.onDelete !== nextProps.onDelete) return false;
+    if (prevProps.onPayment !== nextProps.onPayment) return false;
+    if (prevProps.onLogout !== nextProps.onLogout) return false;
+    if (prevProps.getStatusColor !== nextProps.getStatusColor) return false;
+    if (prevProps.getStatusText !== nextProps.getStatusText) return false;
+    if (prevProps.showToast !== nextProps.showToast) return false;
+    if (prevProps.currentUserId !== nextProps.currentUserId) return false;
+    if (prevProps.currentUserType !== nextProps.currentUserType) return false;
+    if (prevProps.openAcceptCounterModal !== nextProps.openAcceptCounterModal) return false;
+    if (prevProps.openRejectCounterModal !== nextProps.openRejectCounterModal) return false;
+    if (prevProps.openCounterBackModal !== nextProps.openCounterBackModal) return false;
+    if (prevProps.openAcceptModal !== nextProps.openAcceptModal) return false;
+    if (prevProps.onOpenCounterModal !== nextProps.onOpenCounterModal) return false;
+    if (prevProps.openRejectModal !== nextProps.openRejectModal) return false;
+    if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) return false; // Client's complete negotiation
+    if (prevProps.canCounter !== nextProps.canCounter) return false;
+    if (prevProps.onDownloadFile !== nextProps.onDownloadFile) return false;
+    if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) return false;
+    if (prevProps.clientAverageRating !== nextProps.clientAverageRating) return false;
+    // NEW PROPS FOR TRANSCRIBER COMPLETION
+    if (prevProps.openSubmitDirectJobModal !== nextProps.openSubmitDirectJobModal) return false;
+    // Removed openCompleteNegotiationJobModal from here as it's not passed to transcriber view.
+
 
     // If all checked props are equal, prevent re-render
     return true;
@@ -114,7 +65,8 @@ const arePropsEqual = (prevProps, nextProps) => {
 
 
 const NegotiationCard = React.memo(({ 
-  negotiation,
+  job, 
+  jobType, 
   onDelete,
   onPayment,
   onLogout,
@@ -129,40 +81,49 @@ const NegotiationCard = React.memo(({
   openAcceptModal,
   onOpenCounterModal, 
   openRejectModal,
-  openCompleteJobModal, // This prop now opens the modal in ClientJobs.js
+  openCompleteJobModal, // For client to mark negotiation job complete (passed from ClientJobs)
   canCounter,
-  onDownloadFile, // Destructure onDownloadFile prop
-  clientCompletedJobs, // Destructure clientCompletedJobs prop
-  clientAverageRating // NEW: Destructure clientAverageRating prop directly
+  onDownloadFile,
+  clientCompletedJobs,
+  clientAverageRating,
+  // NEW PROPS FOR TRANSCRIBER JOB COMPLETION (passed from TranscriberJobs)
+  openSubmitDirectJobModal, // For direct upload jobs (transcriber to submit)
+  // Removed openCompleteNegotiationJobModal from here as transcribers do not mark negotiation jobs complete.
 }) => { 
   const { user } = useAuth(); 
-  const jobId = negotiation.id; // Generic ID for both negotiation and direct upload jobs
+  const jobId = job.id; 
 
-  // Determine job type
-  const isDirectUploadJob = !!negotiation.file_url && !negotiation.negotiation_files;
-  const jobType = isDirectUploadJob ? 'direct_upload' : 'negotiation';
-
+  const isDirectUploadJob = jobType === 'direct_upload'; 
   const isClientViewing = currentUserType === 'client';
-  // Determine if otherParty is transcriber (for client view) or client (for transcriber view)
-  const otherParty = isClientViewing ? negotiation.users : negotiation.client_info;
-  const otherPartyId = otherParty?.id;
-  const otherPartyName = otherParty?.full_name || 'Unknown User';
+  
+  let otherPartyId;
+  let otherPartyName;
+  let otherPartyDetails; // To hold the full object for display, like rating/jobs
+
+  if (isClientViewing) {
+      otherPartyId = job.transcriber_id;
+      otherPartyDetails = isDirectUploadJob ? job.transcriber : job.transcriber_info;
+      otherPartyName = otherPartyDetails?.full_name || 'Unknown Transcriber';
+  } else { // Transcriber viewing
+      otherPartyId = job.client_id;
+      otherPartyDetails = isDirectUploadJob ? job.client : job.client_info;
+      otherPartyName = otherPartyDetails?.full_name || 'Unknown Client';
+  }
 
   const [cardMessages, setCardMessages] = useState([]);
   const [cardNewMessage, setCardNewMessage] = useState('');
   const [isSendingFile, setIsSendingFile] = useState(false);
   const fileInputRef = useRef(null);
   const chatWindowRef = useRef(null);
-  const [timeLeft, setTimeLeft] = useState(null); // NEW: State for deadline time left
+  const [timeLeft, setTimeLeft] = useState(null); 
 
-  // Helper to calculate time left
   const calculateTimeLeft = useCallback(() => {
-    console.log(`[NegotiationCard: ${jobId}] calculateTimeLeft triggered.`);
-    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, negotiation.due_date || negotiation.agreed_deadline_hours);
+    console.log(`[NegotiationCard: ${jobId}] calculateTimeLeft triggered. Type: ${jobType}`);
+    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, job.due_date || job.agreed_deadline_hours);
 
     const deadlineTimestamp = isDirectUploadJob 
-        ? (negotiation.taken_at ? new Date(new Date(negotiation.taken_at).getTime() + negotiation.agreed_deadline_hours * 3600 * 1000).toISOString() : null)
-        : negotiation.due_date;
+        ? (job.taken_at && job.agreed_deadline_hours ? new Date(new Date(job.taken_at).getTime() + job.agreed_deadline_hours * 3600 * 1000).toISOString() : null)
+        : job.due_date;
 
     if (!deadlineTimestamp) {
         console.log(`[NegotiationCard: ${jobId}] No deadline timestamp found.`);
@@ -182,7 +143,7 @@ const NegotiationCard = React.memo(({
         return 'Invalid Date';
     }
 
-    const difference = dueDate.getTime() - now.getTime(); // Difference in milliseconds
+    const difference = dueDate.getTime() - now.getTime(); 
     console.log(`[NegotiationCard: ${jobId}] Time difference (ms):`, difference);
 
     if (difference <= 0) {
@@ -197,58 +158,51 @@ const NegotiationCard = React.memo(({
     const result = `${hours}h ${minutes}m ${seconds}s`;
     console.log(`[NegotiationCard: ${jobId}] Time left calculated:`, result);
     return result;
-  }, [negotiation.due_date, negotiation.agreed_deadline_hours, negotiation.taken_at, isDirectUploadJob, jobId]);
+  }, [job.due_date, job.agreed_deadline_hours, job.taken_at, isDirectUploadJob, jobId, jobType]);
 
 
-  // Log the negotiation status for debugging
   useEffect(() => {
-    console.log(`NegotiationCard: Rendering job ${jobId} with status: ${negotiation.status}. Due Date: ${negotiation.due_date || negotiation.agreed_deadline_hours}. Type: ${jobType}`);
-    // NEW LOG: Log the full otherParty object to inspect ratings and job counts
-    console.log(`NegotiationCard: Other Party Data for ${otherPartyName} (ID: ${otherPartyId}):`, otherParty);
-  }, [jobId, negotiation.status, negotiation.due_date, negotiation.agreed_deadline_hours, otherParty, otherPartyId, otherPartyName, jobType]);
+    console.log(`NegotiationCard: Rendering job ${jobId} with status: ${job.status}. Due Date: ${job.due_date || job.agreed_deadline_hours}. Type: ${jobType}`);
+    console.log(`NegotiationCard: Other Party Data for ${otherPartyName} (ID: ${otherPartyId}):`, otherPartyDetails);
+  }, [jobId, job.status, job.due_date, job.agreed_deadline_hours, otherPartyDetails, otherPartyId, otherPartyName, jobType]);
 
-  // NEW: Calculate and check overdue status
-  const isOverdue = (negotiation.due_date || (negotiation.taken_at && negotiation.agreed_deadline_hours && new Date(new Date(negotiation.taken_at).getTime() + negotiation.agreed_deadline_hours * 3600 * 1000))) 
-                    && new Date((negotiation.taken_at && negotiation.agreed_deadline_hours) ? new Date(new Date(negotiation.taken_at).getTime() + negotiation.agreed_deadline_hours * 3600 * 1000) : negotiation.due_date) < new Date();
+  const isOverdue = (job.status !== 'completed' && job.status !== 'client_completed' && job.status !== 'rejected' && job.status !== 'cancelled') && (
+    (isDirectUploadJob && job.taken_at && job.agreed_deadline_hours && new Date(new Date(job.taken_at).getTime() + job.agreed_deadline_hours * 3600 * 1000) < new Date()) ||
+    (!isDirectUploadJob && job.due_date && new Date(job.due_date) < new Date())
+  );
 
-  // NEW: Effect to update the time left every second
+
   useEffect(() => {
-    console.log(`[NegotiationCard: ${jobId}] useEffect for deadline counter triggered.`);
-    console.log(`[NegotiationCard: ${jobId}] Current job status: ${negotiation.status}`);
-    console.log(`[NegotiationCard: ${jobId}] Has deadline: ${!!(negotiation.due_date || (negotiation.taken_at && negotiation.agreed_deadline_hours))}`);
+    console.log(`[NegotiationCard: ${jobId}] useEffect for deadline counter triggered. Type: ${jobType}`);
+    console.log(`[NegotiationCard: ${jobId}] Current job status: ${job.status}`);
+    console.log(`[NegotiationCard: ${jobId}] Has deadline: ${!!(job.due_date || (job.taken_at && job.agreed_deadline_hours))}`);
 
 
-    if (!(negotiation.due_date || (negotiation.taken_at && negotiation.agreed_deadline_hours)) || negotiation.status === 'completed' || negotiation.status === 'client_completed' || negotiation.status === 'rejected' || negotiation.status === 'cancelled') {
-        console.log(`[NegotiationCard: ${jobId}] Stopping deadline counter. Status: ${negotiation.status}, Deadline present: ${!!(negotiation.due_date || (negotiation.taken_at && negotiation.agreed_deadline_hours))}`);
+    if (!(job.due_date || (job.taken_at && job.agreed_deadline_hours)) || job.status === 'completed' || job.status === 'client_completed' || job.status === 'rejected' || job.status === 'cancelled') {
+        console.log(`[NegotiationCard: ${jobId}] Stopping deadline counter. Status: ${job.status}, Deadline present: ${!!(job.due_date || (job.taken_at && job.agreed_deadline_hours))}`);
         setTimeLeft(null);
         return;
     }
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
     
-    // Set up interval for updates
     const timer = setInterval(() => {
         setTimeLeft(calculateTimeLeft());
     }, 1000);
 
-    // Cleanup on unmount or dependency change
     return () => {
         console.log(`[NegotiationCard: ${jobId}] Clearing deadline counter interval.`);
         clearInterval(timer);
     }
-  }, [negotiation.due_date, negotiation.agreed_deadline_hours, negotiation.taken_at, negotiation.status, calculateTimeLeft, jobId]);
+  }, [job.due_date, job.agreed_deadline_hours, job.taken_at, job.status, calculateTimeLeft, jobId, jobType]);
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
-    // Only process the message if it belongs to this job card
-    // Check both negotiation_id and direct_upload_job_id
-    const isMessageForThisJob = (data.negotiation_id === jobId && !isDirectUploadJob) || 
-                                (data.direct_upload_job_id === jobId && isDirectUploadJob);
+    const isMessageForThisJob = (data.negotiation_id === jobId && jobType === 'negotiation') || 
+                                (data.direct_upload_job_id === jobId && jobType === 'direct_upload');
 
     if (isMessageForThisJob) {
       setCardMessages(prevMessages => {
-        // Attempt to replace an optimistic message
         const updatedMessages = prevMessages.map(m =>
             m.isOptimistic && m.sender_id === data.sender_id && m.content === data.content &&
             m.receiver_id === data.receiver_id && (m.file_url === data.file_url || (!m.file_url && !data.file_url))
@@ -256,43 +210,38 @@ const NegotiationCard = React.memo(({
                 : m
         );
 
-        // If the message wasn't an optimistic replacement or it's genuinely new, append it
         if (!updatedMessages.some(m => m.id === data.id && !m.isOptimistic)) {
             const formattedData = {
                 ...data,
                 timestamp: formatDisplayTimestamp(data.timestamp)
             };
-            // Ensure no duplicates are added if message IDs are reliable
             if (!prevMessages.find(m => m.id === data.id && !m.isOptimistic)) {
                  return [...updatedMessages, formattedData];
             }
         }
-        // If it was already in the list (or replaced), return the updated list
         return updatedMessages;
       });
       console.log(`NegotiationCard: Message for ${jobId} received (Type: ${jobType}):`, data);
     } else {
         console.log(`NegotiationCard: Received message not for this card (${jobId}) or is a direct message. Data:`, data);
     }
-  }, [jobId, isDirectUploadJob, jobType]);
+  }, [jobId, jobType]);
 
   useEffect(() => {
     const socket = getSocketInstance();
 
     if (socket) {
-      // Attach the listener
       socket.on('newChatMessage', handleReceiveMessageForCard);
-      console.log(`NegotiationCard: Attached 'newChatMessage' listener for jobId: ${jobId}`);
+      console.log(`NegotiationCard: Attached 'newChatMessage' listener for jobId: ${jobId} (Type: ${jobType})`);
     }
 
     return () => {
       if (socket) {
-        // Detach the listener when the component unmounts
         socket.off('newChatMessage', handleReceiveMessageForCard);
-        console.log(`NegotiationCard: Detached 'newChatMessage' listener for jobId: ${jobId}`);
+        console.log(`NegotiationCard: Detached 'newChatMessage' listener for jobId: ${jobId} (Type: ${jobType})`);
       }
     };
-  }, [jobId, handleReceiveMessageForCard]); 
+  }, [jobId, handleReceiveMessageForCard, jobType]); 
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -342,7 +291,9 @@ const NegotiationCard = React.memo(({
       return;
     }
     if (!currentUserId || !jobId || !otherPartyId) {
+      // This is the check that was failing.
       showToast('Cannot send message: missing required info (user, job, or recipient).', 'error');
+      console.error('Missing info for sending message:', { currentUserId, jobId, otherPartyId });
       return;
     }
 
@@ -354,7 +305,6 @@ const NegotiationCard = React.memo(({
       senderUserType: currentUserType
     };
 
-    // Conditionally add negotiation_id or direct_upload_job_id
     if (isDirectUploadJob) {
         messageData.directUploadJobId = jobId;
     } else {
@@ -368,7 +318,6 @@ const NegotiationCard = React.memo(({
           id: tempMessageId,
           sender_id: currentUserId,
           receiver_id: otherPartyId,
-          // Use the correct ID field for optimistic message
           [isDirectUploadJob ? 'direct_upload_job_id' : 'negotiation_id']: jobId,
           content: cardNewMessage,
           timestamp: formatDisplayTimestamp(new Date().toISOString()),
@@ -394,7 +343,7 @@ const NegotiationCard = React.memo(({
     if (!file) return;
 
     setIsSendingFile(true);
-    showToast('Uploading file...! Attention: Only send transcription files here.', 'info'); // Updated toast message
+    showToast('Uploading file...! Attention: Only send transcription files here.','info');
 
     let tempMessageId; 
     try {
@@ -410,7 +359,6 @@ const NegotiationCard = React.memo(({
           senderUserType: currentUserType
         };
 
-        // Conditionally add negotiation_id or direct_upload_job_id
         if (isDirectUploadJob) {
             messageData.directUploadJobId = jobId;
         } else {
@@ -434,7 +382,7 @@ const NegotiationCard = React.memo(({
 
         await sendMessage(messageData); 
 
-        showToast('File sent successfully! Transcriber will review.', 'success'); // Updated toast message
+        showToast('File sent successfully! Transcriber will review.', 'success');
       } else {
         showToast('File upload failed: No URL returned.', 'error');
       }
@@ -466,29 +414,30 @@ const NegotiationCard = React.memo(({
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="client-details">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}> {/* New flex container */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h3>{otherPartyName}</h3>
             </div>
             {isClientViewing ? (
               <div className="transcriber-stats">
                 <span className="rating">
-                  {'★'.repeat(Math.floor(otherParty?.average_rating || 0))}
-                  ({(otherParty?.average_rating || 0).toFixed(1)})
+                  {'★'.repeat(Math.floor(otherPartyDetails?.transcriber_average_rating || 0))}
+                  ({(otherPartyDetails?.transcriber_average_rating || 0).toFixed(1)})
                 </span>
-                <span className="completed">{otherParty?.completed_jobs || 0} jobs</span>
+                <span className="completed">{otherPartyDetails?.transcriber_completed_jobs || 0} jobs</span>
               </div>
             ) : (
-              // FIXED: Display client's completed jobs and rating correctly
               <div className="client-stats">
-                <span className="client-rating-stars">
-                  {/* Use clientAverageRating for stars */}
-                  {'★'.repeat(Math.floor(clientAverageRating))}
-                  {'☆'.repeat(5 - Math.floor(clientAverageRating))}
-                  {/* Use clientAverageRating for number display */}
-                  <span className="rating-number">({clientAverageRating.toFixed(1)})</span>
-                </span>
-                <span className="rating-label">Client Rating</span>
-                {clientCompletedJobs !== undefined && ( // Only display if prop is provided
+                {clientAverageRating > 0 ? (
+                  <span className="client-rating-stars">
+                    {'★'.repeat(Math.floor(clientAverageRating))}
+                    {'☆'.repeat(5 - Math.floor(clientAverageRating))}
+                    <span className="rating-number">({clientAverageRating.toFixed(1)})</span>
+                    <span className="rating-label" style={{ marginLeft: '5px' }}>Client Rating</span>
+                  </span>
+                ) : (
+                  <span className="rating-label">No rating yet</span>
+                )}
+                {clientCompletedJobs !== undefined && ( 
                     <span className="completed-jobs-count" style={{ marginLeft: '10px' }}>
                         ({clientCompletedJobs} jobs completed)
                     </span>
@@ -502,9 +451,9 @@ const NegotiationCard = React.memo(({
         `}>
           <span
             className="status-badge"
-            style={{ backgroundColor: getStatusColor(negotiation.status) }}
+            style={{ backgroundColor: getStatusColor(job.status, isClientViewing) }}
           >
-            {getStatusText(negotiation.status)}
+            {getStatusText(job.status, isClientViewing)}
           </span>
         </div>
       </div>
@@ -512,34 +461,34 @@ const NegotiationCard = React.memo(({
       <div className="negotiation-details">
         <div className="detail-row">
           <span className="label">Project Requirements:</span>
-          <span className="value">{isDirectUploadJob ? negotiation.client_instructions : negotiation.requirements}</span>
+          <span className="value">{isDirectUploadJob ? job.client_instructions : job.requirements}</span>
         </div>
-        {(negotiation.negotiation_files || negotiation.file_name) && ( // Conditionally render attached file for both types
+        {(job.negotiation_files || job.file_name) && (
           <div className="detail-row">
             <span className="label">Attached File:</span>
             <span className="value">
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  onDownloadFile(jobId, isDirectUploadJob ? negotiation.file_name : negotiation.negotiation_files, jobType);
+                  onDownloadFile(jobId, isDirectUploadJob ? job.file_name : job.negotiation_files, jobType);
                 }}
                 className="file-link-button"
                 type="button"
               >
-                📄 {isDirectUploadJob ? negotiation.file_name : negotiation.negotiation_files}
+                📄 {isDirectUploadJob ? job.file_name : job.negotiation_files}
               </button>
             </span>
           </div>
         )}
         <div className="detail-row">
           <span className="label">Agreed Price:</span>
-          <span className="value price">USD {isDirectUploadJob ? negotiation.quote_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : negotiation.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="value price">USD {isDirectUploadJob ? job.quote_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>
           <span className="value">
-            {isDirectUploadJob ? negotiation.agreed_deadline_hours : negotiation.deadline_hours} hours
-            {/* NEW: Dynamic deadline counter display */}
+            {isDirectUploadJob ? job.agreed_deadline_hours : job.deadline_hours} hours
+            {/* Dynamic deadline counter display */}
             {timeLeft && timeLeft !== 'OVERDUE' && (
                 <span className="time-left-display" style={{ marginLeft: '10px', color: 'green', fontWeight: 'bold' }}>
                     ({timeLeft} left)
@@ -552,49 +501,49 @@ const NegotiationCard = React.memo(({
         </div>
         <div className="detail-row">
           <span className="label">Requested:</span>
-          <span className="value">{new Date(negotiation.created_at).toLocaleDateString()}</span>
+          <span className="value">{new Date(job.created_at).toLocaleDateString()}</span>
         </div>
-        {(negotiation.status === 'completed' || negotiation.status === 'client_completed') && (negotiation.completed_at || negotiation.client_completed_at) && (
+        {(job.status === 'completed' || job.status === 'client_completed') && (job.completed_at || job.client_completed_at) && (
             <div className="detail-row">
                 <span className="label">Completed At:</span>
-                <span className="value">{formatDisplayTimestamp(negotiation.completed_at || negotiation.client_completed_at)}</span>
+                <span className="value">{formatDisplayTimestamp(job.completed_at || job.client_completed_at)}</span>
             </div>
         )}
-        {(negotiation.status === 'completed' || negotiation.status === 'client_completed') && (negotiation.client_feedback_comment || negotiation.client_feedback_rating) && (
+        {(job.status === 'completed' || job.status === 'client_completed') && (job.client_feedback_comment || job.client_feedback_rating) && (
             <div className="detail-row client-feedback-section">
                 <span className="label">Client Feedback:</span>
                 <span className="value">
-                    {negotiation.client_feedback_rating && (
+                    {job.client_feedback_rating && (
                         <div className="rating-display" style={{ marginBottom: '5px' }}>
-                            {'★'.repeat(negotiation.client_feedback_rating)}
-                            {'☆'.repeat(5 - negotiation.client_feedback_rating)}
-                            <span className="rating-number">({negotiation.client_feedback_rating.toFixed(1)})</span>
+                            {'★'.repeat(job.client_feedback_rating)}
+                            {'☆'.repeat(5 - job.client_feedback_rating)}
+                            <span className="rating-number">({job.client_feedback_rating.toFixed(1)})</span>
                         </div>
                     )}
-                    {negotiation.client_feedback_comment && (
-                        <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>"{negotiation.client_feedback_comment}"</p>
+                    {job.client_feedback_comment && (
+                        <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>"{job.client_feedback_comment}"</p>
                     )}
-                    {!negotiation.client_feedback_comment && !negotiation.client_feedback_rating && <p>No feedback provided.</p>}
-                </span>
+                    {!job.client_feedback_comment && !job.client_feedback_rating && <p>No feedback provided.</p>}
+                </span >
             </div>
         )}
       </div>
 
-      {negotiation.transcriber_response && negotiation.status !== 'pending' && (
+      {job.transcriber_response && job.status !== 'pending' && (
         <div className="transcriber-response">
           <h4>Transcriber Response:</h4>
-          <p>{negotiation.transcriber_response}</p>
+          <p>{job.transcriber_response}</p>
         </div>
       )}
-      {negotiation.client_response && negotiation.status === 'transcriber_counter' && (
+      {job.client_response && job.status === 'transcriber_counter' && (
         <div className="client-response">
           <h4>Client Response to Counter:</h4>
-          <p>{negotiation.client_response}</p>
+          <p>{job.client_response}</p>
         </div>
       )}
 
       {/* --- CHAT INTEGRATION FOR THIS CARD --- */}
-      {negotiation.status !== 'completed' && negotiation.status !== 'client_completed' && (
+      {job.status !== 'completed' && job.status !== 'client_completed' && (
       <div className="chat-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
         <h4 style={{ marginBottom: '10px' }}>Chat with {otherPartyName}</h4>
         <div ref={chatWindowRef} className="chat-window-content" style={{
@@ -655,7 +604,7 @@ const NegotiationCard = React.memo(({
                 ref={fileInputRef}
                 style={{ display: 'none' }}
                 onChange={handleFileChange}
-                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/jpeg,image/jpg,image/png,image/gif,audio/*,video/*" // Added audio/video to accepted types
+                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/jpeg,image/jpg,image/png,image/gif,audio/*,video/*"
                 disabled={isSendingFile}
             />
             <button
@@ -671,7 +620,7 @@ const NegotiationCard = React.memo(({
                     marginRight: '5px'
                 }}
                 disabled={isSendingFile}
-                title="Attach File (Docs, PDFs, Images, Audio, Video)" // Updated title
+                title="Attach File (Docs, PDFs, Images, Audio, Video)"
             >
                 📎
             </button>
@@ -715,7 +664,7 @@ const NegotiationCard = React.memo(({
         {isClientViewing ? (
           <div> {/* Wrap client actions in a div */}
             {/* Client Actions */}
-            {negotiation.status === 'pending' && (
+            {job.status === 'pending' && (
               <div className="pending-actions">
                 <span className="waiting-text">⏳ Waiting for transcriber response...</span>
                 {onDelete && <button
@@ -727,7 +676,7 @@ const NegotiationCard = React.memo(({
               </div>
             )}
 
-            {negotiation.status === 'transcriber_counter' && (
+            {job.status === 'transcriber_counter' && (
               <div className="countered-actions">
                   <span className="info-text">📝 Transcriber sent a counter-offer!</span>
                   {openAcceptCounterModal && <button onClick={(e) => { e.stopPropagation(); openAcceptCounterModal(jobId); }} className="action-btn accept-counter-btn">Accept Counter</button>}
@@ -736,49 +685,49 @@ const NegotiationCard = React.memo(({
               </div>
             )}
 
-            {negotiation.status === 'accepted_awaiting_payment' && (
+            {job.status === 'accepted_awaiting_payment' && (
               <div className="agreed-actions">
                 <span className="success-text">✅ Accepted! Proceed to Payment.</span>
                 {onPayment && <button
-                  onClick={(e) => { e.stopPropagation(); onPayment(negotiation); }} // Pass full job object
+                  onClick={(e) => { e.stopPropagation(); onPayment(job); }}
                   className="payment-btn"
                 >
                   Proceed to Payment
                 </button>}
               </div>
             )}
-            {/* NEW: Client actions for direct upload jobs before transcriber takes it */}
-            {negotiation.status === 'available_for_transcriber' && isDirectUploadJob && (
+            {job.status === 'available_for_transcriber' && isDirectUploadJob && (
                 <div className="available-direct-upload-actions">
                     <span className="info-text">🔎 Job paid! Waiting for a transcriber to take it.</span>
                 </div>
             )}
 
-            {(negotiation.status === 'hired' || negotiation.status === 'taken' || negotiation.status === 'in_progress') && (
-              <div className="hired-actions">
-                <span className="info-text">🎉 Job Active! {isDirectUploadJob ? 'Transcriber assigned.' : 'Transcriber hired.'}</span>
-                {openCompleteJobModal && <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(negotiation); }} className="action-btn complete-job-btn">Mark as Complete</button>} {/* Pass full job object */}
-              </div>
+            {/* UPDATED: Client can mark negotiation jobs OR direct upload jobs complete if transcriber has completed it */}
+            {(job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed') && openCompleteJobModal && (
+                <div className="hired-actions">
+                    <span className="info-text">🎉 Job Active! {isDirectUploadJob ? 'Transcriber assigned.' : 'Transcriber hired.'}</span>
+                    <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(job); }} className="action-btn complete-job-btn">Mark as Complete</button>
+                </div>
             )}
 
-            {(negotiation.status === 'completed' || negotiation.status === 'client_completed') && (
+            {(job.status === 'completed' || job.status === 'client_completed') && (
               <div className="completed-status-message">
                   <span className="success-text">🎉 Job Completed!</span>
               </div>
             )}
 
-            {negotiation.status === 'rejected' && (
+            {job.status === 'rejected' && (
               <div className="rejected-actions">
                 <span className="error-text">❌ Negotiation was rejected.</span>
               </div>
             )}
 
-            {negotiation.status === 'cancelled' && (
+            {job.status === 'cancelled' && (
               <div className="cancelled-actions">
                 <span className="error-text">❌ Job was cancelled.</span>
               </div>
             )}
-            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled' || negotiation.status === 'client_completed') && (
+            {(job.status === 'rejected' || job.status === 'cancelled' || job.status === 'client_completed') && (
                 <div className="closed-actions">
                     {onDelete && <button
                         onClick={(e) => { e.stopPropagation(); onDelete(jobId); }}
@@ -788,11 +737,11 @@ const NegotiationCard = React.memo(({
                     </button>}
                 </div>
             )}
-          </div> // Closing div for client actions
+          </div>
         ) : (
           <>
             {/* Transcriber Actions */}
-            {negotiation.status === 'pending' && (
+            {jobType === 'negotiation' && job.status === 'pending' && (
               <div className="transcriber-pending-actions" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
                 {openAcceptModal && <button
                   onClick={(e) => { e.stopPropagation(); openAcceptModal(jobId); }}
@@ -814,23 +763,29 @@ const NegotiationCard = React.memo(({
                 </button>}
               </div>
             )}
-            {negotiation.status === 'accepted_awaiting_payment' && (
+            {jobType === 'negotiation' && job.status === 'accepted_awaiting_payment' && (
                 <div className="transcriber-awaiting-payment-actions">
                     <span className="info-text">⏳ Awaiting Client Payment...</span>
                 </div>
             )}
-            {/* NEW: Transcriber actions for direct upload job status */}
-            {negotiation.status === 'available_for_transcriber' && isDirectUploadJob && (
+            {jobType === 'direct_upload' && job.status === 'available_for_transcriber' && (
                 <div className="transcriber-available-direct-upload-actions">
                     <span className="info-text">✨ Job available for you to take!</span>
                 </div>
             )}
-            {(negotiation.status === 'hired' || negotiation.status === 'taken' || negotiation.status === 'in_progress') && (
+            {(job.status === 'hired' || job.status === 'taken' || job.status === 'in_progress') && (
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
+                    {/* NEW: Conditional button for transcriber to submit/complete active jobs */}
+                    {jobType === 'direct_upload' && (job.status === 'taken' || job.status === 'in_progress') && openSubmitDirectJobModal && (
+                        <button onClick={(e) => { e.stopPropagation(); openSubmitDirectJobModal(jobId); }} className="action-btn submit-job-btn">
+                            Submit Job
+                        </button>
+                    )}
+                    {/* Removed Mark as Complete button for negotiation jobs from transcriber's view */}
                 </div>
             )}
-            {negotiation.status === 'client_counter' && (
+            {jobType === 'negotiation' && job.status === 'client_counter' && (
                 <div className="transcriber-client-countered-actions">
                     <span className="info-text">📝 Client sent a counter-offer!</span>
                     {openAcceptModal && <button onClick={(e) => { e.stopPropagation(); openAcceptModal(jobId); }} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
@@ -843,9 +798,9 @@ const NegotiationCard = React.memo(({
                     {openRejectModal && <button onClick={(e) => { e.stopPropagation(); openRejectModal(jobId); }} className="action-btn reject-client-counter-btn">Reject Client Counter</button>}
                 </div>
             )}
-            {(negotiation.status === 'rejected' || negotiation.status === 'cancelled' || negotiation.status === 'completed' || negotiation.status === 'client_completed') && (
+            {(job.status === 'rejected' || job.status === 'cancelled' || job.status === 'completed' || job.status === 'client_completed') && (
                 <div className="transcriber-closed-actions">
-                    <span className="info-text">Job {negotiation.status}.</span>
+                    <span className="info-text">Job {job.status}.</span>
                 </div>
             )}
           </>
@@ -854,6 +809,6 @@ const NegotiationCard = React.memo(({
 
     </div>
   );
-}, arePropsEqual); // Pass the custom comparison function to React.memo
+}, arePropsEqual);
 
 export default NegotiationCard;

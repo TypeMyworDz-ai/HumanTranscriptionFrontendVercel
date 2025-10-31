@@ -1,6 +1,7 @@
 // src/TranscriberPaymentHistory.js - UPDATED to display USD currency, Upcoming Payouts, and job status
 // REMOVED: All Past Transactions table
 // FIXED: Upcoming payouts now correctly displayed and grouped by week
+// FIXED: Direct upload job payments now appear in the Upcoming Payouts table.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -148,7 +149,7 @@ const TranscriberPaymentHistory = () => {
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>Job Type</th> {/* NEW: Added Job Type column */}
+                                                <th>Job Type</th>
                                                 <th>Job ID</th>
                                                 <th>Client</th>
                                                 <th>Requirements</th>
@@ -160,20 +161,22 @@ const TranscriberPaymentHistory = () => {
                                         <tbody>
                                             {week.payouts.map(payout => (
                                                 <tr key={payout.id}>
-                                                    <td>{payout.related_job_type?.replace('_', ' ') || 'N/A'}</td> {/* Display job type */}
+                                                    <td>{payout.related_job_type?.replace('_', ' ') || 'N/A'}</td>
                                                     {/* Conditionally display job ID based on type */}
                                                     <td>
                                                         {payout.related_job_type === 'negotiation' && payout.negotiation_id?.substring(0, 8)}
+                                                        {/* CHANGED: Display direct_upload_job_id */}
                                                         {payout.related_job_type === 'direct_upload' && payout.direct_upload_job_id?.substring(0, 8)}
                                                         {payout.related_job_type === 'training' && payout.client_id?.substring(0, 8)} {/* For training, client_id is the relevant ID */}
                                                         ...
                                                     </td>
                                                     <td>{payout.clientName || 'N/A'}</td>
+                                                    {/* CHANGED: Access jobRequirements correctly */}
                                                     <td>{payout.jobRequirements ? payout.jobRequirements.substring(0, 50) + '...' : 'N/A'}</td>
                                                     <td>USD {payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td>
                                                         {/* FIXED: Display "Completed (Awaiting Payout)" if job_status is completed */}
-                                                        <span className={`status-badge ${payout.job_status === 'completed' ? 'completed' : payout.status}`}>
+                                                        <span className={`status-badge ${payout.job_status === 'completed' || payout.job_status === 'client_completed' ? 'completed' : payout.status}`}>
                                                             {payout.job_status === 'completed' && payout.status === 'awaiting_completion'
                                                                 ? 'Completed (Awaiting Payout)'
                                                                 : payout.status?.replace('_', ' ')}

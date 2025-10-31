@@ -59,9 +59,11 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(userData);
         if (parsedUser.id && parsedUser.user_type) {
-            currentUser = parsedUser;
+            // CRITICAL FIX: Filter out 'is_available' here as well, if it exists in localStorage
+            const { is_available, ...userWithoutIsAvailable } = parsedUser;
+            currentUser = userWithoutIsAvailable;
             currentIsAuthenticated = true;
-            console.log('checkAuth: Found valid user data. User=', parsedUser);
+            console.log('checkAuth: Found valid user data. User=', currentUser); // Log the filtered user
         } else {
           console.warn('checkAuth: Invalid user data in localStorage. Clearing.');
           localStorage.removeItem('token');
@@ -86,58 +88,66 @@ export const AuthProvider = ({ children }) => {
     console.groupEnd();
   }, []);
 
-  // NEW: Add refreshUserData function to fetch the latest user data from the server
-  const refreshUserData = useCallback(async () => {
-    console.groupCollapsed('AuthContext: refreshUserData triggered (START)');
+  // RENAMED & REFINED: updateUser function to fetch the latest user data from the server
+  // This function now also directly updates the context's user state.
+  const updateUser = useCallback(async (newUserData = null) => { // Added newUserData parameter
+    console.groupCollapsed('AuthContext: updateUser triggered (START)');
     
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log('refreshUserData: No token found, cannot refresh user data');
+      console.log('updateUser: No token found, cannot refresh user data');
       console.groupEnd();
       return;
     }
 
-    try {
-      console.log('refreshUserData: Fetching fresh user data from server');
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
+    let fetchedUser = null;
+    if (newUserData) { // If newUserData is provided, use it directly
+        console.log('updateUser: Using provided newUserData:', newUserData);
+        fetchedUser = newUserData;
+    } else { // Otherwise, fetch fresh data from the server
+        try {
+            console.log('updateUser: Fetching fresh user data from server');
+            const response = await fetch(`${BACKEND_API_URL}/api/users/${user?.id}`, { // Use current user ID if available
+                method: 'GET',
+                headers: {
+                'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch user data');
+            }
+
+            const userData = await response.json();
+            console.log('updateUser: Received fresh user data:', userData);
+            fetchedUser = userData.user;
+            
+        } catch (error) {
+            console.error('updateUser: Error fetching user data:', error);
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const userData = await response.json();
-      console.log('refreshUserData: Received fresh user data:', userData);
-
-      // Update localStorage with fresh user data
-      localStorage.setItem('user', JSON.stringify(userData.user));
-      
-      // Update state
-      setUserRef.current(userData.user);
-      console.log('refreshUserData: Updated user state with fresh data');
-      
-      // Log the updated transcriber_status
-      console.log('refreshUserData: New transcriber_status =', userData.user.transcriber_status);
-      
-    } catch (error) {
-      console.error('refreshUserData: Error fetching user data:', error);
-    } finally {
-      console.groupEnd();
     }
-  }, []);
+
+    if (fetchedUser) {
+        // CRITICAL FIX: Filter out 'is_available' before setting user state
+        const { is_available, ...userWithoutIsAvailable } = fetchedUser;
+        localStorage.setItem('user', JSON.stringify(userWithoutIsAvailable));
+        setUserRef.current(userWithoutIsAvailable);
+        console.log('updateUser: Updated user state with fresh data. New transcriber_status =', userWithoutIsAvailable.transcriber_status);
+    } else {
+        console.warn('updateUser: No user data available to update.');
+    }
+    
+    console.groupEnd();
+  }, [user?.id]); // Dependency on user.id to refetch if the user changes
+
 
   useEffect(() => {
-    console.log('AuthContext: Primary useEffect triggered.');
+    console.log('AuthContext: Primary useEffect triggered. Loading initial auth state.');
     checkAuth();
 
     const handleStorageChange = (event) => {
       if (event.key === 'token' || event.key === 'user') {
         console.warn('AuthContext: localStorage change detected for key:', event.key, '-> RE-RUNNING checkAuth');
-        // CRITICAL FIX: Always re-run checkAuth on storage change, regardless of mounted status
         checkAuth();
       }
     };
@@ -145,7 +155,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       console.log('AuthContext: Primary useEffect cleanup - Component unmounting or dependencies changed.');
-      isMounted.current = false; // Set to false for future reference
+      isMounted.current = false;
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [checkAuth]);
@@ -155,31 +165,43 @@ export const AuthProvider = ({ children }) => {
   }, [user, isAuthenticated, authLoading, isAuthReady]);
 
 
-  const login = useCallback((token, userData) => {
+  const login = useCallback(async (token, userData) => { // Made async to await updateUser
     console.groupCollapsed('AuthContext: login triggered (START)');
     console.log('login: Received token and user data for:', userData?.full_name);
 
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    console.log('login: localStorage updated immediately.');
+    // CRITICAL FIX: Filter out 'is_available' before storing in localStorage during login
+    const { is_available, ...userWithoutIsAvailable } = userData;
+    localStorage.setItem('user', JSON.stringify(userWithoutIsAvailable));
+    console.log('login: localStorage updated immediately with filtered user data.');
 
-    checkAuth(); // Trigger a re-check to update React state consistently
-    console.log('login: Triggered checkAuth to update React state. (END)');
+    await updateUser(userWithoutIsAvailable); // Update user state directly with filtered data
+    setIsAuthenticatedRef.current(true); // Explicitly set isAuthenticated to true
+    setAuthLoadingRef.current(false); // Explicitly set authLoading to false
+    setIsAuthReadyRef.current(true); // Explicitly set isAuthReady to true
+
+    console.log('login: User state updated and authentication flags set. (END)');
     console.groupEnd();
-  }, [checkAuth]);
+  }, [updateUser]);
 
   const logout = useCallback(() => {
     console.groupCollapsed('AuthContext: logout triggered (START)');
-    console.log('logout: Clearing authentication data.');
+    console.log('logout: Clearing authentication data. User:', user?.full_name);
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     console.log('logout: localStorage cleared immediately.');
 
-    checkAuth(); // Trigger a re-check to update React state consistently
-    console.log('logout: Triggered checkAuth to update React state. (END)');
+    // CRITICAL FIX: Reset user state and auth flags immediately on logout
+    setUserRef.current(null);
+    setIsAuthenticatedRef.current(false);
+    setAuthLoadingRef.current(false); // Should be false after logout
+    setIsAuthReadyRef.current(true); // Should be ready after logout process
+
+    console.log('logout: User state reset and authentication flags set. (END)');
     console.groupEnd();
-  }, [checkAuth]);
+  }, [user]); // Added user to dependency to log current user before clearing
+
 
   const authContextValue = {
     user,
@@ -189,7 +211,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     checkAuth,
-    refreshUserData // NEW: Add refreshUserData to context value
+    updateUser // Expose updateUser (which replaces refreshUserData)
   };
 
   return (
