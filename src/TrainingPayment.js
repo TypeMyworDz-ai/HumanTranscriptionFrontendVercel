@@ -13,6 +13,7 @@ const TrainingPayment = () => {
 
     const [loading, setLoading] = useState(false); // For payment initiation
     const [paymentInitiated, setPaymentInitiated] = useState(false); // To prevent multiple payment attempts
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // NEW: State for selected payment method
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const showToast = useCallback((message, type = 'success') => {
@@ -48,15 +49,18 @@ const TrainingPayment = () => {
             showToast('User email is missing or payment already initiated.', 'error');
             return;
         }
+        if (!selectedPaymentMethod) { // NEW: Validate payment method selected
+            showToast('Please select a payment method.', 'error');
+            return;
+        }
 
         setLoading(true);
         setPaymentInitiated(true);
         const token = localStorage.getItem('token');
 
         try {
-            // NEW: Log the full URL being called
             const paymentApiUrl = `${BACKEND_API_URL}/api/payment/initialize-training`;
-            console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl}`);
+            console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl} with method: ${selectedPaymentMethod}`); // NEW: Log selected method
 
             const response = await fetch(paymentApiUrl, {
                 method: 'POST',
@@ -66,25 +70,25 @@ const TrainingPayment = () => {
                 },
                 body: JSON.stringify({
                     amount: TRAINING_FEE_USD,
-                    email: user.email
+                    email: user.email,
+                    paymentMethod: selectedPaymentMethod // NEW: Send selected payment method
                 })
             });
 
-            // NEW: Improved error handling for non-OK responses
             if (!response.ok) {
-                const errorText = await response.text(); // Read raw response text
+                const errorText = await response.text();
                 console.error('[TrainingPayment] Server responded with an error:', response.status, errorText);
                 showToast(`Failed to initiate payment: ${response.statusText}. Please check backend route.`, 'error');
                 setLoading(false);
                 setPaymentInitiated(false);
-                return; // Stop execution here
+                return;
             }
 
-            const data = await response.json(); // Only try to parse as JSON if response is OK
+            const data = await response.json();
 
             if (data.data?.authorization_url) {
                 showToast('Redirecting to payment gateway...', 'info');
-                window.location.href = data.data.authorization_url; // Redirect to Paystack
+                window.location.href = data.data.authorization_url;
             } else {
                 showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
                 setLoading(false);
@@ -97,7 +101,7 @@ const TrainingPayment = () => {
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, showToast]);
+    }, [user, paymentInitiated, selectedPaymentMethod, showToast]); // NEW: Add selectedPaymentMethod to dependencies
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
@@ -145,10 +149,36 @@ const TrainingPayment = () => {
                             <p className="fee-amount">
                                 Training Fee: <strong>USD {TRAINING_FEE_USD.toFixed(2)}</strong>
                             </p>
+
+                            {/* NEW: Payment Method Selection */}
+                            <div className="payment-method-selection">
+                                <h3>Select Payment Method:</h3>
+                                <label className="radio-label">
+                                    <input
+                                        type="radio"
+                                        value="paystack"
+                                        checked={selectedPaymentMethod === 'paystack'}
+                                        onChange={() => setSelectedPaymentMethod('paystack')}
+                                        disabled={loading || paymentInitiated}
+                                    />
+                                    Paystack (Card, Mobile Money, Bank Transfer, Pesalink)
+                                </label>
+                                <label className="radio-label">
+                                    <input
+                                        type="radio"
+                                        value="korapay"
+                                        checked={selectedPaymentMethod === 'korapay'}
+                                        onChange={() => setSelectedPaymentMethod('korapay')}
+                                        disabled={loading || paymentInitiated}
+                                    />
+                                    KoraPay (Card, Bank Transfer, Mobile Money)
+                                </label>
+                            </div>
+
                             <button
                                 onClick={handleInitiatePayment}
                                 className="pay-now-btn"
-                                disabled={loading || paymentInitiated}
+                                disabled={loading || paymentInitiated || !selectedPaymentMethod} // NEW: Disable if no method selected
                             >
                                 {loading ? 'Processing...' : `Pay Now (USD ${TRAINING_FEE_USD.toFixed(2)})`}
                             </button>
