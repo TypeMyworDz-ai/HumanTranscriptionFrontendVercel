@@ -4,155 +4,11 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: #f0f2f5; /* Light background */
-    color: #333;
+    background-color: #f0f2f5; /* Light grey background */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.training-payment-header {
-    background-color: #6a1b9a; /* Deep purple */
-    color: white;
-    padding: 15px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    width: 100%;
-}
-
-.training-payment-header .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.training-payment-header h1 {
-    font-size: 1.8em;
-    margin: 0;
-}
-
-.training-payment-header .user-profile-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.training-payment-header .welcome-text-badge {
-    background-color: #ffb300; /* Amber */
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-size: 0.9em;
-    font-weight: 600;
-}
-
-.training-payment-header .logout-btn {
-    background-color: #dc3545; /* Red for logout */
-    color: white;
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.3s ease;
-}
-
-.training-payment-header .logout-btn:hover {
-    background-color: #c82333;
-}
-
-.training-payment-main {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
-
-.training-payment-content {
-    width: 100%;
-    max-width: 600px;
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    padding: 40px;
-    text-align: center;
-}
-
-.payment-card h2 {
-    color: #4a148c; /* Dark purple */
-    font-size: 2.2em;
-    margin-bottom: 20px;
-}
-
-.payment-card .intro-text {
-    font-size: 1.1em;
-    color: #555;
-    margin-bottom: 30px;
-    line-height: 1.6;
-}
-
-.payment-details {
-    margin-bottom: 30px;
-}
-
-.payment-details .fee-amount {
-    font-size: 1.5em;
-    font-weight: 500;
     color: #333;
-    margin-bottom: 20px;
 }
 
-.payment-details .fee-amount strong {
-    color: #6a1b9a; /* Deep purple */
-    font-size: 1.2em;
-    font-weight: 700;
-}
-
-.pay-now-btn {
-    background-color: #4caf50; /* Green */
-    color: white;
-    padding: 15px 30px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.2em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    width: 80%;
-    max-width: 300px;
-    font-weight: 600;
-}
-
-.pay-now-btn:hover:not(:disabled) {
-    background-color: #43a047;
-    transform: translateY(-2px);
-}
-
-.pay-now-btn:disabled {
-    background-color: #a5d6a7; /* Lighter green when disabled */
-    cursor: not-allowed;
-}
-
-.note-text {
-    font-size: 0.95em;
-    color: #777;
-    margin-top: 25px;
-    line-height: 1.5;
-}
-
-.back-to-home-btn {
-    display: inline-block;
-    margin-top: 30px;
-    color: #007bff;
-    text-decoration: none;
-    font-size: 1em;
-    transition: color 0.3s ease;
-}
-
-.back-to-home-btn:hover {
-    color: #0056b3;
-    text-decoration: underline;
-}
-
-/* Loading spinner styles */
 .loading-spinner {
     display: flex;
     flex-direction: column;
@@ -179,26 +35,317 @@
     100% { transform: rotate(360deg); }
 }
 
+.training-payment-header {
+    background-color: #4a0072; /* Deep purple */
+    color: #fff;
+    padding: 15px 40px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.training-payment-header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: 600;
+}
+
+.user-profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.welcome-text-badge {
+    background-color: #6a1b9a; /* Lighter purple */
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.logout-btn {
+    background-color: #e91e63; /* Pink accent */
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+}
+
+.logout-btn:hover {
+    background-color: #c2185b; /* Darker pink on hover */
+}
+
+.training-payment-main {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.training-payment-content {
+    width: 100%;
+    max-width: 700px;
+}
+
+.payment-card {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.payment-card h2 {
+    color: #4a0072; /* Deep purple */
+    font-size: 2.2em;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.intro-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 30px;
+    color: #555;
+}
+
+.payment-details {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #eee;
+}
+
+.fee-amount {
+    font-size: 1.6em;
+    margin-bottom: 25px;
+    color: #333;
+}
+
+.fee-amount strong {
+    color: #4a0072; /* Deep purple */
+    font-weight: 700;
+}
+
+.payment-method-selection {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.payment-method-selection h3 {
+    font-size: 1.2em;
+    color: #4a0072;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f9f9f9;
+    font-size: 1em;
+    color: #444;
+}
+
+.radio-label:hover {
+    border-color: #6a1b9a; /* Lighter purple on hover */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.radio-label input[type="radio"] {
+    /* Hide default radio button */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none; /* Remove default border */
+    background: none; /* Remove default background */
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    color: currentColor;
+    width: 1.15em;
+    height: 1.15em;
+    border: 0.15em solid #999;
+    border-radius: 50%;
+    transform: translateY(-0.075em);
+    display: grid;
+    place-content: center;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+}
+
+.radio-label input[type="radio"]::before {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.2s ease-in-out;
+    box-shadow: inset 1em 1em #6a1b9a; /* Lighter purple for checked state */
+}
+
+.radio-label input[type="radio"]:checked {
+    border-color: #6a1b9a;
+}
+
+.radio-label input[type="radio"]:checked::before {
+    transform: scale(1);
+}
+
+.radio-label input[type="radio"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.radio-label input[type="radio"]:disabled + span {
+    color: #999;
+}
+
+
+.pay-now-btn {
+    background-color: #00c853; /* Green accent for action */
+    color: #fff;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    width: 100%;
+    max-width: 300px;
+    margin-top: 20px;
+    box-shadow: 0 4px 10px rgba(0, 200, 83, 0.3);
+}
+
+.pay-now-btn:hover:not(:disabled) {
+    background-color: #00a040; /* Darker green on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 200, 83, 0.4);
+}
+
+.pay-now-btn:disabled {
+    background-color: #cccccc; /* Grey for disabled state */
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.note-text {
+    font-size: 0.95em;
+    color: #777;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+.back-to-home-btn {
+    display: inline-block;
+    margin-top: 20px;
+    color: #4a0072;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.back-to-home-btn:hover {
+    color: #6a1b9a;
+    text-decoration: underline;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .training-payment-header .header-content {
-        flex-direction: column;
-        gap: 10px;
+    .training-payment-header {
+        padding: 15px 20px;
     }
+
     .training-payment-header h1 {
         font-size: 1.5em;
     }
-    .training-payment-header .user-profile-actions {
-        flex-direction: column;
-        gap: 10px;
+
+    .welcome-text-badge, .logout-btn {
+        padding: 6px 12px;
+        font-size: 0.85em;
     }
-    .training-payment-content {
-        padding: 30px 20px;
+
+    .training-payment-main {
+        padding: 20px 15px;
     }
+
+    .payment-card {
+        padding: 25px;
+    }
+
     .payment-card h2 {
         font-size: 1.8em;
     }
+
+    .intro-text {
+        font-size: 1em;
+        margin-bottom: 20px;
+    }
+
+    .fee-amount {
+        font-size: 1.4em;
+    }
+
+    .radio-label {
+        padding: 12px 15px;
+        font-size: 0.95em;
+    }
+
     .pay-now-btn {
+        padding: 12px 25px;
+        font-size: 1.1em;
+        max-width: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .training-payment-header h1 {
+        font-size: 1.3em;
+    }
+
+    .user-profile-actions {
+        flex-direction: column;
+        gap: 10px;
         width: 100%;
+    }
+
+    .welcome-text-badge, .logout-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .payment-card {
+        padding: 20px;
+    }
+
+    .payment-card h2 {
+        font-size: 1.6em;
+    }
+
+    .pay-now-btn {
+        max-width: 100%;
     }
 }

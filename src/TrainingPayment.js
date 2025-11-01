@@ -13,7 +13,7 @@ const TrainingPayment = () => {
 
     const [loading, setLoading] = useState(false); // For payment initiation
     const [paymentInitiated, setPaymentInitiated] = useState(false); // To prevent multiple payment attempts
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // NEW: State for selected payment method
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('korapay'); // MODIFIED: Default to KoraPay
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const showToast = useCallback((message, type = 'success') => {
