@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext'; // MODIFIED: Import updateUser
 import './TrainingPayment.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const TRAINING_FEE_USD = 2.00;
 
 const TrainingPayment = () => {
-    const { user, isAuthenticated, authLoading, logout } = useAuth();
+    const { user, isAuthenticated, authLoading, logout, updateUser } = useAuth(); // MODIFIED: Destructure updateUser
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -92,7 +92,7 @@ const TrainingPayment = () => {
                 amount: TRAINING_FEE_USD,
                 email: user.email,
                 paymentMethod: selectedPaymentMethod,
-                fullName: user.full_name, // Pass full name for KoraPay customer object
+                fullName: user.full_name,
             };
 
             if (selectedPaymentMethod === 'korapay') {
@@ -170,6 +170,8 @@ const TrainingPayment = () => {
 
                                 const verifyData = await verifyResponse.json();
                                 if (verifyData.success) {
+                                    // MODIFIED: Update AuthContext and then redirect
+                                    await updateUser(); // Refresh user data in AuthContext
                                     showToast("Payment successfully verified. Redirecting to dashboard!", "success");
                                     navigate('/trainee-dashboard');
                                 } else {
@@ -205,7 +207,7 @@ const TrainingPayment = () => {
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate]);
+    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser]); // MODIFIED: Add updateUser to dependencies
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
@@ -276,7 +278,7 @@ const TrainingPayment = () => {
                                         disabled={loading || paymentInitiated}
                                     />
                                     KoraPay (Card, Bank Transfer, Mobile Money)
-                                </label> {/* Corrected closing tag */}
+                                </label>
                             </div>
 
                             {/* Mobile Number Input for KoraPay */}
