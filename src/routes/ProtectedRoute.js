@@ -9,19 +9,11 @@ import { useAuth } from '../contexts/AuthContext';
  * It renders its children only if the user is authenticated AND authorized.
  */
 const ProtectedRoute = () => {
-    const { isAuthenticated, user, isAuthReady, refreshUserData } = useAuth();
+    const { isAuthenticated, user, isAuthReady } = useAuth();
     const location = useLocation();
 
-    // FIX: Check if we're on the payment callback page
-    const isPaymentCallbackPage = location.pathname.includes('payment-callback');
-
-    // FIX: Refresh user data when on payment callback page to get updated payment status
-    useEffect(() => {
-        if (isPaymentCallbackPage && isAuthenticated && user) {
-            console.log('ProtectedRoute: On payment callback page. Refreshing user data...');
-            refreshUserData();
-        }
-    }, [isPaymentCallbackPage, isAuthenticated, user, refreshUserData]);
+    // REMOVED: The useEffect that was calling refreshUserData() on payment callback.
+    // This is now handled by TrainingPayment.js directly calling updateUser() and checkAuth().
 
     // 1. Handle initial loading state while the authentication check is running
     if (!isAuthReady) {
@@ -38,8 +30,10 @@ const ProtectedRoute = () => {
         return <Navigate to="/login" replace state={{ from: location }} />;
     }
 
-    // FIX: Allow payment callback page to proceed without further checks
-    if (isPaymentCallbackPage) {
+    // Allow payment callback page to proceed without further checks
+    // This is important because the payment gateway might redirect here temporarily
+    // before the AuthContext has fully updated.
+    if (location.pathname.includes('payment-callback')) {
         console.log('ProtectedRoute: Allowing payment callback page to proceed.');
         return <Outlet />;
     }
@@ -66,15 +60,15 @@ const ProtectedRoute = () => {
 
         // Check if trainee has paid for training
         if (user.transcriber_status !== 'paid_training_fee') {
-            // If trainee is trying to access anything other than the payment page, redirect to payment
+            // If trainee has NOT paid, and is trying to access any page other than the payment page, redirect to payment
             if (location.pathname !== trainingPaymentPath) {
                 console.log(`ProtectedRoute: Trainee user (${user.full_name}) has not paid for training. Redirecting to ${trainingPaymentPath}.`);
                 return <Navigate to={trainingPaymentPath} replace />;
             }
-            // If they are on the payment path, allow them to proceed.
+            // If they are on the payment path, and have not paid, allow them to proceed.
             return <Outlet />;
-        } else {
-            // If trainee has paid, but tries to access the payment page again, redirect to dashboard
+        } else { // user.transcriber_status === 'paid_training_fee'
+            // If trainee HAS paid, but tries to access the payment page again, redirect to dashboard
             if (location.pathname === trainingPaymentPath) {
                 console.log(`ProtectedRoute: Trainee user (${user.full_name}) has paid for training. Redirecting from payment page to ${traineeDashboardPath}.`);
                 return <Navigate to={traineeDashboardPath} replace />;
