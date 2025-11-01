@@ -14,6 +14,7 @@ const TrainingPayment = () => {
     const [loading, setLoading] = useState(false); // For payment initiation
     const [paymentInitiated, setPaymentInitiated] = useState(false); // To prevent multiple payment attempts
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('korapay'); // MODIFIED: Default to KoraPay
+    const [mobileNumber, setMobileNumber] = useState(''); // NEW: State for mobile number
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const showToast = useCallback((message, type = 'success') => {
@@ -49,10 +50,16 @@ const TrainingPayment = () => {
             showToast('User email is missing or payment already initiated.', 'error');
             return;
         }
-        if (!selectedPaymentMethod) { // NEW: Validate payment method selected
+        if (!selectedPaymentMethod) { // Validate payment method selected
             showToast('Please select a payment method.', 'error');
             return;
         }
+        // NEW: Validate mobile number if KoraPay is selected
+        if (selectedPaymentMethod === 'korapay' && !mobileNumber) {
+            showToast('Please enter your mobile number for KoraPay.', 'error');
+            return;
+        }
+
 
         setLoading(true);
         setPaymentInitiated(true);
@@ -60,7 +67,18 @@ const TrainingPayment = () => {
 
         try {
             const paymentApiUrl = `${BACKEND_API_URL}/api/payment/initialize-training`;
-            console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl} with method: ${selectedPaymentMethod}`); // NEW: Log selected method
+            console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl} with method: ${selectedPaymentMethod}`); // Log selected method
+
+            const payload = {
+                amount: TRAINING_FEE_USD,
+                email: user.email,
+                paymentMethod: selectedPaymentMethod,
+            };
+
+            // NEW: Add mobile number to payload if KoraPay is selected
+            if (selectedPaymentMethod === 'korapay') {
+                payload.mobileNumber = mobileNumber;
+            }
 
             const response = await fetch(paymentApiUrl, {
                 method: 'POST',
@@ -68,11 +86,7 @@ const TrainingPayment = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    amount: TRAINING_FEE_USD,
-                    email: user.email,
-                    paymentMethod: selectedPaymentMethod // NEW: Send selected payment method
-                })
+                body: JSON.stringify(payload) // Use the updated payload
             });
 
             if (!response.ok) {
@@ -101,7 +115,7 @@ const TrainingPayment = () => {
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, showToast]); // NEW: Add selectedPaymentMethod to dependencies
+    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast]); // MODIFIED: Add mobileNumber to dependencies
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
@@ -150,7 +164,7 @@ const TrainingPayment = () => {
                                 Training Fee: <strong>USD {TRAINING_FEE_USD.toFixed(2)}</strong>
                             </p>
 
-                            {/* NEW: Payment Method Selection */}
+                            {/* Payment Method Selection */}
                             <div className="payment-method-selection">
                                 <h3>Select Payment Method:</h3>
                                 <label className="radio-label">
@@ -175,10 +189,26 @@ const TrainingPayment = () => {
                                 </label>
                             </div>
 
+                            {/* NEW: Mobile Number Input for KoraPay */}
+                            {selectedPaymentMethod === 'korapay' && (
+                                <div className="mobile-number-input">
+                                    <label htmlFor="mobileNumber">Mobile Number for KoraPay:</label>
+                                    <input
+                                        type="text"
+                                        id="mobileNumber"
+                                        value={mobileNumber}
+                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                        placeholder="e.g., 2547XXXXXXXX"
+                                        disabled={loading || paymentInitiated}
+                                        className="text-input-field"
+                                    />
+                                </div>
+                            )}
+
                             <button
                                 onClick={handleInitiatePayment}
                                 className="pay-now-btn"
-                                disabled={loading || paymentInitiated || !selectedPaymentMethod} // NEW: Disable if no method selected
+                                disabled={loading || paymentInitiated || !selectedPaymentMethod || (selectedPaymentMethod === 'korapay' && !mobileNumber)} // MODIFIED: Disable if KoraPay selected but no mobile number
                             >
                                 {loading ? 'Processing...' : `Pay Now (USD ${TRAINING_FEE_USD.toFixed(2)})`}
                             </button>

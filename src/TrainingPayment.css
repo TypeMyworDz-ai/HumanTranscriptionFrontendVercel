@@ -217,6 +217,43 @@
     color: #999;
 }
 
+/* NEW: Mobile Number Input Styling */
+.mobile-number-input {
+    text-align: left;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.mobile-number-input label {
+    display: block;
+    font-size: 1em;
+    color: #4a0072;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.mobile-number-input .text-input-field {
+    width: calc(100% - 40px); /* Adjust for padding */
+    padding: 12px 18px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1em;
+    color: #333;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mobile-number-input .text-input-field:focus {
+    border-color: #6a1b9a;
+    box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.2);
+    outline: none;
+}
+
+.mobile-number-input .text-input-field:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+    color: #6c757d;
+}
+
 
 .pay-now-btn {
     background-color: #00c853; /* Green accent for action */
@@ -307,6 +344,11 @@
     .radio-label {
         padding: 12px 15px;
         font-size: 0.95em;
+    }
+
+    .mobile-number-input .text-input-field {
+        width: calc(100% - 30px); /* Adjust for smaller padding on smaller screens */
+        padding: 10px 15px;
     }
 
     .pay-now-btn {
