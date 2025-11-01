@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import { useAuth } from './contexts/AuthContext'; // MODIFIED: Import updateUser
+import { useAuth } from './contexts/AuthContext'; // MODIFIED: Import updateUser, checkAuth
 import './TrainingPayment.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const TRAINING_FEE_USD = 2.00;
 
 const TrainingPayment = () => {
-    const { user, isAuthenticated, authLoading, logout, updateUser } = useAuth(); // MODIFIED: Destructure updateUser
+    const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth(); // MODIFIED: Destructure updateUser, checkAuth
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -172,6 +172,7 @@ const TrainingPayment = () => {
                                 if (verifyData.success) {
                                     // MODIFIED: Update AuthContext and then redirect
                                     await updateUser(); // Refresh user data in AuthContext
+                                    await checkAuth(); // Force re-evaluation of auth state
                                     showToast("Payment successfully verified. Redirecting to dashboard!", "success");
                                     navigate('/trainee-dashboard');
                                 } else {
@@ -181,7 +182,7 @@ const TrainingPayment = () => {
                                 }
 
                             } catch (verifyError) {
-                                console.error('Error during KoraPay verification:', verifyError);
+                                console.error('Error during KoraPay verification:&#x27;', verifyError);
                                 showToast('Network error during payment verification. Please contact support.', 'error');
                                 setLoading(false);
                                 setPaymentInitiated(false);
@@ -202,12 +203,12 @@ const TrainingPayment = () => {
             }
 
         } catch (error) {
-            console.error('Error initiating training payment:', error);
+            console.error('Error initiating training payment:&#x27;', error);
             showToast('Network error during payment initiation. Please try again.', 'error');
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser]); // MODIFIED: Add updateUser to dependencies
+    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser, checkAuth]); // MODIFIED: Add checkAuth to dependencies
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
