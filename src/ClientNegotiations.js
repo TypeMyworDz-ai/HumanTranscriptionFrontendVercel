@@ -4,6 +4,8 @@
 // FIXED: Removed unnecessary dependency 'user.id' from fetchNegotiationJobs useCallback.
 // FIXED: KoraPay initialization logic to ensure script loading and required customer data.
 // UPDATED: KoraPay initialization to remove explicit channels (backend change), and added extensive logging for verification.
+// UPDATED: KoraPay onSuccess/onClose callbacks to handle modal closure more gracefully and ensure verification params are logged.
+// FIXED: KoraPay TypeError by explicitly calling Korapay.close() and adding a small delay for modal cleanup.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
@@ -20,7 +22,7 @@ const ClientNegotiations = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [negotiations, setNegotiations] = useState([]); // Renamed from allJobs to negotiations
+    const [negotiations, setNegotiations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({
         isVisible: false,
@@ -31,7 +33,7 @@ const ClientNegotiations = () => {
     const [showAcceptCounterModal, setShowAcceptCounterModal] = useState(false);
     const [showRejectCounterModal, setShowRejectCounterModal] = useState(false);
     const [showCounterBackModal, setShowCounterBackModal] = useState(false);
-    const [selectedNegotiationId, setSelectedNegotiationId] = useState(null); // Renamed from selectedJobId
+    const [selectedNegotiationId, setSelectedNegotiationId] = useState(null);
     const [counterOfferData, setCounterOfferData] = useState({
         proposedPrice: '',
         clientResponse: ''
@@ -39,10 +41,9 @@ const ClientNegotiations = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
 
-    // State for Payment Method selection in the payment modal - now strictly for negotiations
     const [showPaymentSelectionModal, setShowPaymentSelectionModal] = useState(false);
-    const [negotiationToPayFor, setNegotiationToPayFor] = useState(null); // Renamed from jobToPayFor
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // Default to Paystack
+    const [negotiationToPayFor, setNegotiationToPayFor] = useState(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack');
 
 
     const showToast = useCallback((message, type = 'success') => {
@@ -60,7 +61,6 @@ const ClientNegotiations = () => {
         }));
     }, []);
 
-    // REFACTORED: fetchNegotiationJobs to ONLY fetch negotiation jobs
     const fetchNegotiationJobs = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token && isAuthenticated) {
@@ -83,10 +83,9 @@ const ClientNegotiations = () => {
 
             const fetchedNegotiations = negotiationData.negotiations || [];
 
-            // Add a jobType identifier to each job (still 'negotiation' for consistency with NegotiationCard)
             const typedNegotiations = fetchedNegotiations.map(job => ({ ...job, jobType: 'negotiation' }));
 
-            setNegotiations(typedNegotiations); // Set negotiations state
+            setNegotiations(typedNegotiations);
 
             console.log("ClientNegotiations: Fetched Negotiations:", typedNegotiations.map(n => ({
                 id: n.id,
@@ -121,7 +120,7 @@ const ClientNegotiations = () => {
         fetchNegotiationJobs();
     }, [isAuthenticated, authLoading, user, navigate, fetchNegotiationJobs]);
 
-    const handleNegotiationUpdate = useCallback((data) => { // Renamed from handleJobUpdate
+    const handleNegotiationUpdate = useCallback((data) => {
         console.log('ClientNegotiations Real-time: Negotiation status update received! Triggering re-fetch for list cleanup.', data);
         const negotiationId = data.negotiationId;
         showToast(`Negotiation status updated for ID: ${negotiationId?.substring(0, 8)}.`, 'info');
@@ -143,7 +142,7 @@ const ClientNegotiations = () => {
             socket.on('negotiation_rejected', handleNegotiationUpdate);
             socket.on('negotiation_countered', handleNegotiationUpdate);
             socket.on('negotiation_cancelled', handleNegotiationUpdate);
-            socket.on('job_completed', handleNegotiationUpdate); // For negotiation jobs completed by transcriber
+            socket.on('job_completed', handleNegotiationUpdate);
             console.log('ClientNegotiations: Socket listeners attached.');
         }
 
@@ -362,9 +361,8 @@ const ClientNegotiations = () => {
                     showToast('Redirecting to Paystack...', 'info');
                     window.location.href = data.data.authorization_url;
                 } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
-                    console.log('KoraPay Data from Backend:', data.korapayData); // DEBUG: Log KoraPay data
+                    console.log('KoraPay Data from Backend:', data.korapayData);
 
-                    // Load KoraPay script if not already loaded
                     if (!window.Korapay) {
                         const script = document.createElement('script');
                         script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
@@ -385,23 +383,31 @@ const ClientNegotiations = () => {
                             key: key,
                             reference: reference,
                             amount: amount,
-                            currency: currency || "KES", // Default to KES if not provided by backend
+                            currency: currency || "KES",
                             customer: finalCustomer,
                             notification_url: notification_url,
-                            // channels: ['card', 'mobile_money'], // Removed explicit channels (handled by backend now)
                             onClose: () => {
-                                console.log("KoraPay modal closed for negotiation. Re-fetching jobs.");
-                                showToast("Payment cancelled by user.", "info");
-                                setModalLoading(false);
-                                setShowPaymentSelectionModal(false);
-                                fetchNegotiationJobs(); // Re-fetch jobs on close
+                                console.log("KoraPay modal closed for negotiation. Attempting to close payment selection modal and re-fetch jobs.");
+                                if (window.Korapay && typeof window.Korapay.close === 'function') {
+                                    window.Korapay.close(); // Explicitly close KoraPay modal
+                                }
+                                setTimeout(() => { // Add a slight delay before closing React modal
+                                    showToast("Payment cancelled by user.", "info");
+                                    setModalLoading(false);
+                                    setShowPaymentSelectionModal(false);
+                                    fetchNegotiationJobs();
+                                }, 500); // 500ms delay
                             },
                             onSuccess: async (korapayResponse) => {
                                 console.log("KoraPay payment successful for negotiation:", korapayResponse);
-                                console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference); // DEBUG: Log verification parameters
+                                console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference);
 
                                 showToast("Payment successful! Verifying...", "success");
                                 try {
+                                    if (window.Korapay && typeof window.Korapay.close === 'function') {
+                                        window.Korapay.close(); // Explicitly close KoraPay modal
+                                    }
+
                                     const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
                                         method: 'GET',
                                         headers: { 'Authorization': `Bearer ${token}` },
@@ -414,21 +420,24 @@ const ClientNegotiations = () => {
                                         fetchNegotiationJobs();
                                         navigate('/client-dashboard');
                                     } else {
-                                        console.error("KoraPay verification failed with backend:", verifyData.error); // DEBUG: Log backend verification error
+                                        console.error("KoraPay verification failed with backend:", verifyData.error);
                                         showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
                                         setModalLoading(false);
+                                        setShowPaymentSelectionModal(false);
                                     }
                                 } catch (verifyError) {
                                     console.error('Error during KoraPay verification for negotiation:', verifyError);
                                     showToast('Network error during payment verification. Please contact support.', 'error');
                                     setModalLoading(false);
+                                    setShowPaymentSelectionModal(false);
                                 }
                             },
                             onFailed: (korapayResponse) => {
                                 console.error("KoraPay payment failed for negotiation:", korapayResponse);
                                 showToast("Payment failed. Please try again.", "error");
                                 setModalLoading(false);
-                                setShowPaymentSelectionModal(false); // Close the selection modal on failure
+                                setShowPaymentSelectionModal(false);
+                                fetchNegotiationJobs();
                             }
                         });
                     } else {
@@ -491,7 +500,7 @@ const ClientNegotiations = () => {
         }
     }, [showToast, fetchNegotiationJobs, logout]);
 
-    const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => { // Added fileName as param
+    const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {
         if (jobType !== 'negotiation') {
             showToast('This action is only for negotiation files.', 'error');
             return;
@@ -600,7 +609,7 @@ const ClientNegotiations = () => {
         pageDescription = "Review your finished projects and provide feedback.";
         listSubtitle = "Completed Jobs";
         emptyMessage = "You currently have no completed jobs.";
-    } else { // Default to 'Negotiation Room' view
+    } else {
         displayedNegotiations = negotiations.filter(negotiation =>
             negotiation.status === 'pending' ||
             negotiation.status === 'transcriber_counter' ||
