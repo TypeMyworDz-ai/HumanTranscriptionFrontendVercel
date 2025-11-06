@@ -141,7 +141,7 @@ const ClientJobs = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast]); // FIXED: Removed user?.id as it is not directly used in this function
+    }, [isAuthenticated, logout, showToast]);
 
 
     // handleJobUpdate depends on fetchClientJobs
@@ -150,7 +150,7 @@ const ClientJobs = () => {
         const jobId = data.negotiationId || data.jobId;
         showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
         fetchClientJobs();
-    }, [showToast, fetchClientJobs]); // FIXED: fetchClientJobs is a valid dependency
+    }, [showToast, fetchClientJobs]);
 
     // handleNewChatMessageForActiveJobs has no direct dependency on fetchClientJobs but modifies state
     const handleNewChatMessageForActiveJobs = useCallback((data) => {
@@ -259,7 +259,7 @@ const ClientJobs = () => {
         } catch (error) {
             showToast('Network error. Please try again.', 'error');
         }
-    }, [showToast, fetchClientJobs, logout]); // FIXED: fetchClientJobs is a valid dependency
+    }, [showToast, fetchClientJobs, logout]);
 
     const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => {
         const token = localStorage.getItem('token');
@@ -414,8 +414,11 @@ const ClientJobs = () => {
             return;
         }
 
-        // Open the payment selection modal instead of directly initiating Paystack
-        setJobToPayFor(job);
+        // Determine jobType here and pass it along
+        const jobType = job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown');
+
+        // Ensure jobToPayFor includes the determined jobType
+        setJobToPayFor({ ...job, jobType: jobType });
         setSelectedPaymentMethod('paystack'); // Reset to default
         setShowPaymentSelectionModal(true);
     }, [showToast, user]);
@@ -542,7 +545,7 @@ const ClientJobs = () => {
         } finally {
             // The loading state and modal closure are handled within the try/catch/finally blocks for each payment method path
         }
-    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout, fetchClientJobs, navigate]); // FIXED: Removed modalLoading as it is not directly used in this function
+    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout, fetchClientJobs, navigate]);
 
 
     if (authLoading || !isAuthenticated || !user || loading) {
