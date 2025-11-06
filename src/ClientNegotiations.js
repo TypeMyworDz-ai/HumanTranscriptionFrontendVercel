@@ -2,6 +2,7 @@
 // All references to 'direct_upload' jobs have been removed.
 // FIXED: SyntaxError: Expected corresponding JSX closing tag for <p>.
 // FIXED: Removed unnecessary dependency 'user.id' from fetchNegotiationJobs useCallback.
+// FIXED: KoraPay initialization logic to ensure script loading and required customer data.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
@@ -104,7 +105,7 @@ const ClientNegotiations = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast]); // FIXED: Removed user?.id as it is not directly used in this function
+    }, [isAuthenticated, logout, showToast]);
 
 
     useEffect(() => {
@@ -362,7 +363,8 @@ const ClientNegotiations = () => {
                 if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
                     showToast('Redirecting to Paystack...', 'info');
                     window.location.href = data.data.authorization_url;
-                } else if (selectedPaymentMethod === 'korapay' && data.korapayData && window.Korapay) {
+                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) { // Removed && window.Korapay here
+                    // Load KoraPay script if not already loaded
                     if (!window.Korapay) {
                         const script = document.createElement('script');
                         script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
@@ -371,53 +373,67 @@ const ClientNegotiations = () => {
                         await new Promise(resolve => script.onload = resolve);
                     }
 
-                    const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
-                    window.Korapay.initialize({
-                        key: key,
-                        reference: reference,
-                        amount: amount,
-                        currency: currency,
-                        customer: customer,
-                        notification_url: notification_url,
-                        onClose: () => {
-                            console.log("KoraPay modal closed for negotiation.");
-                            showToast("Payment cancelled.", "info");
-                            setModalLoading(false);
-                            setShowPaymentSelectionModal(false);
-                        },
-                        onSuccess: async (korapayResponse) => {
-                            console.log("KoraPay payment successful for negotiation:", korapayResponse);
-                            showToast("Payment successful! Verifying...", "success");
-                            try {
-                                const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
-                                    method: 'GET',
-                                    headers: { 'Authorization': `Bearer ${token}` },
-                                });
-                                const verifyData = await verifyResponse.json();
+                    if (window.Korapay) { // Re-check if Korapay is now available after script load
+                        const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
 
-                                if (verifyResponse.ok) {
-                                    showToast("Payment successfully verified. Redirecting to dashboard!", "success");
-                                    setShowPaymentSelectionModal(false);
-                                    fetchNegotiationJobs(); // Refresh negotiation list
-                                    navigate('/client-dashboard');
-                                } else {
-                                    showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                        // Ensure customer object has name and email, using user data if not provided by backend
+                        const finalCustomer = {
+                            name: customer?.name || user.full_name,
+                            email: customer?.email || user.email
+                        };
+
+                        window.Korapay.initialize({
+                            key: key,
+                            reference: reference,
+                            amount: amount,
+                            currency: currency,
+                            customer: finalCustomer, // Use the potentially augmented customer object
+                            notification_url: notification_url,
+                            onClose: () => {
+                                console.log("KoraPay modal closed for negotiation.");
+                                showToast("Payment cancelled.", "info");
+                                setModalLoading(false);
+                                setShowPaymentSelectionModal(false);
+                            },
+                            onSuccess: async (korapayResponse) => {
+                                console.log("KoraPay payment successful for negotiation:", korapayResponse);
+                                showToast("Payment successful! Verifying...", "success");
+                                try {
+                                    const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
+                                        method: 'GET',
+                                        headers: { 'Authorization': `Bearer ${token}` },
+                                    });
+                                    const verifyData = await verifyResponse.json();
+
+                                    if (verifyResponse.ok) {
+                                        showToast("Payment successfully verified. Redirecting to dashboard!", "success");
+                                        setShowPaymentSelectionModal(false);
+                                        fetchNegotiationJobs(); // Refresh negotiation list
+                                        navigate('/client-dashboard');
+                                    } else {
+                                        showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                                        setModalLoading(false);
+                                    }
+                                } catch (verifyError) {
+                                    console.error('Error during KoraPay verification for negotiation:', verifyError);
+                                    showToast('Network error during payment verification. Please contact support.', 'error');
                                     setModalLoading(false);
                                 }
-                            } catch (verifyError) {
-                                console.error('Error during KoraPay verification for negotiation:', verifyError);
-                                showToast('Network error during payment verification. Please contact support.', 'error');
+                            },
+                            onFailed: (korapayResponse) => {
+                                console.error("KoraPay payment failed for negotiation:", korapayResponse);
+                                showToast("Payment failed. Please try again.", "error");
                                 setModalLoading(false);
                             }
-                        },
-                        onFailed: (korapayResponse) => {
-                            console.error("KoraPay payment failed for negotiation:", korapayResponse);
-                            showToast("Payment failed. Please try again.", "error");
-                            setModalLoading(false);
-                        }
-                    });
+                        });
+                    } else {
+                        // If script loading failed, or window.Korapay is still not available for some reason
+                        showToast('Failed to load KoraPay script. Please try again or contact support.', 'error');
+                        setModalLoading(false);
+                        setShowPaymentSelectionModal(false);
+                    }
                 } else {
-                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.', 'error');
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data from server.', 'error');
                 }
                 setModalLoading(false);
             } else {
