@@ -37,12 +37,6 @@ const ClientNegotiations = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
 
-    // REMOVED: State related to 'Mark as Complete' modal from here, as it belongs in ClientJobs.js/ClientCompletedJobs.js
-    // const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
-    // const [jobToComplete, setJobToComplete] = useState(null);
-    // const [clientFeedbackComment, setClientFeedbackComment] = useState('');
-    // const [clientFeedbackRating, setClientFeedbackRating] = useState(5);
-
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -100,8 +94,8 @@ const ClientNegotiations = () => {
                 id: j.id,
                 status: j.status,
                 jobType: j.jobType,
-                transcriberName: j.transcriber_info?.full_name || j.transcriber?.full_name, // Access transcriber name
-                transcriberRating: j.transcriber_info?.transcriber_average_rating || j.transcriber?.transcriber_average_rating, // Access transcriber rating
+                transcriberName: j.transcriber_info?.full_name || j.transcriber?.full_name,
+                transcriberRating: j.transcriber_info?.transcriber_average_rating || j.transcriber?.transcriber_average_rating,
                 transcriberCompletedJobs: j.transcriber_info?.transcriber_completed_jobs || j.transcriber?.transcriber_completed_jobs
             })));
 
@@ -114,7 +108,7 @@ const ClientNegotiations = () => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast, user?.id]); // Added user?.id dependency
+    }, [isAuthenticated, logout, showToast, user?.id]);
 
 
     useEffect(() => {
@@ -218,11 +212,6 @@ const ClientNegotiations = () => {
         setCounterOfferData({ proposedPrice: '', clientResponse: '' });
         setModalLoading(false);
     }, []);
-
-    // REMOVED: openMarkJobCompleteModal, closeMarkJobCompleteModal, submitMarkJobComplete
-    // These functions belong in ClientJobs.js (for active jobs) and ClientCompletedJobs.js (for rendering completed jobs)
-    // ClientNegotiations does not directly handle marking jobs as complete.
-
 
     const handleCounterOfferChange = useCallback((e) => {
         setCounterOfferData({
@@ -333,52 +322,66 @@ const ClientNegotiations = () => {
         }
     }, [selectedJobId, counterOfferData, showToast, closeCounterBackModal, fetchAllClientJobs, logout]);
 
-    const handleProceedToPayment = useCallback((job) => {
-        if (job.status === 'accepted_awaiting_payment' || (job.jobType === 'direct_upload' && job.status === 'pending_review')) {
-            if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
-                showToast('Missing client email or job details for payment.', 'error');
-                return;
-            }
+    // MODIFIED: handleProceedToPayment to use new dedicated endpoints
+    const handleProceedToPayment = useCallback(async (job) => {
+        if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
+            showToast('Missing client email or job details for payment.', 'error');
+            return;
+        }
 
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showToast('Authentication token missing. Please log in again.', 'error');
-                logout();
-                return;
-            }
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
 
-            setLoading(true);
+        setLoading(true);
 
-            fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
+        let paymentApiUrl;
+        let amountToSend;
+
+        // Determine the correct payment initiation endpoint and amount based on job type
+        if (job.jobType === 'negotiation') {
+            paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${job.id}/payment/initialize`;
+            amountToSend = job.agreed_price_usd;
+        } else if (job.jobType === 'direct_upload') {
+            paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${job.id}/payment/initialize`;
+            amountToSend = job.quote_amount;
+        } else {
+            showToast('Unknown job type for payment initiation.', 'error');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(paymentApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    jobId: job.id,
-                    amount: job.agreed_price_usd || job.quote_amount,
-                    jobType: job.jobType,
-                    clientEmail: user.email
+                    negotiationId: job.id, // Use negotiationId for negotiation, jobId for direct upload (backend handles mapping)
+                    jobId: job.id, // Also send jobId for direct uploads
+                    amount: amountToSend,
+                    email: user.email,
+                    paymentMethod: 'paystack' // Default to Paystack for now, can be dynamic if UI allows
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.data && data.data.authorization_url) {
-                    showToast('Redirecting to payment gateway...', 'info');
-                    window.location.href = data.data.authorization_url;
-                } else {
-                    showToast(data.error || 'Failed to initiate payment.', 'error');
-                    setLoading(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error initiating payment:', error);
-                showToast('Network error while initiating payment. Please try again.', 'error');
-                setLoading(false);
             });
-        } else {
-            showToast('Payment already processed or not applicable for this job status.', 'info');
+            const data = await response.json();
+
+            if (response.ok && data.data && data.data.authorization_url) {
+                showToast('Redirecting to payment gateway...', 'info');
+                window.location.href = data.data.authorization_url;
+            } else {
+                showToast(data.error || 'Failed to initiate payment.', 'error');
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error('Error initiating payment:', error);
+            showToast('Network error while initiating payment. Please try again.', 'error');
+            setLoading(false);
         }
     }, [showToast, user, logout]);
 
@@ -527,7 +530,7 @@ const ClientNegotiations = () => {
     if (statusFilter === 'active') {
         displayedJobs = allJobs.filter(job =>
             (job.jobType === 'negotiation' && job.status === 'hired') ||
-            (job.jobType === 'direct_upload' && (job.status === 'taken' || job.status === 'in_progress' || job.status === 'completed')) // Include 'completed' for client to mark complete
+            (job.jobType === 'direct_upload' && (job.status === 'taken' || job.status === 'in_progress' || job.status === 'completed'))
         );
         pageTitle = "My Active Jobs";
         pageDescription = "Track the progress of your active transcription jobs and communicate with transcribers.";
@@ -597,7 +600,6 @@ const ClientNegotiations = () => {
                                     onDelete={handleDeleteJob}
                                     onPayment={handleProceedToPayment}
                                     onLogout={logout}
-                                    // FIXED: Pass getStatusColor and getStatusText as props from here
                                     getStatusColor={getStatusColor}
                                     getStatusText={getStatusText}
                                     showToast={showToast}
@@ -606,10 +608,7 @@ const ClientNegotiations = () => {
                                     openAcceptCounterModal={openAcceptCounterModal}
                                     openRejectCounterModal={openRejectCounterModal}
                                     openCounterBackModal={openCounterBackModal}
-                                    // Removed openCompleteJobModal as it's not handled here
-                                    // openCompleteJobModal={openMarkJobCompleteModal}
                                     onDownloadFile={handleDownloadFile}
-                                    // Pass client's own rating and completed jobs to display if needed for transcriber info
                                     clientAverageRating={parseFloat(user.client_average_rating) || 0}
                                     clientCompletedJobs={parseFloat(user.client_completed_jobs) || 0}
                                 />
@@ -695,9 +694,6 @@ const ClientNegotiations = () => {
                     </div>
                 </Modal>
             )}
-
-            {/* REMOVED: showCompleteJobModal and related components from here */}
-            {/* These modals are now handled in ClientJobs.js and ClientCompletedJobs.js */}
 
             <Toast
                 message={toast.message}

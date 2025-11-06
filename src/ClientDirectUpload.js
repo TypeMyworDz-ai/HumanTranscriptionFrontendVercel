@@ -8,6 +8,9 @@ import Modal from './Modal'; // Assuming you have a Modal component
 import './ClientDirectUpload.css'; // You'll need to create this CSS file
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+// PAYSTACK_PUBLIC_KEY is not directly used here for initiating payment in this refactored flow.
+// It's typically used by the Paystack inline script if you were integrating directly in the frontend,
+// but our backend handles the Paystack initialization and redirection.
 const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY; // Paystack Public Key
 
 const ClientDirectUpload = () => {
@@ -17,7 +20,6 @@ const ClientDirectUpload = () => {
     const [loading, setLoading] = useState(false); // Overall loading for job creation/payment
     const [quoteLoading, setQuoteLoading] = useState(false); // For quote calculation
     const [showQuoteModal, setShowQuoteModal] = useState(false);
-    // FIX: quoteDetails will now contain quote_amount, price_per_minute_usd, etc.
     const [quoteDetails, setQuoteDetails] = useState(null);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -25,11 +27,9 @@ const ClientDirectUpload = () => {
     const [audioVideoFile, setAudioVideoFile] = useState(null);
     const [instructionFiles, setInstructionFiles] = useState([]);
     const [clientInstructions, setClientInstructions] = useState('');
-    // UPDATED: Renamed to audioQualityParam and values adjusted
-    const [audioQualityParam, setAudioQualityParam] = useState('standard'); // 'excellent', 'good', 'standard', 'difficult'
-    // UPDATED: Renamed to deadlineTypeParam, values: 'flexible', 'standard', 'urgent'
+    const [audioQualityParam, setAudioQualityParam] = useState('standard');
     const [deadlineTypeParam, setDeadlineTypeParam] = useState('standard');
-    const [specialRequirements, setSpecialRequirements] = useState([]); // Array of selected special requirements
+    const [specialRequirements, setSpecialRequirements] = useState([]);
 
     const fileInputRef = useRef(null);
     const instructionFileInputRef = useRef(null);
@@ -58,7 +58,6 @@ const ClientDirectUpload = () => {
     const handleAudioVideoFileChange = useCallback((e) => {
         const file = e.target.files[0];
         if (file) {
-            // UPDATED: File size limit to 500MB
             if (file.size > 500 * 1024 * 1024) {
                 showToast(`Main audio/video file must be smaller than 500MB`, 'error');
                 e.target.value = null; // Clear input
@@ -90,8 +89,6 @@ const ClientDirectUpload = () => {
 
     const removeInstructionFile = useCallback((indexToRemove) => {
         setInstructionFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
-        // Note: Clearing instructionFileInputRef.current.value can be tricky for multiple files
-        // and might clear all selected. Better to manage state.
     }, []);
 
     const handleSpecialRequirementsChange = useCallback((e) => {
@@ -119,7 +116,7 @@ const ClientDirectUpload = () => {
         const formData = new FormData();
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
-        formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
+        formData.append('audioQualityParam', audioQualityParam);
         formData.append('deadlineTypeParam', deadlineTypeParam);
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
 
@@ -164,14 +161,13 @@ const ClientDirectUpload = () => {
             showToast('Quote not calculated or file missing. Please re-calculate quote.', 'error');
             return;
         }
-        // FIX: Ensure quoteDetails has the USD amount using the correct property name
         if (typeof quoteDetails.quote_amount !== 'number' || quoteDetails.quote_amount <= 0) {
             showToast('Invalid quote amount for payment. Please re-calculate quote.', 'error');
             return;
         }
-        if (!user?.email || !PAYSTACK_PUBLIC_KEY) {
-            showToast('Payment gateway not configured or user email missing. Please contact support.', 'error');
-            console.error('PAYSTACK_PUBLIC_KEY or user email is not set.');
+        if (!user?.email) { // Removed PAYSTACK_PUBLIC_KEY check as it's not directly used here
+            showToast('User email missing. Please contact support.', 'error');
+            console.error('User email is not set.');
             return;
         }
 
@@ -182,13 +178,13 @@ const ClientDirectUpload = () => {
         const formData = new FormData();
         formData.append('audioVideoFile', audioVideoFile);
         formData.append('clientInstructions', clientInstructions);
-        formData.append('audioQualityParam', audioQualityParam); // Correct parameter name
+        formData.append('audioQualityParam', audioQualityParam);
         formData.append('deadlineTypeParam', deadlineTypeParam);
         formData.append('specialRequirements', JSON.stringify(specialRequirements));
         formData.append('quote_amount', quoteDetails.quote_amount);
         formData.append('pricePerMinuteUsd', quoteDetails.price_per_minute_usd);
         formData.append('agreedDeadlineHours', quoteDetails.agreed_deadline_hours);
-        formData.append('jobType', 'direct_upload'); // Explicitly set job type
+        formData.append('jobType', 'direct_upload');
 
         instructionFiles.forEach((file) => {
             formData.append(`instructionFiles`, file);
@@ -212,18 +208,18 @@ const ClientDirectUpload = () => {
 
             const jobId = createJobData.job.id;
 
-            // Then, initialize Paystack transaction using the new job ID
-            const initializePaymentResponse = await fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
+            // MODIFIED: Updated to new dedicated direct upload payment endpoint
+            const initializePaymentResponse = await fetch(`${BACKEND_API_URL}/api/direct-uploads/${jobId}/payment/initialize`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    jobId: jobId, // Use the new jobId
+                    jobId: jobId,
                     amount: quoteDetails.quote_amount,
-                    email: user.email, // FIX: Corrected parameter name from 'clientEmail' to 'email'
-                    jobType: 'direct_upload' // Explicitly set job type for payment initialization
+                    email: user.email,
+                    paymentMethod: 'paystack' // Default to Paystack for now, can be dynamic if UI allows
                 })
             });
             const initializePaymentData = await initializePaymentResponse.json();
@@ -280,7 +276,7 @@ const ClientDirectUpload = () => {
                     <div className="page-header">
                         <div className="header-text">
                             <h2>Get an Instant Quote & Upload</h2>
-                            <p>Upload your audio/video files for transcription and get an immediate quote.</p>
+                            <p>Upload your audio/video files for transcription and get an an immediate quote.</p>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
@@ -404,9 +400,8 @@ const ClientDirectUpload = () => {
                     title="Your Instant Quote"
                     onClose={closeQuoteModal}
                     onSubmit={createAndPayForJob}
-                    // FIX: Use quote_amount for display in submit button text
                     submitText={`Proceed to Payment (USD ${quoteDetails.quote_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
-                    loading={loading} // Use overall loading for payment
+                    loading={loading}
                 >
                     <p>Based on your selections, here's your instant quote:</p>
                     <div className="quote-summary">
@@ -428,7 +423,6 @@ const ClientDirectUpload = () => {
                         </div>
                         <div className="quote-item total-quote">
                             <span>Total Quote:</span>
-                            {/* FIX: Use quote_amount for display */}
                             <strong>USD {quoteDetails.quote_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                         </div>
                         <div className="quote-item total-quote">

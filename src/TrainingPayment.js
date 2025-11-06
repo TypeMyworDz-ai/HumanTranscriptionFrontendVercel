@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
-import { useAuth } from './contexts/AuthContext'; // MODIFIED: Import updateUser, checkAuth
+import { useAuth } from './contexts/AuthContext';
 import './TrainingPayment.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const TRAINING_FEE_USD = 2.00;
 
 const TrainingPayment = () => {
-    const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth(); // MODIFIED: Destructure updateUser, checkAuth
+    const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -85,7 +85,8 @@ const TrainingPayment = () => {
         const token = localStorage.getItem('token');
 
         try {
-            const paymentApiUrl = `${BACKEND_API_URL}/api/payment/initialize-training`;
+            // MODIFIED: Updated to new dedicated training payment endpoint
+            const paymentApiUrl = `${BACKEND_API_URL}/api/training/payment/initialize`;
             console.log(`[TrainingPayment] Initiating payment to URL: ${paymentApiUrl} with method: ${selectedPaymentMethod}`);
 
             const payload = {
@@ -150,7 +151,8 @@ const TrainingPayment = () => {
                             showToast("Payment successful! Verifying...", "success");
                             
                             try {
-                                const verifyResponse = await fetch(`${BACKEND_API_URL}/api/payment/verify-korapay-training`, {
+                                // MODIFIED: Updated to new dedicated KoraPay verification endpoint for training
+                                const verifyResponse = await fetch(`${BACKEND_API_URL}/api/training/payment/verify-korapay`, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
@@ -170,9 +172,8 @@ const TrainingPayment = () => {
 
                                 const verifyData = await verifyResponse.json();
                                 if (verifyData.success) {
-                                    // MODIFIED: Update AuthContext and then redirect
-                                    await updateUser(); // Refresh user data in AuthContext
-                                    await checkAuth(); // Force re-evaluation of auth state
+                                    await updateUser();
+                                    await checkAuth();
                                     showToast("Payment successfully verified. Redirecting to dashboard!", "success");
                                     navigate('/trainee-dashboard');
                                 } else {
@@ -182,7 +183,7 @@ const TrainingPayment = () => {
                                 }
 
                             } catch (verifyError) {
-                                console.error('Error during KoraPay verification:&#x27;', verifyError);
+                                console.error('Error during KoraPay verification:', verifyError);
                                 showToast('Network error during payment verification. Please contact support.', 'error');
                                 setLoading(false);
                                 setPaymentInitiated(false);
@@ -203,12 +204,12 @@ const TrainingPayment = () => {
             }
 
         } catch (error) {
-            console.error('Error initiating training payment:&#x27;', error);
+            console.error('Error initiating training payment:', error);
             showToast('Network error during payment initiation. Please try again.', 'error');
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser, checkAuth]); // MODIFIED: Add checkAuth to dependencies
+    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser, checkAuth]);
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {

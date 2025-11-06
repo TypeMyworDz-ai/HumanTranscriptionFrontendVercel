@@ -315,54 +315,66 @@ const ClientJobs = () => {
     }, [jobToComplete, clientFeedbackComment, clientFeedbackRating, showToast, logout, closeMarkJobCompleteModal, fetchClientJobs]);
 
 
-    // Placeholder for payment (should already be handled in ClientNegotiations)
-    const handleProceedToPayment = useCallback((job) => {
-        // Check if the job is in 'accepted_awaiting_payment' status (for negotiations) or 'pending_review' (for direct uploads before payment)
-        if (job.status === 'accepted_awaiting_payment' || (job.jobType === 'direct_upload' && job.status === 'pending_review')) {
-            if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
-                showToast('Missing client email or job details for payment.', 'error');
-                return;
-            }
+    // MODIFIED: handleProceedToPayment to use new dedicated endpoints
+    const handleProceedToPayment = useCallback(async (job) => {
+        if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
+            showToast('Missing client email or job details for payment.', 'error');
+            return;
+        }
 
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showToast('Authentication token missing. Please log in again.', 'error');
-                logout();
-                return;
-            }
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
 
-            setLoading(true);
+        setLoading(true);
 
-            fetch(`${BACKEND_API_URL}/api/payment/initialize`, {
+        let paymentApiUrl;
+        let jobTypeForUrl;
+
+        // Determine the correct payment initiation endpoint based on job type
+        if (job.negotiation_id) {
+            paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${job.id}/payment/initialize`;
+            jobTypeForUrl = 'negotiation';
+        } else if (job.file_name) {
+            paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${job.id}/payment/initialize`;
+            jobTypeForUrl = 'direct_upload';
+        } else {
+            showToast('Unknown job type for payment initiation.', 'error');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(paymentApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    jobId: job.id,
-                    amount: job.agreed_price_usd || job.quote_amount,
-                    jobType: job.negotiation_id ? 'negotiation' : 'direct_upload',
-                    clientEmail: user.email
+                    jobId: job.id, // Or negotiationId for negotiation jobs
+                    amount: job.agreed_price_usd || job.quote_amount, // Use appropriate amount field
+                    email: user.email, // Send user's email
+                    paymentMethod: 'paystack', // Default to Paystack for now, can be dynamic if UI allows
+                    // mobileNumber: '...' // Add mobile number if KoraPay is dynamically selected here and requires it
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.data && data.data.authorization_url) {
-                    showToast('Redirecting to payment gateway...', 'info');
-                    window.location.href = data.data.authorization_url;
-                } else {
-                    showToast(data.error || 'Failed to initiate payment.', 'error');
-                    setLoading(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error initiating payment:', error);
-                showToast('Network error while initiating payment. Please try again.', 'error');
-                setLoading(false);
             });
-        } else {
-            showToast('Payment already processed or not applicable for this job status.', 'info'); // Updated message
+            const data = await response.json();
+
+            if (response.ok && data.data && data.data.authorization_url) {
+                showToast('Redirecting to payment gateway...', 'info');
+                window.location.href = data.data.authorization_url;
+            } else {
+                showToast(data.error || 'Failed to initiate payment.', 'error');
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error('Error initiating payment:', error);
+            showToast('Network error while initiating payment. Please try again.', 'error');
+            setLoading(false);
         }
     }, [showToast, user, logout]);
 

@@ -35,7 +35,8 @@ const PaymentCallback = () => {
         // Extract all relevant parameters from the URL
         const reference = searchParams.get('reference'); // Paystack's transaction reference
         const relatedJobId = searchParams.get('relatedJobId'); // Our custom ID (negotiationId or traineeId)
-        const jobType = searchParams.get('jobType'); // Our custom type (e.g., 'negotiation', 'training')
+        const jobType = searchParams.get('jobType'); // Our custom type (e.g., 'negotiation', 'training', 'direct_upload')
+        const paymentMethod = searchParams.get('paymentMethod') || 'paystack'; // NEW: Get paymentMethod, default to paystack
 
         if (!reference || !relatedJobId || !jobType) {
             setPaymentStatus('failed');
@@ -52,13 +53,38 @@ const PaymentCallback = () => {
                 return;
             }
 
+            let verificationApiUrl;
+            let method = 'GET'; // Default for Paystack verification
+            let body = null;
+
+            // Dynamically construct the verification URL based on jobType and paymentMethod
+            if (jobType === 'training') {
+                if (paymentMethod === 'korapay') {
+                    verificationApiUrl = `${BACKEND_API_URL}/api/training/payment/verify-korapay`;
+                    method = 'POST'; // KoraPay verification is a POST request
+                    body = JSON.stringify({ reference: reference });
+                } else { // Assume Paystack for training
+                    verificationApiUrl = `${BACKEND_API_URL}/api/training/payment/verify/${reference}?relatedJobId=${relatedJobId}&paymentMethod=${paymentMethod}`;
+                }
+            } else if (jobType === 'negotiation') {
+                verificationApiUrl = `${BACKEND_API_URL}/api/negotiations/${relatedJobId}/payment/verify/${reference}?paymentMethod=${paymentMethod}`;
+            } else if (jobType === 'direct_upload') {
+                verificationApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${relatedJobId}/payment/verify/${reference}?paymentMethod=${paymentMethod}`;
+            } else {
+                setPaymentStatus('failed');
+                setMessage('Unknown job type for payment verification.');
+                showToast('Unknown job type.', 'error');
+                return;
+            }
+
             try {
-                // Pass relatedJobId and jobType to the backend for verification
-                const response = await fetch(`${BACKEND_API_URL}/api/payment/verify/${reference}?relatedJobId=${relatedJobId}&jobType=${jobType}`, {
-                    method: 'GET',
+                const response = await fetch(verificationApiUrl, {
+                    method: method,
                     headers: {
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
-                    }
+                    },
+                    body: body
                 });
                 const data = await response.json();
 
@@ -66,15 +92,12 @@ const PaymentCallback = () => {
                     setPaymentStatus('success');
                     
                     if (jobType === 'training') {
-                        // NEW: More universal message for training payment
                         const successMessage = 'Training payment successful! You will now be logged out and redirected to login to access your training dashboard.';
                         setMessage(successMessage);
                         showToast(successMessage, 'success');
                         
                         console.log("Payment successful. Refreshing user data and redirecting to login...");
                         
-                        // CRITICAL FIX: Force a complete re-authentication by logging out
-                        // This ensures all user data is fresh on next login
                         setTimeout(() => {
                             console.log("Logging out and redirecting to login page...");
                             logout();
@@ -83,11 +106,9 @@ const PaymentCallback = () => {
                             }, 500);
                         }, 3000);
                     } else {
-                        // NEW: Universal success message for other payments
                         const successMessage = 'Payment successful! You will be redirected to your dashboard.';
                         setMessage(successMessage);
                         showToast(successMessage, 'success');
-                        // Automatically redirect for other job types
                         setTimeout(() => navigate('/client-dashboard'), 3000);
                     }
                 } else {
@@ -120,16 +141,6 @@ const PaymentCallback = () => {
         return '';
     };
 
-    // Removed handleManualLogout as it's now conditionally rendered and handled in useEffect
-    // const handleManualLogout = () => {
-    //     console.log("Manual logout and redirect to login...");
-    //     logout();
-    //     setTimeout(() => {
-    //         navigate('/login');
-    //     }, 500);
-    // };
-
-    // Determine if the "Logout and Login Again" button should be shown
     const relatedJobType = searchParams.get('jobType');
     const showLogoutAndLoginButton = paymentStatus === 'success' && relatedJobType === 'training';
 
@@ -161,10 +172,9 @@ const PaymentCallback = () => {
                     {paymentStatus === 'failed' && (
                         <p>If you believe this is an error, please contact support.</p>
                     )}
-                    {/* NEW: Conditionally render the button for training payments */}
                     {showLogoutAndLoginButton && (
                         <button 
-                            onClick={() => { logout(); navigate('/login'); }} // Directly trigger logout and redirect
+                            onClick={() => { logout(); navigate('/login'); }}
                             className="back-to-dashboard-btn"
                         >
                             Go to Login
