@@ -37,6 +37,11 @@ const ClientNegotiations = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
 
+    // NEW: State for Payment Method selection in the payment modal
+    const [showPaymentSelectionModal, setShowPaymentSelectionModal] = useState(false);
+    const [jobToPayFor, setJobToPayFor] = useState(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // Default to Paystack
+
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -322,35 +327,45 @@ const ClientNegotiations = () => {
         }
     }, [selectedJobId, counterOfferData, showToast, closeCounterBackModal, fetchAllClientJobs, logout]);
 
-    // MODIFIED: handleProceedToPayment to use new dedicated endpoints
+    // MODIFIED: handleProceedToPayment to open payment selection modal
     const handleProceedToPayment = useCallback(async (job) => {
         if (!user?.email || !job?.id || (!job?.agreed_price_usd && !job?.quote_amount)) {
             showToast('Missing client email or job details for payment.', 'error');
             return;
         }
 
+        // Open the payment selection modal instead of directly initiating Paystack
+        setJobToPayFor(job);
+        setSelectedPaymentMethod('paystack'); // Reset to default
+        setShowPaymentSelectionModal(true);
+    }, [showToast, user]);
+
+    // NEW: Function to initiate the actual payment after method selection
+    const initiatePayment = useCallback(async () => {
+        if (!jobToPayFor?.id || !selectedPaymentMethod) {
+            showToast('Job or payment method not selected.', 'error');
+            return;
+        }
+
+        setModalLoading(true); // Use modal loading for the payment initiation
         const token = localStorage.getItem('token');
         if (!token) {
-            showToast('Authentication token missing. Please log in again.', 'error');
             logout();
             return;
         }
 
-        setLoading(true);
-
         let paymentApiUrl;
         let amountToSend;
 
-        // Determine the correct payment initiation endpoint and amount based on job type
-        if (job.jobType === 'negotiation') {
-            paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${job.id}/payment/initialize`;
-            amountToSend = job.agreed_price_usd;
-        } else if (job.jobType === 'direct_upload') {
-            paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${job.id}/payment/initialize`;
-            amountToSend = job.quote_amount;
+        if (jobToPayFor.jobType === 'negotiation') {
+            paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToPayFor.id}/payment/initialize`;
+            amountToSend = jobToPayFor.agreed_price_usd;
+        } else if (jobToPayFor.jobType === 'direct_upload') {
+            paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${jobToPayFor.id}/payment/initialize`;
+            amountToSend = jobToPayFor.quote_amount;
         } else {
             showToast('Unknown job type for payment initiation.', 'error');
-            setLoading(false);
+            setModalLoading(false);
             return;
         }
 
@@ -362,28 +377,93 @@ const ClientNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    negotiationId: job.id, // Use negotiationId for negotiation, jobId for direct upload (backend handles mapping)
-                    jobId: job.id, // Also send jobId for direct uploads
+                    jobId: jobToPayFor.id,
                     amount: amountToSend,
                     email: user.email,
-                    paymentMethod: 'paystack' // Default to Paystack for now, can be dynamic if UI allows
+                    paymentMethod: selectedPaymentMethod, // Use selected payment method
                 })
             });
             const data = await response.json();
 
-            if (response.ok && data.data && data.data.authorization_url) {
-                showToast('Redirecting to payment gateway...', 'info');
-                window.location.href = data.data.authorization_url;
+            if (response.ok) {
+                if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
+                    showToast('Redirecting to Paystack...', 'info');
+                    window.location.href = data.data.authorization_url;
+                } else if (selectedPaymentMethod === 'korapay' && data.korapayData && window.Korapay) {
+                    // Load KoraPay script if not already loaded (though useEffect should handle this)
+                    if (!window.Korapay) {
+                        const script = document.createElement('script');
+                        script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
+                        script.async = true;
+                        document.body.appendChild(script);
+                        await new Promise(resolve => script.onload = resolve);
+                    }
+
+                    const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
+                    window.Korapay.initialize({
+                        key: key,
+                        reference: reference,
+                        amount: amount,
+                        currency: currency,
+                        customer: customer,
+                        notification_url: notification_url,
+                        onClose: () => {
+                            console.log("KoraPay modal closed for negotiation/direct upload.");
+                            showToast("Payment cancelled.", "info");
+                            setModalLoading(false);
+                            setShowPaymentSelectionModal(false);
+                        },
+                        onSuccess: async (korapayResponse) => {
+                            console.log("KoraPay payment successful for negotiation/direct upload:", korapayResponse);
+                            showToast("Payment successful! Verifying...", "success");
+                            try {
+                                // Call backend verification endpoint
+                                const verifyResponse = await fetch(`${BACKEND_API_URL}/api/${jobToPayFor.jobType}s/${jobToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
+                                    method: 'GET', // KoraPay verification is GET
+                                    headers: { 'Authorization': `Bearer ${token}` },
+                                });
+                                const verifyData = await verifyResponse.json();
+
+                                if (verifyResponse.ok) {
+                                    showToast("Payment successfully verified. Redirecting to dashboard!", "success");
+                                    setShowPaymentSelectionModal(false);
+                                    fetchAllClientJobs(); // Refresh job list
+                                    navigate('/client-dashboard'); // Redirect to client dashboard
+                                } else {
+                                    showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                                    setModalLoading(false);
+                                }
+                            } catch (verifyError) {
+                                console.error('Error during KoraPay verification for negotiation/direct upload:', verifyError);
+                                showToast('Network error during payment verification. Please contact support.', 'error');
+                                setModalLoading(false);
+                            }
+                        },
+                        onFailed: (korapayResponse) => {
+                            console.error("KoraPay payment failed for negotiation/direct upload:", korapayResponse);
+                            showToast("Payment failed. Please try again.", "error");
+                            setModalLoading(false);
+                        }
+                    });
+                } else {
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.', 'error');
+                }
+                setModalLoading(false);
             } else {
-                showToast(data.error || 'Failed to initiate payment.', 'error');
-                setLoading(false);
+                showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
+                setModalLoading(false);
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
             showToast('Network error while initiating payment. Please try again.', 'error');
-            setLoading(false);
+            setModalLoading(false);
+        } finally {
+            // No need to close the payment selection modal immediately here,
+            // as KoraPay's modal handles its own lifecycle or redirection.
+            // It will be closed on success/failure callbacks.
         }
-    }, [showToast, user, logout]);
+    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout, fetchAllClientJobs, navigate]);
+
 
     const handleDeleteJob = useCallback(async (jobId, jobType) => {
         if (!window.confirm('Are you sure you want to cancel/delete this job? This action cannot be undone.')) {
@@ -401,9 +481,8 @@ const ClientNegotiations = () => {
             if (jobType === 'negotiation') {
                 apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}`;
             } else if (jobType === 'direct_upload') {
-                // Assuming a delete endpoint for direct upload jobs if needed
                 showToast('Direct upload jobs cannot be deleted from this view.', 'error');
-                return; // Prevent deletion for now
+                return;
             } else {
                 showToast('Unknown job type for deletion.', 'error');
                 return;
@@ -470,7 +549,6 @@ const ClientNegotiations = () => {
     }, [showToast, logout]);
 
 
-    // REMOVED: isClientViewing parameter as it's always client here
     const getStatusColor = useCallback((status) => {
         const colors = {
             'pending': '#007bff',
@@ -488,7 +566,6 @@ const ClientNegotiations = () => {
         return colors[status] || '#6c757d';
     }, []);
 
-    // REMOVED: isClientViewing parameter as it's always client here
     const getStatusText = useCallback((status) => {
         const texts = {
             'pending': 'Waiting for Transcriber',
@@ -691,6 +768,42 @@ const ClientNegotiations = () => {
                             placeholder="e.g., 'I can only offer USD 12.00.'"
                             rows="3"
                         ></textarea>
+                    </div>
+                </Modal>
+            )}
+
+            {/* NEW: Payment Selection Modal */}
+            {showPaymentSelectionModal && jobToPayFor && (
+                <Modal
+                    show={showPaymentSelectionModal}
+                    title={`Choose Payment Method for Job: ${jobToPayFor.id?.substring(0, 8)}...`}
+                    onClose={() => setShowPaymentSelectionModal(false)}
+                    onSubmit={initiatePayment}
+                    submitText={`Pay Now (USD ${((jobToPayFor.jobType === 'negotiation' ? jobToPayFor.agreed_price_usd : jobToPayFor.quote_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                    loading={modalLoading}
+                >
+                    <p>Select your preferred payment method:</p>
+                    <div className="payment-method-selection">
+                        <label className="radio-label">
+                            <input
+                                type="radio"
+                                value="paystack"
+                                checked={selectedPaymentMethod === 'paystack'}
+                                onChange={() => setSelectedPaymentMethod('paystack')}
+                                disabled={modalLoading}
+                            />
+                            Paystack (Card, Mobile Money, Bank Transfer, Pesalink)
+                        </label>
+                        <label className="radio-label">
+                            <input
+                                type="radio"
+                                value="korapay"
+                                checked={selectedPaymentMethod === 'korapay'}
+                                onChange={() => setSelectedPaymentMethod('korapay')}
+                                disabled={modalLoading}
+                            />
+                            KoraPay (Card, Bank Transfer, Mobile Money)
+                        </label>
                     </div>
                 </Modal>
             )}
