@@ -3,6 +3,7 @@
 // FIXED: SyntaxError: Expected corresponding JSX closing tag for <p>.
 // FIXED: Removed unnecessary dependency 'user.id' from fetchNegotiationJobs useCallback.
 // FIXED: KoraPay initialization logic to ensure script loading and required customer data.
+// UPDATED: KoraPay initialization to remove explicit channels (backend change), and added extensive logging for verification.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
@@ -143,7 +144,6 @@ const ClientNegotiations = () => {
             socket.on('negotiation_countered', handleNegotiationUpdate);
             socket.on('negotiation_cancelled', handleNegotiationUpdate);
             socket.on('job_completed', handleNegotiationUpdate); // For negotiation jobs completed by transcriber
-            // REMOVED: direct_job_taken, direct_job_completed, direct_job_client_completed
             console.log('ClientNegotiations: Socket listeners attached.');
         }
 
@@ -161,7 +161,7 @@ const ClientNegotiations = () => {
     }, [user?.id, isAuthenticated, handleNegotiationUpdate]);
 
 
-    const openAcceptCounterModal = useCallback((negotiationId) => { // Renamed jobId to negotiationId
+    const openAcceptCounterModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowAcceptCounterModal(true);
     }, []);
@@ -172,7 +172,7 @@ const ClientNegotiations = () => {
         setModalLoading(false);
     }, []);
 
-    const openRejectCounterModal = useCallback((negotiationId) => { // Renamed jobId to negotiationId
+    const openRejectCounterModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowRejectCounterModal(true);
         setRejectReason('');
@@ -185,17 +185,17 @@ const ClientNegotiations = () => {
         setModalLoading(false);
     }, []);
 
-    const openCounterBackModal = useCallback((negotiationId) => { // Renamed jobId to negotiationId
+    const openCounterBackModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowCounterBackModal(true);
-        const currentNegotiation = negotiations.find(n => n.id === negotiationId); // Use negotiations state
+        const currentNegotiation = negotiations.find(n => n.id === negotiationId);
         if (currentNegotiation) {
             setCounterOfferData({
                 proposedPrice: currentNegotiation.agreed_price_usd?.toString() || '',
                 clientResponse: ''
             });
         }
-    }, [negotiations]); // Dependency on negotiations state
+    }, [negotiations]);
 
     const closeCounterBackModal = useCallback(() => {
         setShowCounterBackModal(false);
@@ -232,7 +232,7 @@ const ClientNegotiations = () => {
             if (response.ok) {
                 showToast(data.message || 'Counter-offer accepted! Proceed to payment.', 'success');
                 closeAcceptCounterModal();
-                fetchNegotiationJobs(); // Use negotiation-specific fetch
+                fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to accept counter-offer.', 'error');
             }
@@ -262,7 +262,7 @@ const ClientNegotiations = () => {
             if (response.ok) {
                 showToast(data.message || 'Counter-offer rejected!', 'success');
                 closeRejectCounterModal();
-                fetchNegotiationJobs(); // Use negotiation-specific fetch
+                fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to reject counter-offer.', 'error');
             }
@@ -301,7 +301,7 @@ const ClientNegotiations = () => {
             if (response.ok) {
                 showToast(data.message || 'Counter-offer sent successfully!', 'success');
                 closeCounterBackModal();
-                fetchNegotiationJobs(); // Use negotiation-specific fetch
+                fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to send counter-offer.', 'error');
             }
@@ -313,19 +313,17 @@ const ClientNegotiations = () => {
         }
     }, [selectedNegotiationId, counterOfferData, showToast, closeCounterBackModal, fetchNegotiationJobs, logout]);
 
-    // REFACTORED: handleProceedToPayment to only handle negotiation jobs
-    const handleProceedToPayment = useCallback(async (negotiation) => { // Renamed job to negotiation
-        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) { // Only check agreed_price_usd for negotiation
+    const handleProceedToPayment = useCallback(async (negotiation) => {
+        if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) {
             showToast('Missing client email, negotiation ID, or agreed price for payment.', 'error');
             return;
         }
 
-        setNegotiationToPayFor(negotiation); // Set negotiationToPayFor state
-        setSelectedPaymentMethod('paystack'); // Reset to default
+        setNegotiationToPayFor(negotiation);
+        setSelectedPaymentMethod('paystack');
         setShowPaymentSelectionModal(true);
     }, [showToast, user]);
 
-    // REFACTORED: initiatePayment to only handle negotiation jobs
     const initiatePayment = useCallback(async () => {
         if (!negotiationToPayFor?.id || !selectedPaymentMethod) {
             showToast('Negotiation or payment method not selected.', 'error');
@@ -351,7 +349,7 @@ const ClientNegotiations = () => {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    negotiationId: negotiationToPayFor.id, // Always use negotiationId for this file
+                    negotiationId: negotiationToPayFor.id,
                     amount: amountToSend,
                     email: user.email,
                     paymentMethod: selectedPaymentMethod,
@@ -363,7 +361,9 @@ const ClientNegotiations = () => {
                 if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
                     showToast('Redirecting to Paystack...', 'info');
                     window.location.href = data.data.authorization_url;
-                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) { // Removed && window.Korapay here
+                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
+                    console.log('KoraPay Data from Backend:', data.korapayData); // DEBUG: Log KoraPay data
+
                     // Load KoraPay script if not already loaded
                     if (!window.Korapay) {
                         const script = document.createElement('script');
@@ -373,10 +373,9 @@ const ClientNegotiations = () => {
                         await new Promise(resolve => script.onload = resolve);
                     }
 
-                    if (window.Korapay) { // Re-check if Korapay is now available after script load
+                    if (window.Korapay) {
                         const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
 
-                        // Ensure customer object has name and email, using user data if not provided by backend
                         const finalCustomer = {
                             name: customer?.name || user.full_name,
                             email: customer?.email || user.email
@@ -386,17 +385,21 @@ const ClientNegotiations = () => {
                             key: key,
                             reference: reference,
                             amount: amount,
-                            currency: currency,
-                            customer: finalCustomer, // Use the potentially augmented customer object
+                            currency: currency || "KES", // Default to KES if not provided by backend
+                            customer: finalCustomer,
                             notification_url: notification_url,
+                            // channels: ['card', 'mobile_money'], // Removed explicit channels (handled by backend now)
                             onClose: () => {
-                                console.log("KoraPay modal closed for negotiation.");
-                                showToast("Payment cancelled.", "info");
+                                console.log("KoraPay modal closed for negotiation. Re-fetching jobs.");
+                                showToast("Payment cancelled by user.", "info");
                                 setModalLoading(false);
                                 setShowPaymentSelectionModal(false);
+                                fetchNegotiationJobs(); // Re-fetch jobs on close
                             },
                             onSuccess: async (korapayResponse) => {
                                 console.log("KoraPay payment successful for negotiation:", korapayResponse);
+                                console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference); // DEBUG: Log verification parameters
+
                                 showToast("Payment successful! Verifying...", "success");
                                 try {
                                     const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
@@ -408,9 +411,10 @@ const ClientNegotiations = () => {
                                     if (verifyResponse.ok) {
                                         showToast("Payment successfully verified. Redirecting to dashboard!", "success");
                                         setShowPaymentSelectionModal(false);
-                                        fetchNegotiationJobs(); // Refresh negotiation list
+                                        fetchNegotiationJobs();
                                         navigate('/client-dashboard');
                                     } else {
+                                        console.error("KoraPay verification failed with backend:", verifyData.error); // DEBUG: Log backend verification error
                                         showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
                                         setModalLoading(false);
                                     }
@@ -424,10 +428,10 @@ const ClientNegotiations = () => {
                                 console.error("KoraPay payment failed for negotiation:", korapayResponse);
                                 showToast("Payment failed. Please try again.", "error");
                                 setModalLoading(false);
+                                setShowPaymentSelectionModal(false); // Close the selection modal on failure
                             }
                         });
                     } else {
-                        // If script loading failed, or window.Korapay is still not available for some reason
                         showToast('Failed to load KoraPay script. Please try again or contact support.', 'error');
                         setModalLoading(false);
                         setShowPaymentSelectionModal(false);
@@ -450,8 +454,8 @@ const ClientNegotiations = () => {
     }, [negotiationToPayFor, selectedPaymentMethod, user, showToast, logout, fetchNegotiationJobs, navigate]);
 
 
-    const handleDeleteJob = useCallback(async (jobId, jobType) => { // Renamed to handleDeleteNegotiation
-        if (jobType !== 'negotiation') { // Ensure it's a negotiation job
+    const handleDeleteJob = useCallback(async (jobId, jobType) => {
+        if (jobType !== 'negotiation') {
             showToast('This action is only for negotiation jobs.', 'error');
             return;
         }
@@ -478,7 +482,7 @@ const ClientNegotiations = () => {
             const data = await response.json();
             if (response.ok) {
                 showToast('Negotiation cancelled/deleted successfully!', 'success');
-                fetchNegotiationJobs(); // Use negotiation-specific fetch
+                fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to cancel/delete negotiation', 'error');
             }
@@ -487,8 +491,8 @@ const ClientNegotiations = () => {
         }
     }, [showToast, fetchNegotiationJobs, logout]);
 
-    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { // Renamed to handleDownloadNegotiationFile
-        if (jobType !== 'negotiation') { // Ensure it's a negotiation file
+    const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => { // Added fileName as param
+        if (jobType !== 'negotiation') {
             showToast('This action is only for negotiation files.', 'error');
             return;
         }
@@ -574,7 +578,7 @@ const ClientNegotiations = () => {
     const query = new URLSearchParams(location.search);
     const statusFilter = query.get('status');
 
-    let displayedNegotiations = []; // Renamed from displayedJobs
+    let displayedNegotiations = [];
     let pageTitle = "Negotiation Room";
     let pageDescription = "Manage all ongoing offers, counter-offers, and awaiting payment statuses for your transcription jobs.";
     let listSubtitle = "Ongoing Negotiations";
@@ -644,8 +648,8 @@ const ClientNegotiations = () => {
                             displayedNegotiations.map(negotiation => (
                                 <NegotiationCard
                                     key={negotiation.id}
-                                    job={negotiation} // Still pass as 'job' prop to NegotiationCard
-                                    jobType={'negotiation'} // Explicitly set jobType as negotiation
+                                    job={negotiation}
+                                    jobType={'negotiation'}
                                     onDelete={handleDeleteJob}
                                     onPayment={handleProceedToPayment}
                                     onLogout={logout}
