@@ -456,7 +456,7 @@ const TranscriberDashboard = () => {
                         {/* UPDATED: Link to separate completed direct upload jobs */}
                         <Link to="/transcriber-direct-upload-jobs?status=completed" className="dashboard-card">
                             <div className="card-icon">✅</div>
-                            <h3>My Completed Direct Upload Jobs ({completedDirectUploadJobsCount})</h3> 
+                            <h3>My Completed DU Jobs ({completedDirectUploadJobsCount})</h3> 
                             <p>View your finished direct upload projects and earnings.</p>
                         </Link>
 
@@ -482,7 +482,7 @@ const TranscriberDashboard = () => {
                         {transcriberRating >= 4 && (
                             <Link to="/transcriber-other-jobs" className="dashboard-card">
                             <div className="card-icon">💼</div>
-                            <h3>Other Jobs ({availableDirectJobsCount})</h3>
+                            <h3>DU Jobs ({availableDirectJobsCount})</h3>
                             <p>Browse and take direct upload jobs from clients.</p>
                             </Link>
                         )}
