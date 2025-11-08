@@ -363,6 +363,7 @@ const ClientNegotiations = () => {
                 } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
                     console.log('KoraPay Data from Backend:', data.korapayData);
 
+                    // Ensure KoraPay script is loaded before initializing
                     if (!window.Korapay) {
                         const script = document.createElement('script');
                         script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
@@ -388,8 +389,13 @@ const ClientNegotiations = () => {
                             notification_url: notification_url,
                             onClose: () => {
                                 console.log("KoraPay modal closed for negotiation. Attempting to close payment selection modal and re-fetch jobs.");
+                                // Safely close KoraPay modal
                                 if (window.Korapay && typeof window.Korapay.close === 'function') {
-                                    window.Korapay.close(); // Explicitly close KoraPay modal
+                                    try {
+                                        window.Korapay.close(); 
+                                    } catch (e) {
+                                        console.error("Error explicitly closing KoraPay modal on close:", e);
+                                    }
                                 }
                                 setTimeout(() => { // Add a slight delay before closing React modal
                                     showToast("Payment cancelled by user.", "info");
@@ -403,34 +409,42 @@ const ClientNegotiations = () => {
                                 console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference);
 
                                 showToast("Payment successful! Verifying...", "success");
-                                try {
-                                    if (window.Korapay && typeof window.Korapay.close === 'function') {
-                                        window.Korapay.close(); // Explicitly close KoraPay modal
+                                // Safely close KoraPay modal immediately
+                                if (window.Korapay && typeof window.Korapay.close === 'function') {
+                                    try {
+                                        window.Korapay.close(); 
+                                    } catch (e) {
+                                        console.error("Error explicitly closing KoraPay modal on success:", e);
                                     }
+                                }
+                                
+                                // Add a small delay before proceeding to verification to ensure DOM cleanup
+                                setTimeout(async () => {
+                                    try {
+                                        const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
+                                            method: 'GET',
+                                            headers: { 'Authorization': `Bearer ${token}` },
+                                        });
+                                        const verifyData = await verifyResponse.json();
 
-                                    const verifyResponse = await fetch(`${BACKEND_API_URL}/api/negotiations/${negotiationToPayFor.id}/payment/verify/${korapayResponse.reference}?paymentMethod=korapay`, {
-                                        method: 'GET',
-                                        headers: { 'Authorization': `Bearer ${token}` },
-                                    });
-                                    const verifyData = await verifyResponse.json();
-
-                                    if (verifyResponse.ok) {
-                                        showToast("Payment successfully verified. Redirecting to dashboard!", "success");
-                                        setShowPaymentSelectionModal(false);
-                                        fetchNegotiationJobs();
-                                        navigate('/client-dashboard');
-                                    } else {
-                                        console.error("KoraPay verification failed with backend:", verifyData.error);
-                                        showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                                        if (verifyResponse.ok) {
+                                            showToast("Payment successfully verified. Redirecting to dashboard!", "success");
+                                            setShowPaymentSelectionModal(false);
+                                            fetchNegotiationJobs();
+                                            navigate('/client-dashboard');
+                                        } else {
+                                            console.error("KoraPay verification failed with backend:", verifyData.error);
+                                            showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                                            setModalLoading(false);
+                                            setShowPaymentSelectionModal(false);
+                                        }
+                                    } catch (verifyError) {
+                                        console.error('Error during KoraPay verification for negotiation:', verifyError);
+                                        showToast('Network error during payment verification. Please contact support.', 'error');
                                         setModalLoading(false);
                                         setShowPaymentSelectionModal(false);
                                     }
-                                } catch (verifyError) {
-                                    console.error('Error during KoraPay verification for negotiation:', verifyError);
-                                    showToast('Network error during payment verification. Please contact support.', 'error');
-                                    setModalLoading(false);
-                                    setShowPaymentSelectionModal(false);
-                                }
+                                }, 500); // 500ms delay for cleanup
                             },
                             onFailed: (korapayResponse) => {
                                 console.error("KoraPay payment failed for negotiation:", korapayResponse);
