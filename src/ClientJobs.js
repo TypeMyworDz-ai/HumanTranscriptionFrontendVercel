@@ -581,7 +581,6 @@ const ClientJobs = () => {
                             <ol>
                                 <li>Track the progress of your job here. Client can ask about progress of their job or clarify something.</li>
                                 <li>This Chat is moderated. Exchange of personal information is highly discouraged.</li>
-                                <li>For clients, when they send a message, it appears real-time on transcriber's side but not true for clients.</li>
                             </ol>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
