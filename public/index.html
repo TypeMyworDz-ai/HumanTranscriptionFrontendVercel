@@ -31,7 +31,8 @@
       /* NEW: WhatsApp floating button style */
       .whatsapp-float {
           position: fixed;
-          width: 60px;
+          width: auto; /* Adjusted width to fit text */
+          min-width: 60px; /* Minimum width for icon */
           height: 60px;
           bottom: 40px;
           right: 40px;
@@ -39,16 +40,35 @@
           color: #FFF;
           border-radius: 50px;
           text-align: center;
-          font-size: 30px;
+          font-size: 18px; /* Adjusted font size for text */
           box-shadow: 2px 2px 3px #999;
           z-index: 1000;
           display: flex;
           justify-content: center;
           align-items: center;
-          text-decoration: none; /* Remove underline from link */
+          text-decoration: none; 
+          padding: 0 20px; /* Added padding for text */
+          transition: width 0.3s ease, background-color 0.3s ease; /* Added transition for smooth hover */
       }
-      .whatsapp-float i {
-          margin-top: 5px; /* Adjust icon vertical alignment */
+      .whatsapp-float:hover {
+          background-color: #128C7E; /* Darker green on hover */
+          width: auto; /* Expand width on hover if content is larger */
+      }
+      .whatsapp-float .whatsapp-icon {
+          font-size: 30px; /* Keep icon size */
+          margin-right: 10px; /* Space between icon and text */
+      }
+      .whatsapp-float .whatsapp-text {
+          display: none; /* Hide text by default */
+          font-weight: bold;
+          white-space: nowrap; /* Prevent text wrapping */
+      }
+      .whatsapp-float:hover .whatsapp-text {
+          display: inline-block; /* Show text on hover */
+      }
+      /* Ensure icon is centered if text is hidden */
+      .whatsapp-float:not(:hover) .whatsapp-icon {
+          margin-right: 0;
       }
     </style>
     <!-- Font Awesome for WhatsApp icon (if not already included) -->
@@ -61,8 +81,9 @@
     <div id="root"></div>
 
     <!-- NEW: WhatsApp Click-to-Chat Button -->
-    <a href="https://wa.me/254703443002" class="whatsapp-float" target="_blank" rel="noopener noreferrer">
-        <i class="fab fa-whatsapp"></i>
+    <a href="https://wa.me/254703443002" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" title="Chat with us on WhatsApp">
+        <i class="fab fa-whatsapp whatsapp-icon"></i>
+        <span class="whatsapp-text">Chat</span>
     </a>
     <!-- REMOVED: Tawk.to Script -->
 

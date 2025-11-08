@@ -594,7 +594,7 @@ const TranscriberNegotiations = () => {
         displayedJobs = negotiationJobs.filter(job =>
             job.status === 'hired'
         );
-        pageTitle = "My Active Negotiation Jobs"; // Specific title
+        pageTitle = "My Negotiation Jobs"; // Specific title
         pageDescription = "Track the progress of your assigned negotiation jobs and communicate with clients.";
         listSubtitle = "Currently Assigned Negotiation Jobs";
         emptyMessage = "No active negotiation jobs assigned to you.";

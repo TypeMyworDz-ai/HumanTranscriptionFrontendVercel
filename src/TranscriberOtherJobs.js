@@ -199,7 +199,7 @@ const TranscriberOtherJobs = () => {
         <div className="transcriber-other-jobs-container">
             <header className="transcriber-other-jobs-header">
                 <div className="header-content">
-                    <h1>Other Jobs</h1>
+                    <h1>Available DU Jobs</h1>
                     <div className="user-profile-actions">
                         <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">

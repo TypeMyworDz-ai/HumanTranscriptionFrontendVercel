@@ -49,24 +49,20 @@ const arePropsEqual = (prevProps, nextProps) => {
     if (prevProps.openAcceptModal !== nextProps.openAcceptModal) return false;
     if (prevProps.onOpenCounterModal !== nextProps.onOpenCounterModal) return false;
     if (prevProps.openRejectModal !== nextProps.openRejectModal) return false;
-    if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) return false; // Client's complete negotiation
+    if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) return false; 
     if (prevProps.canCounter !== nextProps.canCounter) return false;
     if (prevProps.onDownloadFile !== nextProps.onDownloadFile) return false;
     if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) return false;
     if (prevProps.clientAverageRating !== nextProps.clientAverageRating) return false;
-    // NEW PROPS FOR TRANSCRIBER COMPLETION
-    if (prevProps.openSubmitDirectJobModal !== nextProps.openSubmitDirectJobModal) return false;
-    // Removed openCompleteNegotiationJobModal from here as it's not passed to transcriber view.
+    // Removed direct upload specific props from comparison
 
-
-    // If all checked props are equal, prevent re-render
     return true;
 };
 
 
 const NegotiationCard = React.memo(({ 
   job, 
-  jobType, 
+  jobType, // This component now assumes jobType === 'negotiation'
   onDelete,
   onPayment,
   onLogout,
@@ -86,27 +82,27 @@ const NegotiationCard = React.memo(({
   onDownloadFile,
   clientCompletedJobs,
   clientAverageRating,
-  // NEW PROPS FOR TRANSCRIBER JOB COMPLETION (passed from TranscriberJobs)
-  openSubmitDirectJobModal, // For direct upload jobs (transcriber to submit)
-  // Removed openCompleteNegotiationJobModal from here as transcribers do not mark negotiation jobs complete.
+  // Removed direct upload specific props
 }) => { 
   const { user } = useAuth(); 
   const jobId = job.id; 
 
-  const isDirectUploadJob = jobType === 'direct_upload'; 
+  // Removed isDirectUploadJob as this component now only handles negotiation jobs.
   const isClientViewing = currentUserType === 'client';
   
   let otherPartyId;
   let otherPartyName;
-  let otherPartyDetails; // To hold the full object for display, like rating/jobs
+  let otherPartyDetails; 
 
   if (isClientViewing) {
       otherPartyId = job.transcriber_id;
-      otherPartyDetails = isDirectUploadJob ? job.transcriber : job.transcriber_info;
+      // Assume job.transcriber_info is always present for client view of negotiation
+      otherPartyDetails = job.transcriber_info; 
       otherPartyName = otherPartyDetails?.full_name || 'Unknown Transcriber';
   } else { // Transcriber viewing
       otherPartyId = job.client_id;
-      otherPartyDetails = isDirectUploadJob ? job.client : job.client_info;
+      // Assume job.client_info is always present for transcriber view of negotiation
+      otherPartyDetails = job.client_info; 
       otherPartyName = otherPartyDetails?.full_name || 'Unknown Client';
   }
 
@@ -119,11 +115,9 @@ const NegotiationCard = React.memo(({
 
   const calculateTimeLeft = useCallback(() => {
     console.log(`[NegotiationCard: ${jobId}] calculateTimeLeft triggered. Type: ${jobType}`);
-    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, job.due_date || job.agreed_deadline_hours);
+    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, job.due_date); // Only job.due_date for negotiation jobs
 
-    const deadlineTimestamp = isDirectUploadJob 
-        ? (job.taken_at && job.agreed_deadline_hours ? new Date(new Date(job.taken_at).getTime() + job.agreed_deadline_hours * 3600 * 1000).toISOString() : null)
-        : job.due_date;
+    const deadlineTimestamp = job.due_date; // Only job.due_date for negotiation jobs
 
     if (!deadlineTimestamp) {
         console.log(`[NegotiationCard: ${jobId}] No deadline timestamp found.`);
@@ -158,28 +152,22 @@ const NegotiationCard = React.memo(({
     const result = `${hours}h ${minutes}m ${seconds}s`;
     console.log(`[NegotiationCard: ${jobId}] Time left calculated:`, result);
     return result;
-  }, [job.due_date, job.agreed_deadline_hours, job.taken_at, isDirectUploadJob, jobId, jobType]);
+  }, [job.due_date, jobId, jobType]);
 
-
-  useEffect(() => {
-    console.log(`NegotiationCard: Rendering job ${jobId} with status: ${job.status}. Due Date: ${job.due_date || job.agreed_deadline_hours}. Type: ${jobType}`);
-    console.log(`NegotiationCard: Other Party Data for ${otherPartyName} (ID: ${otherPartyId}):`, otherPartyDetails);
-  }, [jobId, job.status, job.due_date, job.agreed_deadline_hours, otherPartyDetails, otherPartyId, otherPartyName, jobType]);
 
   const isOverdue = (job.status !== 'completed' && job.status !== 'client_completed' && job.status !== 'rejected' && job.status !== 'cancelled') && (
-    (isDirectUploadJob && job.taken_at && job.agreed_deadline_hours && new Date(new Date(job.taken_at).getTime() + job.agreed_deadline_hours * 3600 * 1000) < new Date()) ||
-    (!isDirectUploadJob && job.due_date && new Date(job.due_date) < new Date())
+    job.due_date && new Date(job.due_date) < new Date() // Only check job.due_date for negotiation jobs
   );
 
 
   useEffect(() => {
     console.log(`[NegotiationCard: ${jobId}] useEffect for deadline counter triggered. Type: ${jobType}`);
     console.log(`[NegotiationCard: ${jobId}] Current job status: ${job.status}`);
-    console.log(`[NegotiationCard: ${jobId}] Has deadline: ${!!(job.due_date || (job.taken_at && job.agreed_deadline_hours))}`);
+    console.log(`[NegotiationCard: ${jobId}] Has deadline: ${!!(job.due_date)}`);
 
 
-    if (!(job.due_date || (job.taken_at && job.agreed_deadline_hours)) || job.status === 'completed' || job.status === 'client_completed' || job.status === 'rejected' || job.status === 'cancelled') {
-        console.log(`[NegotiationCard: ${jobId}] Stopping deadline counter. Status: ${job.status}, Deadline present: ${!!(job.due_date || (job.taken_at && job.agreed_deadline_hours))}`);
+    if (!(job.due_date) || job.status === 'completed' || job.status === 'client_completed' || job.status === 'rejected' || job.status === 'cancelled') {
+        console.log(`[NegotiationCard: ${jobId}] Stopping deadline counter. Status: ${job.status}, Deadline present: ${!!(job.due_date)}`);
         setTimeLeft(null);
         return;
     }
@@ -194,12 +182,11 @@ const NegotiationCard = React.memo(({
         console.log(`[NegotiationCard: ${jobId}] Clearing deadline counter interval.`);
         clearInterval(timer);
     }
-  }, [job.due_date, job.agreed_deadline_hours, job.taken_at, job.status, calculateTimeLeft, jobId, jobType]);
+  }, [job.due_date, job.status, calculateTimeLeft, jobId, jobType]);
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
-    const isMessageForThisJob = (data.negotiation_id === jobId && jobType === 'negotiation') || 
-                                (data.direct_upload_job_id === jobId && jobType === 'direct_upload');
+    const isMessageForThisJob = (data.negotiation_id === jobId && jobType === 'negotiation'); // Only check for negotiation_id
 
     if (isMessageForThisJob) {
       setCardMessages(prevMessages => {
@@ -252,7 +239,7 @@ const NegotiationCard = React.memo(({
           return;
         }
 
-        const response = await fetch(`${BACKEND_API_URL}/api/messages/${jobId}`, {
+        const response = await fetch(`${BACKEND_API_URL}/api/messages/${jobId}`, { // API to fetch messages for negotiation
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}` 
@@ -291,7 +278,6 @@ const NegotiationCard = React.memo(({
       return;
     }
     if (!currentUserId || !jobId || !otherPartyId) {
-      // This is the check that was failing.
       showToast('Cannot send message: missing required info (user, job, or recipient).', 'error');
       console.error('Missing info for sending message:', { currentUserId, jobId, otherPartyId });
       return;
@@ -305,11 +291,7 @@ const NegotiationCard = React.memo(({
       senderUserType: currentUserType
     };
 
-    if (isDirectUploadJob) {
-        messageData.directUploadJobId = jobId;
-    } else {
-        messageData.negotiationId = jobId;
-    }
+    messageData.negotiationId = jobId; // Only negotiationId for negotiation jobs
 
     let tempMessageId; 
     try {
@@ -318,7 +300,7 @@ const NegotiationCard = React.memo(({
           id: tempMessageId,
           sender_id: currentUserId,
           receiver_id: otherPartyId,
-          [isDirectUploadJob ? 'direct_upload_job_id' : 'negotiation_id']: jobId,
+          negotiation_id: jobId, // Only negotiation_id
           content: cardNewMessage,
           timestamp: formatDisplayTimestamp(new Date().toISOString()),
           sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
@@ -343,7 +325,7 @@ const NegotiationCard = React.memo(({
     if (!file) return;
 
     setIsSendingFile(true);
-    showToast('Uploading file...! Attention: Only send transcription files here.','info');
+    showToast('Uploading file...! Attention: Only send transcription files here.', 'info');
 
     let tempMessageId; 
     try {
@@ -359,18 +341,14 @@ const NegotiationCard = React.memo(({
           senderUserType: currentUserType
         };
 
-        if (isDirectUploadJob) {
-            messageData.directUploadJobId = jobId;
-        } else {
-            messageData.negotiationId = jobId;
-        }
+        messageData.negotiationId = jobId; // Only negotiationId
 
         tempMessageId = `temp-${Date.now()}`;
         const optimisticMessage = {
             id: tempMessageId,
             sender_id: currentUserId,
             receiver_id: otherPartyId,
-            [isDirectUploadJob ? 'direct_upload_job_id' : 'negotiation_id']: jobId,
+            negotiation_id: jobId, // Only negotiation_id
             content: messageData.messageText,
             timestamp: formatDisplayTimestamp(new Date().toISOString()),
             sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
@@ -384,7 +362,7 @@ const NegotiationCard = React.memo(({
 
         showToast('File sent successfully! Transcriber will review.', 'success');
       } else {
-        showToast('File upload failed: No URL returned.', 'error');
+        showToast('File upload failed: No URL returned.','error');
       }
     } catch (error) {
       console.error('Error uploading or sending file:', error);
@@ -402,15 +380,22 @@ const NegotiationCard = React.memo(({
     fileInputRef.current.click();
   };
 
+  // Condition for displaying chat
+  const shouldDisplayChat = (
+    (currentUserType === 'client' && (job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed')) ||
+    (currentUserType === 'transcriber' && (job.status === 'hired' || job.status === 'taken' || job.status === 'in_progress'))
+  );
+
+
   return (
     <div className="negotiation-card">
       <div className="negotiation-header">
-        <div className={`
-          ${isClientViewing ? 'transcriber-info' : 'client-info'}
-        `}>
-          <div className={`
-            ${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}
-          `}>
+        <div className={
+          `${isClientViewing ? 'transcriber-info' : 'client-info'}`
+        }>
+          <div className={
+            `${isClientViewing ? 'transcriber-avatar' : 'client-avatar'}`
+          }>
             {otherPartyName.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="client-details">
@@ -446,9 +431,9 @@ const NegotiationCard = React.memo(({
             )}
           </div>
         </div>
-        <div className={`
-          ${isClientViewing ? 'negotiation-status' : 'negotiation-status-badge'}
-        `}>
+        <div className={
+          `${isClientViewing ? 'negotiation-status' : 'negotiation-status-badge'}`
+        }>
           <span
             className="status-badge"
             style={{ backgroundColor: getStatusColor(job.status, isClientViewing) }}
@@ -461,33 +446,33 @@ const NegotiationCard = React.memo(({
       <div className="negotiation-details">
         <div className="detail-row">
           <span className="label">Project Requirements:</span>
-          <span className="value">{isDirectUploadJob ? job.client_instructions : job.requirements}</span>
+          <span className="value">{job.requirements}</span> 
         </div>
-        {(job.negotiation_files || job.file_name) && (
+        {job.negotiation_files && ( 
           <div className="detail-row">
             <span className="label">Attached File:</span>
             <span className="value">
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  onDownloadFile(jobId, isDirectUploadJob ? job.file_name : job.negotiation_files, jobType);
+                  onDownloadFile(jobId, job.negotiation_files, jobType); 
                 }}
                 className="file-link-button"
                 type="button"
               >
-                📄 {isDirectUploadJob ? job.file_name : job.negotiation_files}
+                📄 {job.negotiation_files}
               </button>
             </span>
           </div>
         )}
         <div className="detail-row">
           <span className="label">Agreed Price:</span>
-          <span className="value price">USD {isDirectUploadJob ? job.quote_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="value price">USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> 
         </div>
         <div className="detail-row">
           <span className="label">Deadline:</span>
           <span className="value">
-            {isDirectUploadJob ? job.agreed_deadline_hours : job.deadline_hours} hours
+            {job.deadline_hours} hours 
             {/* Dynamic deadline counter display */}
             {timeLeft && timeLeft !== 'OVERDUE' && (
                 <span className="time-left-display" style={{ marginLeft: '10px', color: 'green', fontWeight: 'bold' }}>
@@ -503,10 +488,10 @@ const NegotiationCard = React.memo(({
           <span className="label">Requested:</span>
           <span className="value">{new Date(job.created_at).toLocaleDateString()}</span>
         </div>
-        {(job.status === 'completed' || job.status === 'client_completed') && (job.completed_at || job.client_completed_at) && (
+        {(job.status === 'completed' || job.status === 'client_completed') && job.completed_at && ( 
             <div className="detail-row">
                 <span className="label">Completed At:</span>
-                <span className="value">{formatDisplayTimestamp(job.completed_at || job.client_completed_at)}</span>
+                <span className="value">{formatDisplayTimestamp(job.completed_at)}</span> 
             </div>
         )}
         {(job.status === 'completed' || job.status === 'client_completed') && (job.client_feedback_comment || job.client_feedback_rating) && (
@@ -524,7 +509,7 @@ const NegotiationCard = React.memo(({
                         <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>"{job.client_feedback_comment}"</p>
                     )}
                     {!job.client_feedback_comment && !job.client_feedback_rating && <p>No feedback provided.</p>}
-                </span >
+                </span>
             </div>
         )}
       </div>
@@ -543,7 +528,7 @@ const NegotiationCard = React.memo(({
       )}
 
       {/* --- CHAT INTEGRATION FOR THIS CARD --- */}
-      {job.status !== 'completed' && job.status !== 'client_completed' && (
+      {shouldDisplayChat && ( 
       <div className="chat-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
         <h4 style={{ marginBottom: '10px' }}>Chat with {otherPartyName}</h4>
         <div ref={chatWindowRef} className="chat-window-content" style={{
@@ -668,7 +653,7 @@ const NegotiationCard = React.memo(({
               <div className="pending-actions">
                 <span className="waiting-text">⏳ Waiting for transcriber response...</span>
                 {onDelete && <button
-                  onClick={() => onDelete(jobId)}
+                  onClick={() => onDelete(jobId, jobType)} 
                   className="cancel-negotiation-btn"
                 >
                   Cancel Negotiation
@@ -696,16 +681,11 @@ const NegotiationCard = React.memo(({
                 </button>}
               </div>
             )}
-            {job.status === 'available_for_transcriber' && isDirectUploadJob && (
-                <div className="available-direct-upload-actions">
-                    <span className="info-text">🔎 Job paid! Waiting for a transcriber to take it.</span>
-                </div>
-            )}
 
-            {/* UPDATED: Client can mark negotiation jobs OR direct upload jobs complete if transcriber has completed it */}
+            {/* Client can mark negotiation jobs complete if transcriber has completed it */}
             {(job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed') && openCompleteJobModal && (
                 <div className="hired-actions">
-                    <span className="info-text">🎉 Job Active! {isDirectUploadJob ? 'Transcriber assigned.' : 'Transcriber hired.'}</span>
+                    <span className="info-text">🎉 Job Active! Transcriber hired.</span> 
                     <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(job); }} className="action-btn complete-job-btn">Mark as Complete</button>
                 </div>
             )}
@@ -730,7 +710,7 @@ const NegotiationCard = React.memo(({
             {(job.status === 'rejected' || job.status === 'cancelled' || job.status === 'client_completed') && (
                 <div className="closed-actions">
                     {onDelete && <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(jobId); }}
+                        onClick={(e) => { e.stopPropagation(); onDelete(jobId, jobType); }} 
                         className="action-btn delete-closed-btn"
                     >
                         Delete from List
@@ -741,7 +721,7 @@ const NegotiationCard = React.memo(({
         ) : (
           <>
             {/* Transcriber Actions */}
-            {jobType === 'negotiation' && job.status === 'pending' && (
+            {job.status === 'pending' && (
               <div className="transcriber-pending-actions" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
                 {openAcceptModal && <button
                   onClick={(e) => { e.stopPropagation(); openAcceptModal(jobId); }}
@@ -763,29 +743,23 @@ const NegotiationCard = React.memo(({
                 </button>}
               </div>
             )}
-            {jobType === 'negotiation' && job.status === 'accepted_awaiting_payment' && (
+            {job.status === 'accepted_awaiting_payment' && (
                 <div className="transcriber-awaiting-payment-actions">
                     <span className="info-text">⏳ Awaiting Client Payment...</span>
                 </div>
             )}
-            {jobType === 'direct_upload' && job.status === 'available_for_transcriber' && (
-                <div className="transcriber-available-direct-upload-actions">
-                    <span className="info-text">✨ Job available for you to take!</span>
-                </div>
-            )}
-            {(job.status === 'hired' || job.status === 'taken' || job.status === 'in_progress') && (
+            {(job.status === 'hired' || job.status === 'in_progress') && ( 
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
-                    {/* NEW: Conditional button for transcriber to submit/complete active jobs */}
-                    {jobType === 'direct_upload' && (job.status === 'taken' || job.status === 'in_progress') && openSubmitDirectJobModal && (
-                        <button onClick={(e) => { e.stopPropagation(); openSubmitDirectJobModal(jobId); }} className="action-btn submit-job-btn">
-                            Submit Job
+                    {/* NEW: Conditional button for transcriber to complete negotiation jobs */}
+                    {(job.status === 'hired' || job.status === 'in_progress') && openCompleteJobModal && (
+                        <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(jobId); }} className="action-btn submit-job-btn">
+                            Mark as Complete
                         </button>
                     )}
-                    {/* Removed Mark as Complete button for negotiation jobs from transcriber's view */}
                 </div>
             )}
-            {jobType === 'negotiation' && job.status === 'client_counter' && (
+            {job.status === 'client_counter' && (
                 <div className="transcriber-client-countered-actions">
                     <span className="info-text">📝 Client sent a counter-offer!</span>
                     {openAcceptModal && <button onClick={(e) => { e.stopPropagation(); openAcceptModal(jobId); }} className="action-btn accept-client-counter-btn">Accept Client Counter</button>}
@@ -800,7 +774,7 @@ const NegotiationCard = React.memo(({
             )}
             {(job.status === 'rejected' || job.status === 'cancelled' || job.status === 'completed' || job.status === 'client_completed') && (
                 <div className="transcriber-closed-actions">
-                    <span className="info-text">Job {job.status}.</span>
+                    <span className="info-text">Job {getStatusText(job.status)}.</span>
                 </div>
             )}
           </>

@@ -437,7 +437,7 @@ const TranscriberDirectUploadJobs = () => {
         displayedJobs = directUploadJobs.filter(job =>
             job.status === 'taken' || job.status === 'in_progress'
         );
-        pageTitle = "My Active Direct Upload Jobs";
+        pageTitle = "My DU Jobs";
         pageDescription = "Track the progress of your assigned direct upload transcription jobs and communicate with clients.";
         listSubtitle = "Currently Assigned Direct Upload Jobs";
         emptyMessage = "No active direct upload jobs assigned to you.";

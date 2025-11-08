@@ -442,14 +442,14 @@ const TranscriberDashboard = () => {
                         {/* NEW: Link to separate active direct upload jobs */}
                         <Link to="/transcriber-direct-upload-jobs?status=active" className="dashboard-card">
                             <div className="card-icon">📝</div>
-                            <h3>My Active Direct Upload Jobs ({activeDirectUploadJobsCount})</h3> 
+                            <h3>My DU Jobs ({activeDirectUploadJobsCount})</h3> 
                             <p>See direct upload jobs you're currently working on.</p>
                         </Link>
 
                         {/* UPDATED: Link to active negotiation jobs */}
                         <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
                             <div className="card-icon">📝</div>
-                            <h3>My Active Negotiation Jobs ({activeNegotiationCount})</h3> 
+                            <h3>My Negotiation Jobs ({activeNegotiationCount})</h3> 
                             <p>See negotiation jobs you're currently working on.</p>
                         </Link>
 
