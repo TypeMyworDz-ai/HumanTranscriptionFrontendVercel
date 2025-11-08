@@ -47,7 +47,8 @@ const TranscriberDirectUploadJobs = () => {
     const [selectedJobId, setSelectedJobId] = useState(null); // The ID of the job to be submitted
     const [modalLoading, setModalLoading] = useState(false);
 
-    const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
+    // REMOVED: transcriberCurrentJobId state is not used in this component
+    // const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
 
     const showToast = useCallback((message, type = 'success') => {
@@ -65,29 +66,30 @@ const TranscriberDirectUploadJobs = () => {
         }));
     }, []);
 
-    const fetchTranscriberDetailedStatus = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token || !user?.id) {
-            setTranscriberCurrentJobId(null);
-            return;
-        }
+    // REMOVED: fetchTranscriberDetailedStatus is not used in this component
+    // const fetchTranscriberDetailedStatus = useCallback(async () => {
+    //     const token = localStorage.getItem('token');
+    //     if (!token || !user?.id) {
+    //         setTranscriberCurrentJobId(null);
+    //         return;
+    //     }
 
-        try {
-            const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            if (response.ok && data.user) {
-                setTranscriberCurrentJobId(data.user.current_job_id || null);
-            } else {
-                console.error('Failed to fetch transcriber detailed status:', data.error);
-                setTranscriberCurrentJobId(null);
-            }
-        } catch (error) {
-            console.error('Network error fetching transcriber detailed status:', error);
-            setTranscriberCurrentJobId(null);
-        }
-    }, [user?.id, setTranscriberCurrentJobId]);
+    //     try {
+    //         const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
+    //             headers: { 'Authorization': `Bearer ${token}` }
+    //         });
+    //         const data = await response.json();
+    //         if (response.ok && data.user) {
+    //             setTranscriberCurrentJobId(data.user.current_job_id || null);
+    //         } else {
+    //             console.error('Failed to fetch transcriber detailed status:', data.error);
+    //             setTranscriberCurrentJobId(null);
+    //         }
+    //     } catch (error) {
+    //         console.error('Network error fetching transcriber detailed status:', error);
+    //         setTranscriberCurrentJobId(null);
+    //     }
+    // }, [user?.id, setTranscriberCurrentJobId]);
 
 
     // Fetch ONLY direct upload jobs for the current transcriber
@@ -175,16 +177,18 @@ const TranscriberDirectUploadJobs = () => {
         }
 
         fetchDirectUploadJobs(); 
-        fetchTranscriberDetailedStatus();
-    }, [isAuthenticated, authLoading, user, navigate, fetchDirectUploadJobs, fetchTranscriberDetailedStatus, logout]);
+        // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
+        // fetchTranscriberDetailedStatus();
+    }, [isAuthenticated, authLoading, user, navigate, fetchDirectUploadJobs, logout]); // Removed fetchTranscriberDetailedStatus from dependencies
 
     const handleJobUpdate = useCallback((data) => {
         console.log('TranscriberDirectUploadJobs Real-time: Job update received! Triggering re-fetch for list cleanup.', data);
         const jobId = data.jobId; 
         showToast(`Direct upload job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
         fetchDirectUploadJobs(); 
-        fetchTranscriberDetailedStatus();
-    }, [showToast, fetchDirectUploadJobs, fetchTranscriberDetailedStatus]);
+        // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
+        // fetchTranscriberDetailedStatus();
+    }, [showToast, fetchDirectUploadJobs]); // Removed fetchTranscriberDetailedStatus from dependencies
 
     const handleNewChatMessageForDirectUploadJobs = useCallback((data) => {
         console.log('TranscriberDirectUploadJobs Real-time: New chat message received!', data);
@@ -224,7 +228,7 @@ const TranscriberDirectUploadJobs = () => {
             socket.on('direct_job_taken', handleJobUpdate);
             socket.on('direct_job_completed', handleJobUpdate); 
             socket.on('direct_job_client_completed', handleJobUpdate);
-            socket.on('direct_job_completed_transcriber_side', handleJobUpdate); // Listen for transcriber-side completion
+            socket.on('direct_job_completed_transcriber_side', handleJobUpdate); 
             socket.on('newChatMessage', handleNewChatMessageForDirectUploadJobs);
 
             console.log('TranscriberDirectUploadJobs: Socket listeners attached.');
@@ -263,8 +267,8 @@ const TranscriberDirectUploadJobs = () => {
             'available_for_transcriber': 'Available',
             'taken': 'Job Taken',
             'in_progress': 'In Progress',
-            'completed': 'Submitted for Review', // Transcriber completed
-            'client_completed': 'Completed by Client', // Client marked direct job complete
+            'completed': 'Submitted for Review', 
+            'client_completed': 'Completed by Client', 
             'cancelled': 'Cancelled'
         };
         return texts[status] || status;
@@ -286,7 +290,7 @@ const TranscriberDirectUploadJobs = () => {
                 return;
             }
 
-            let apiUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}`; // Assuming a direct deletion endpoint for direct upload jobs
+            let apiUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}`; 
             
             const response = await fetch(apiUrl, {
                 method: 'DELETE',
@@ -299,14 +303,15 @@ const TranscriberDirectUploadJobs = () => {
             if (response.ok) {
                 showToast('Direct upload job deleted successfully!', 'success');
                 fetchDirectUploadJobs(); 
-                fetchTranscriberDetailedStatus();
+                // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
+                // fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to delete direct upload job', 'error');
             }
         } catch (error) {
             showToast('Network error. Please try again.', 'error');
         }
-    }, [showToast, fetchDirectUploadJobs, logout, fetchTranscriberDetailedStatus]);
+    }, [showToast, fetchDirectUploadJobs, logout]); // Removed fetchTranscriberDetailedStatus from dependencies
 
     const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { 
         const token = localStorage.getItem('token');
@@ -392,7 +397,8 @@ const TranscriberDirectUploadJobs = () => {
                 showToast(data.message || 'Direct upload job submitted successfully!', 'success');
                 closeSubmitDirectJobModal();
                 fetchDirectUploadJobs(); 
-                fetchTranscriberDetailedStatus();
+                // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
+                // fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to submit direct upload job.', 'error');
             }
@@ -402,7 +408,7 @@ const TranscriberDirectUploadJobs = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedJobId, submitDirectJobComment, submitDirectJobConfirmation, logout, showToast, closeSubmitDirectJobModal, fetchDirectUploadJobs, fetchTranscriberDetailedStatus]);
+    }, [selectedJobId, submitDirectJobComment, submitDirectJobConfirmation, logout, showToast, closeSubmitDirectJobModal, fetchDirectUploadJobs]); // Removed fetchTranscriberDetailedStatus from dependencies
 
 
     if (authLoading || !isAuthenticated || !user) {
@@ -415,9 +421,8 @@ const TranscriberDirectUploadJobs = () => {
         );
     }
 
-    // Derived availability: Transcriber is available if online AND has no current job
-    // This is primarily for the Negotiation Room's 'canAccept' logic, not directly used here for filtering
-    const canTranscriberAccept = user?.is_online && !transcriberCurrentJobId; 
+    // REMOVED: canTranscriberAccept as it's not used in this component
+    // const canTranscriberAccept = user?.is_online && !transcriberCurrentJobId; 
 
     const query = new URLSearchParams(location.search);
     const statusFilter = query.get('status');
