@@ -2,6 +2,7 @@
 // FIXED: TypeError: Cannot read properties of undefined (reading 'join')
 // FIXED: ESLint warning: 'PAYSTACK_PUBLIC_KEY' is assigned a value but never used
 // UPDATED: Added mobileNumber input and state, dynamic KoraPay script loading, and refined KoraPay initialization.
+// FIXED: ESLint warning: 'handleDownloadFile' is assigned a value but never used
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -37,7 +38,6 @@ const ClientDirectUpload = () => {
     const [jobToPayFor, setJobToPayFor] = useState(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack');
     const [paymentModalLoading, setPaymentModalLoading] = useState(false);
-    // NEW: State for mobile number for KoraPay
     const [mobileNumber, setMobileNumber] = useState('');
 
 
@@ -58,7 +58,6 @@ const ClientDirectUpload = () => {
             return;
         }
 
-        // NEW: Dynamically load KoraPay script if selected and not already loaded
         if (selectedPaymentMethod === 'korapay' && !window.Korapay) {
             const script = document.createElement('script');
             script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
@@ -74,7 +73,6 @@ const ClientDirectUpload = () => {
             };
 
             return () => {
-                // Cleanup: remove the script when component unmounts or method changes away from korapay
                 if (document.body.contains(script)) {
                     document.body.removeChild(script);
                 }
@@ -257,7 +255,6 @@ const ClientDirectUpload = () => {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
-        // NEW: Validate mobile number for KoraPay
         if (selectedPaymentMethod === 'korapay' && !mobileNumber) {
             showToast('Please enter your mobile number for KoraPay.', 'error');
             setPaymentModalLoading(false);
@@ -293,7 +290,6 @@ const ClientDirectUpload = () => {
                 email: user.email,
                 paymentMethod: selectedPaymentMethod,
             };
-            // NEW: Add mobileNumber to payload if KoraPay is selected
             if (selectedPaymentMethod === 'korapay') {
                 payload.mobileNumber = mobileNumber;
             }
@@ -304,7 +300,7 @@ const ClientDirectUpload = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(payload) // Use the payload
+                body: JSON.stringify(payload)
             });
             const data = await response.json();
 
@@ -312,7 +308,7 @@ const ClientDirectUpload = () => {
                 if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
                     showToast('Redirecting to Paystack...', 'info');
                     window.location.href = data.data.authorization_url;
-                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) { // Removed && window.Korapay here
+                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
                     console.log('KoraPay Data from Backend:', data.korapayData);
 
                     // Ensure window.Korapay is available after dynamic script load
@@ -322,7 +318,6 @@ const ClientDirectUpload = () => {
                         const finalCustomer = {
                             name: customer?.name || user.full_name,
                             email: customer?.email || user.email,
-                            // NEW: Add mobile number to customer object
                             phone: mobileNumber || customer?.phone || undefined
                         };
 
@@ -372,7 +367,6 @@ const ClientDirectUpload = () => {
                             }
                         });
                     } else {
-                        // This block should ideally not be reached if the useEffect loads the script
                         showToast('KoraPay script not loaded. Please try again or contact support.', 'error');
                         setPaymentModalLoading(false);
                         setShowPaymentSelectionModal(false);
@@ -393,7 +387,7 @@ const ClientDirectUpload = () => {
         }
     }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout, navigate, mobileNumber]);
 
-
+    // eslint-disable-next-line no-unused-vars
     const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {
         if (jobType !== 'direct_upload') {
             showToast('This action is only for direct upload files.', 'error');
