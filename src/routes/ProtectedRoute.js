@@ -1,8 +1,8 @@
 // frontend/client/src/routes/ProtectedRoute.js
 
-import React, { useEffect } from 'react';
+import React from 'react'; // FIXED: Removed unused 'useEffect' import
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '..//contexts/AuthContext';
 
 /**
  * ProtectedRoute component handles authentication and authorization checks.

@@ -1,5 +1,6 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
 // FIXED: TypeError: Cannot read properties of undefined (reading 'join')
+// FIXED: ESLint warning: 'PAYSTACK_PUBLIC_KEY' is assigned a value but never used
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -11,6 +12,7 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 // PAYSTACK_PUBLIC_KEY is not directly used here for initiating payment in this refactored flow.
 // It's typically used by the Paystack inline script if you were integrating directly in the frontend,
 // but our backend handles the Paystack initialization and redirection.
+// eslint-disable-next-line no-unused-vars
 const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY; // Paystack Public Key
 
 const ClientDirectUpload = () => {
