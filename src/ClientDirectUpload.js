@@ -1,5 +1,5 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
-
+// FIXED: TypeError: Cannot read properties of undefined (reading 'join')
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -536,7 +536,12 @@ const ClientDirectUpload = () => {
                         </div>
                         <div className="quote-item">
                             <span>Special Requirements:</span>
-                            <strong>{quoteDetails.special_requirements?.length > 0 ? quoteDetails.specialRequirements.join(', ') : 'None'}&nbsp;</strong>
+                            <strong>
+                                {Array.isArray(quoteDetails.special_requirements) && quoteDetails.special_requirements.length > 0
+                                    ? quoteDetails.special_requirements.join(', ')
+                                    : 'None'}
+                                &nbsp;
+                            </strong>
                         </div>
                         <div className="quote-item total-quote">
                             <span>Total Quote:</span>
