@@ -28,43 +28,8 @@
     <!-- End Google tag (gtag.js) -->
 
     <style>
-      /* UPDATED: WhatsApp floating button style */
-      .whatsapp-float {
-          position: fixed;
-          width: auto; /* Allow width to adjust to content */
-          height: 60px;
-          bottom: 40px;
-          right: 40px;
-          background-color: #25d366;
-          color: #FFF;
-          border-radius: 50px;
-          text-align: center;
-          font-size: 18px; /* Font size for the 'Chat' text */
-          box-shadow: 2px 2px 3px #999;
-          z-index: 1000;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          text-decoration: none; 
-          padding: 0 20px; /* Padding for the text and icon */
-          transition: background-color 0.3s ease; /* Smooth transition for color change */
-      }
-      .whatsapp-float:hover {
-          background-color: #128C7E; /* Darker green on hover */
-      }
-      .whatsapp-float .whatsapp-icon {
-          font-size: 30px; /* Icon size */
-          margin-right: 10px; /* Space between icon and text */
-          color: #FFF; /* Ensure icon is white */
-      }
-      .whatsapp-float .whatsapp-text {
-          display: inline-block; /* Always show text */
-          font-weight: bold;
-          white-space: nowrap; /* Prevent text wrapping */
-          color: #FFF; /* Ensure text is white */
-      }
-      /* Adjust padding/spacing if only icon is desired, but for 'Chat' always visible, this is fine */
-      /* If you prefer just 'W' and want it centered with the icon, you might adjust margin-right on icon */
+      /* REMOVED: WhatsApp floating button style is removed from here */
+      /* It will be part of the new React component's CSS */
     </style>
     <!-- Font Awesome for WhatsApp icon (if not already included) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0V4LLanw2qksYuRlEzO+tcaEPQogQ0KaoIF2YO0sL4H3L9U+K7mR9s52s4A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -75,11 +40,8 @@
     
     <div id="root"></div>
 
-    <!-- NEW: WhatsApp Click-to-Chat Button -->
-    <a href="https://wa.me/254703443002" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" title="Chat with us on WhatsApp">
-        <i class="fab fa-whatsapp whatsapp-icon"></i>
-        <span class="whatsapp-text">Chat</span>
-    </a>
+    <!-- REMOVED: WhatsApp Click-to-Chat Button HTML is removed from here -->
+    <!-- It will be rendered conditionally by a React component -->
     <!-- REMOVED: Tawk.to Script -->
 
   </body>
