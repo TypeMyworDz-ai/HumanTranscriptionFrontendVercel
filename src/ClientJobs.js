@@ -600,14 +600,10 @@ const ClientJobs = () => {
                                 // --- START: DEBUGGING LOG AND DEFENSIVE CHECK ---
                                 if (jobType === 'direct_upload') {
                                     console.log(`ClientJobs: Full Direct Upload Job Object for ${job.id}:`, job);
-                                    // Ensure transcriber_id is present at the top level or within the nested 'transcriber' object
+                                    // Log a warning if transcriber_id is missing, but do not block rendering the card
                                     if (!job.transcriber_id && !job.transcriber?.id) {
-                                        console.error(`ClientJobs: Direct upload job ${job.id} (Type: ${jobType}) is missing 'transcriber_id' or 'transcriber.id'. Messaging will not work.`);
-                                        return (
-                                            <p key={job.id} className="error-message">
-                                                Error: Direct upload job {job.id} cannot be displayed correctly (missing transcriber information for messaging). Please check backend data.
-                                            </p>
-                                        );
+                                        console.warn(`ClientJobs: Direct upload job ${job.id} (Type: ${jobType}) is missing 'transcriber_id' or 'transcriber.id'. Messaging features will be disabled.`);
+                                        // The NegotiationCard component should handle this gracefully by disabling chat features
                                     }
                                 }
                                 // --- END: DEBUGGING LOG AND DEFENSIVE CHECK ---
