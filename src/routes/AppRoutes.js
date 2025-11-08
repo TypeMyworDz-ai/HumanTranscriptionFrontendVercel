@@ -45,10 +45,10 @@ import TranscriberProfile from '../TranscriberProfile';
 // NEW: Import Direct Upload-related components
 import ClientDirectUpload from '../ClientDirectUpload'; 
 import TranscriberOtherJobs from '../TranscriberOtherJobs'; 
-import TranscriberJobs from '../TranscriberJobs'; 
+// REMOVED: import TranscriberJobs from '../TranscriberJobs'; // REMOVED
 
 // NEW: Import the new TranscriberDirectUploadJobs component
-import TranscriberDirectUploadJobs from '../TranscriberDirectUploadJobs'; // NEW: Import
+import TranscriberDirectUploadJobs from '../TranscriberDirectUploadJobs'; 
 
 // NEW: Import Admin Oversight components
 import AdminPaymentHistory from '../AdminPaymentHistory'; 
@@ -116,7 +116,7 @@ const AppRoutes = () => {
                 <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
                 <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} />
                 <Route path="/transcriber-other-jobs" element={<TranscriberOtherJobs />} /> 
-                <Route path="/transcriber-jobs" element={<TranscriberJobs />} /> 
+                {/* REMOVED: <Route path="/transcriber-jobs" element={<TranscriberJobs />} /> */}
                 {/* NEW: Routes for TranscriberDirectUploadJobs */}
                 <Route path="/transcriber-direct-upload-jobs" element={<TranscriberDirectUploadJobs />} />
                 <Route path="/transcriber-direct-upload-jobs/:status" element={<TranscriberDirectUploadJobs />} />
