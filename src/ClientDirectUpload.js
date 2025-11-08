@@ -257,12 +257,8 @@ const ClientDirectUpload = () => {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
-        // RE-INTRODUCED: Validate mobile number for KoraPay
-        if (selectedPaymentMethod === 'korapay' && !mobileNumber) {
-            showToast('Please enter your mobile number for KoraPay.', 'error');
-            setPaymentModalLoading(false);
-            return;
-        }
+        // REMOVED: Frontend validation that made mobile number required for KoraPay.
+        // The backend now handles conditional inclusion based on whether a non-empty value is provided.
 
         setPaymentModalLoading(true);
         const token = localStorage.getItem('token');
@@ -680,7 +676,7 @@ const ClientDirectUpload = () => {
                                 disabled={paymentModalLoading}
                                 className="text-input-field"
                             />
-                            <small className="help-text">Required for some mobile money payments with KoraPay.</small>
+                            <small className="help-text">Provide if you wish to use mobile money via KoraPay. Leave blank otherwise.</small>
                         </div>
                     )}
                 </Modal>
