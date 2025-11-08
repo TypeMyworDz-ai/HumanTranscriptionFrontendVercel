@@ -1,7 +1,7 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
 // FIXED: TypeError: Cannot read properties of undefined (reading 'join')
 // FIXED: ESLint warning: 'PAYSTACK_PUBLIC_KEY' is assigned a value but never used
-// UPDATED: Added mobileNumber input and state, dynamic KoraPay script loading, and refined KoraPay initialization.
+// UPDATED: Re-introduced mobileNumber input and state to match training payment logic.
 // FIXED: ESLint warning: 'handleDownloadFile' is assigned a value but never used
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,6 +38,7 @@ const ClientDirectUpload = () => {
     const [jobToPayFor, setJobToPayFor] = useState(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack');
     const [paymentModalLoading, setPaymentModalLoading] = useState(false);
+    // RE-INTRODUCED: State for mobile number for KoraPay
     const [mobileNumber, setMobileNumber] = useState('');
 
 
@@ -58,6 +59,7 @@ const ClientDirectUpload = () => {
             return;
         }
 
+        // Dynamically load KoraPay script if selected and not already loaded
         if (selectedPaymentMethod === 'korapay' && !window.Korapay) {
             const script = document.createElement('script');
             script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
@@ -255,6 +257,7 @@ const ClientDirectUpload = () => {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
+        // RE-INTRODUCED: Validate mobile number for KoraPay
         if (selectedPaymentMethod === 'korapay' && !mobileNumber) {
             showToast('Please enter your mobile number for KoraPay.', 'error');
             setPaymentModalLoading(false);
@@ -290,6 +293,7 @@ const ClientDirectUpload = () => {
                 email: user.email,
                 paymentMethod: selectedPaymentMethod,
             };
+            // RE-INTRODUCED: Add mobileNumber to payload if KoraPay is selected
             if (selectedPaymentMethod === 'korapay') {
                 payload.mobileNumber = mobileNumber;
             }
@@ -311,13 +315,13 @@ const ClientDirectUpload = () => {
                 } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
                     console.log('KoraPay Data from Backend:', data.korapayData);
 
-                    // Ensure window.Korapay is available after dynamic script load
                     if (window.Korapay) {
                         const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
 
                         const finalCustomer = {
                             name: customer?.name || user.full_name,
                             email: customer?.email || user.email,
+                            // RE-INTRODUCED: phone to finalCustomer for KoraPay
                             phone: mobileNumber || customer?.phone || undefined
                         };
 
@@ -663,7 +667,7 @@ const ClientDirectUpload = () => {
                         </label>
                     </div>
 
-                    {/* NEW: Mobile Number Input for KoraPay */}
+                    {/* RE-INTRODUCED: Mobile Number Input for KoraPay */}
                     {selectedPaymentMethod === 'korapay' && (
                         <div className="form-group mobile-number-input">
                             <label htmlFor="mobileNumber">Mobile Number for KoraPay (Optional):</label>
