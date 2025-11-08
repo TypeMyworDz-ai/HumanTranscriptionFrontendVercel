@@ -1,20 +1,10 @@
-// src/TranscriberNegotiations.js - FINALIZED for USD currency and syntax fix (removed inline comments from select, corrected loading block, fixed 'not defined' errors, fixed canTranscriberAccept warning)
-// UPDATED: Transcribers can no longer counter the deadline. Only price and message are counterable.
-// NEW: Display client's job count in negotiation cards.
-// FIXED: JSX parsing error (Expected corresponding JSX closing tag for <div>)
-// FIXED: Removed unused 'useRef' import
-// UPDATED: Fetch and display direct upload jobs in 'My Completed Jobs' section.
-// UI REFACTOR: Display 'My Completed Jobs' as a table.
-// FIXED: 'proceedToPayment' is not defined error for transcribers.
-// FIXED: ESLint warning 'user.id' unnecessary dependency in useCallback.
-// FIXED: ESLint warnings 'transcriberStatus' and 'transcriberUserLevel' used before defined.
-
+// src/TranscriberNegotiations.js - Refactored to handle ONLY Negotiation Jobs
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
-import NegotiationCard from './NegotiationCard'; // Keep for other views (Negotiation Room, Active Jobs)
-import './TranscriberNegotiations.css'; // You'll need to create/update this CSS file
+import NegotiationCard from './NegotiationCard'; 
+import './TranscriberNegotiations.css'; 
 
 import { connectSocket, disconnectSocket } from './ChatService';
 import { useAuth } from './contexts/AuthContext';
@@ -42,7 +32,7 @@ const TranscriberNegotiations = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [allJobs, setAllJobs] = useState([]);
+    const [negotiationJobs, setNegotiationJobs] = useState([]); // Renamed from allJobs
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({
         isVisible: false,
@@ -105,10 +95,9 @@ const TranscriberNegotiations = () => {
     }, [user?.id, setTranscriberCurrentJobId]);
 
 
-    // UPDATED: fetchAllTranscriberJobs to fetch both negotiation and direct upload jobs
-    const fetchAllTranscriberJobs = useCallback(async () => {
+    // Refactored: fetchNegotiationJobs to ONLY fetch negotiation jobs
+    const fetchNegotiationJobs = useCallback(async () => {
         const token = localStorage.getItem('token');
-        // CHANGED: Use user?.id directly in the function body
         if (!token || !user?.id) {
             if (isAuthenticated) {
                 console.warn("TranscriberNegotiations: Token or userId missing for API call despite authenticated state. Forcing logout.");
@@ -119,77 +108,55 @@ const TranscriberNegotiations = () => {
 
         setLoading(true);
         try {
-            const [negotiationResponse, directUploadResponse] = await Promise.all([
-                fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/all`, { // Use the new 'all' endpoint
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-            ]);
-
+            const negotiationResponse = await fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
             const negotiationData = await (negotiationResponse.ok ? negotiationResponse.json() : Promise.resolve({ negotiations: [] }));
-            const directUploadData = await (directUploadResponse.ok ? directUploadResponse.json() : Promise.resolve({ jobs: [] }));
 
             const fetchedNegotiations = negotiationData.negotiations || [];
-            const fetchedDirectUploadJobs = directUploadData.jobs || [];
-
+            
             // Add a jobType identifier and format data for table display
             const typedNegotiations = fetchedNegotiations.map(job => ({
                 ...job,
                 jobType: 'negotiation',
                 client_name: job.client_info?.full_name || 'Unknown Client',
-                client_average_rating: job.client_info?.client_average_rating || 0, // Ensure rating is here
+                client_average_rating: job.client_info?.client_average_rating || 0, 
                 agreed_price_usd: job.agreed_price_usd,
                 deadline_hours: job.deadline_hours,
-                file_name: job.negotiation_files,
+                file_name: job.negotiation_files, // Assuming this is the relevant file for negotiation jobs
                 completed_on: job.completed_at,
-                transcriber_comment: job.transcriber_response, // For negotiation jobs, this is the transcriber's response
-                client_feedback_comment: job.client_feedback_comment,
-                client_feedback_rating: job.client_feedback_rating
-            }));
-            const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => ({
-                ...job,
-                jobType: 'direct_upload',
-                client_name: job.client?.full_name || 'Unknown Client',
-                client_average_rating: job.client?.client_average_rating || 0, // Ensure rating is here
-                agreed_price_usd: job.quote_amount,
-                deadline_hours: job.agreed_deadline_hours,
-                file_name: job.file_name,
-                completed_on: job.completed_at || job.client_completed_at, // Use client_completed_at if available
-                transcriber_comment: job.transcriber_comment, // For direct upload jobs, this is the transcriber's comment
+                transcriber_comment: job.transcriber_response, 
                 client_feedback_comment: job.client_feedback_comment,
                 client_feedback_rating: job.client_feedback_rating
             }));
 
+            setNegotiationJobs(typedNegotiations); // Update state for negotiation jobs only
 
-            const combinedJobs = [...typedNegotiations, ...typedDirectUploadJobs];
-            setAllJobs(combinedJobs);
-
-            console.log("TranscriberNegotiations: Fetched All Jobs:", combinedJobs.map(j => ({
+            console.log("TranscriberNegotiations: Fetched Negotiation Jobs:", typedNegotiations.map(j => ({
                 id: j.id,
                 status: j.status,
                 jobType: j.jobType,
                 clientName: j.client_name,
                 clientRating: j.client_average_rating,
-                agreedPrice: j.agged_price_usd,
+                agreedPrice: j.agreed_price_usd,
                 deadline: j.deadline_hours,
                 completedOn: j.completed_on,
-                transcriberComment: j.transcriber_comment, // Log transcriber comment
-                clientFeedbackComment: j.client_feedback_comment, // Log client feedback
-                clientFeedbackRating: j.client_feedback_rating // Log client feedback rating
+                transcriberComment: j.transcriber_comment, 
+                clientFeedbackComment: j.client_feedback_comment, 
+                clientFeedbackRating: j.client_feedback_rating 
             })));
 
-            if (combinedJobs.length === 0) {
-                showToast('No jobs found.', 'info');
+            if (typedNegotiations.length === 0) {
+                showToast('No negotiation jobs found.', 'info');
             }
         } catch (error) {
-            console.error("Network error while fetching all transcriber jobs:", error);
-            showToast('Network error while fetching jobs.', 'error');
+            console.error("Network error while fetching negotiation jobs:", error);
+            showToast('Network error while fetching negotiation jobs.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, logout, showToast, user?.id]); // CHANGED: Removed user?.id from dependencies as it's used in the func body
+    }, [isAuthenticated, logout, showToast, user?.id]); 
 
 
     useEffect(() => {
@@ -201,7 +168,6 @@ const TranscriberNegotiations = () => {
             return;
         }
 
-        // MOVED: Declaration of transcriberStatus and transcriberUserLevel
         const transcriberStatus = user.transcriber_status || '';
         const transcriberUserLevel = user.transcriber_user_level || '';
         const isTranscriber = user.user_type === 'transcriber';
@@ -214,17 +180,17 @@ const TranscriberNegotiations = () => {
             return;
         }
 
-        fetchAllTranscriberJobs(); // Call the updated fetch function
+        fetchNegotiationJobs(); // Call the refactored fetch function
         fetchTranscriberDetailedStatus();
-    }, [isAuthenticated, authLoading, user, navigate, fetchAllTranscriberJobs, fetchTranscriberDetailedStatus, logout]);
+    }, [isAuthenticated, authLoading, user, navigate, fetchNegotiationJobs, fetchTranscriberDetailedStatus, logout]);
 
     const handleJobUpdate = useCallback((data) => {
         console.log('TranscriberNegotiations Real-time: Job update received! Triggering re-fetch for list cleanup.', data);
-        const jobId = data.negotiationId || data.jobId;
-        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
-        fetchAllTranscriberJobs(); // Re-fetch all jobs
+        const jobId = data.negotiationId; // Only expect negotiationId now
+        showToast(`Negotiation status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
+        fetchNegotiationJobs(); // Re-fetch only negotiation jobs
         fetchTranscriberDetailedStatus();
-    }, [showToast, fetchAllTranscriberJobs, fetchTranscriberDetailedStatus]);
+    }, [showToast, fetchNegotiationJobs, fetchTranscriberDetailedStatus]);
 
 
     useEffect(() => {
@@ -243,11 +209,8 @@ const TranscriberNegotiations = () => {
             socket.on('negotiation_countered', handleJobUpdate);
             socket.on('job_completed', handleJobUpdate);
             socket.on('job_hired', handleJobUpdate);
-            socket.on('direct_job_taken', handleJobUpdate); // Listen for direct job taken
-            socket.on('direct_job_completed', handleJobUpdate); // Listen for direct job completed
-            socket.on('direct_job_client_completed', handleJobUpdate); // Listen for client marking direct job complete
-
-            console.log('TranscriberNegotiations: Socket listeners attached.');
+            // Removed direct upload job listeners
+            console.log('TranscriberNegotiations: Socket listeners attached for negotiation jobs.');
         }
 
 
@@ -260,9 +223,7 @@ const TranscriberNegotiations = () => {
                 socket.off('negotiation_countered', handleJobUpdate);
                 socket.off('job_completed', handleJobUpdate);
                 socket.off('job_hired', handleJobUpdate);
-                socket.off('direct_job_taken', handleJobUpdate);
-                socket.off('direct_job_completed', handleJobUpdate);
-                socket.off('direct_job_client_completed', handleJobUpdate);
+                // Removed direct upload job listeners
                 disconnectSocket();
             }
         };
@@ -283,14 +244,14 @@ const TranscriberNegotiations = () => {
     const openCounterModal = useCallback((negotiationId) => {
         setSelectedNegotiationId(negotiationId);
         setShowCounterModal(true);
-        const currentNegotiation = allJobs.find(n => n.id === negotiationId); // Use allJobs
+        const currentNegotiation = negotiationJobs.find(n => n.id === negotiationId); // Use negotiationJobs
         if (currentNegotiation) {
             setCounterOfferData({
                 proposedPrice: currentNegotiation.agreed_price_usd?.toString() || '',
                 transcriberResponse: ''
             });
         }
-    }, [allJobs]);
+    }, [negotiationJobs]); // Dependency on negotiationJobs
 
     const closeCounterModal = useCallback(() => {
         setShowCounterModal(false);
@@ -312,8 +273,8 @@ const TranscriberNegotiations = () => {
         setModalLoading(false);
     }, []);
 
-    const openCompleteJobModal = useCallback((jobId) => { // Changed param to jobId for consistency
-        setSelectedNegotiationId(jobId);
+    const openCompleteJobModal = useCallback((negotiationId) => { // Changed param to negotiationId for consistency
+        setSelectedNegotiationId(negotiationId);
         setShowCompleteJobModal(true);
     }, []);
 
@@ -355,7 +316,7 @@ const TranscriberNegotiations = () => {
             if (response.ok) {
                 showToast(data.message || 'Negotiation accepted! Job is now active.', 'success');
                 closeAcceptModal();
-                fetchAllTranscriberJobs(); // Re-fetch all jobs
+                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to accept negotiation.', 'error');
@@ -366,7 +327,7 @@ const TranscriberNegotiations = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedNegotiationId, showToast, closeAcceptModal, fetchAllTranscriberJobs, logout, fetchTranscriberDetailedStatus]);
+    }, [selectedNegotiationId, showToast, closeAcceptModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
     const confirmCounterNegotiation = useCallback(async () => {
         setModalLoading(true);
@@ -399,7 +360,7 @@ const TranscriberNegotiations = () => {
             if (response.ok) {
                 showToast(data.message || 'Counter-offer sent! Awaiting client response.', 'success');
                 closeCounterModal();
-                fetchAllTranscriberJobs(); // Re-fetch all jobs
+                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to send counter-offer.', 'error');
@@ -410,7 +371,7 @@ const TranscriberNegotiations = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedNegotiationId, counterOfferData, showToast, closeCounterModal, fetchAllTranscriberJobs, logout, fetchTranscriberDetailedStatus]);
+    }, [selectedNegotiationId, counterOfferData, showToast, closeCounterModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
     const confirmRejectNegotiation = useCallback(async () => {
         setModalLoading(true);
@@ -434,9 +395,9 @@ const TranscriberNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Negotiation rejected!', 'success');
+                showToast(data.message || 'Negotiation rejected!.', 'success');
                 closeRejectModal();
-                fetchAllTranscriberJobs(); // Re-fetch all jobs
+                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to reject negotiation.', 'error');
@@ -447,7 +408,7 @@ const TranscriberNegotiations = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedNegotiationId, rejectReason, showToast, closeRejectModal, fetchAllTranscriberJobs, logout, fetchTranscriberDetailedStatus]);
+    }, [selectedNegotiationId, rejectReason, showToast, closeRejectModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
     const handleCompleteJob = useCallback(async () => {
         setModalLoading(true);
@@ -457,24 +418,15 @@ const TranscriberNegotiations = () => {
             return;
         }
 
-        // Determine if it's a negotiation job or a direct upload job
-        const job = allJobs.find(j => j.id === selectedNegotiationId);
-        if (!job) {
-            showToast('Job not found for completion.', 'error');
+        // Only handle negotiation jobs here
+        const job = negotiationJobs.find(j => j.id === selectedNegotiationId);
+        if (!job || job.jobType !== 'negotiation') {
+            showToast('Negotiation job not found for completion.', 'error');
             setModalLoading(false);
             return;
         }
 
-        let apiUrl;
-        if (job.jobType === 'negotiation') {
-            apiUrl = `${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/complete`;
-        } else if (job.jobType === 'direct_upload') {
-            apiUrl = `${BACKEND_API_URL}/api/transcriber/direct-jobs/${selectedNegotiationId}/complete`;
-        } else {
-            showToast('Unknown job type for completion.', 'error');
-            setModalLoading(false);
-            return;
-        }
+        let apiUrl = `${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/complete`;
 
         try {
             const response = await fetch(apiUrl, {
@@ -487,42 +439,42 @@ const TranscriberNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Job marked as complete! Awaiting client review.', 'success');
+                showToast(data.message || 'Negotiation job marked as complete! Awaiting client review.', 'success');
                 closeCompleteJobModal();
-                fetchAllTranscriberJobs(); // Re-fetch all jobs
+                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
-                showToast(data.error || 'Failed to mark job as complete.', 'error');
+                showToast(data.error || 'Failed to mark negotiation job as complete.', 'error');
             }
         } catch (error) {
-            console.error('Error completing job:', error);
-            showToast('Network error while completing job.', 'error');
+            console.error('Error completing negotiation job:', error);
+            showToast('Network error while completing negotiation job.', 'error');
         } finally {
             setModalLoading(false);
         }
-    }, [selectedNegotiationId, showToast, closeCompleteJobModal, fetchAllTranscriberJobs, logout, fetchTranscriberDetailedStatus, allJobs]);
+    }, [selectedNegotiationId, showToast, closeCompleteJobModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus, negotiationJobs]);
 
 
-    const getStatusColor = useCallback((status) => { // Removed isClientViewing
+    const getStatusColor = useCallback((status) => { 
         const colors = {
             'pending': '#ffc107',
             'transcriber_counter': '#007bff',
             'client_counter': '#6c757d',
             'accepted_awaiting_payment': '#28a745',
             'rejected': '#dc3545',
-            'hired': '#007bff', // Negotiation job taken
-            'taken': '#007bff', // Direct upload job taken
+            'hired': '#007bff', 
+            'taken': '#007bff', 
             'cancelled': '#dc3545',
-            'completed': '#6f42c1', // Transcriber completed
-            'client_completed': '#6f42c1' // Client marked direct job complete
+            'completed': '#6f42c1', 
+            'client_completed': '#6f42c1' 
         };
         return colors[status] || '#6c757d';
     }, []);
 
-    const getStatusText = useCallback((status) => { // Removed isClientViewing
+    const getStatusText = useCallback((status) => { 
         const texts = {
             'pending': 'New Offer',
-            'transcriber_counter': 'Counter-Offer Sent', // Changed from Received as transcriber sent it
+            'transcriber_counter': 'Counter-Offer Sent', 
             'client_counter': 'Client Counter-Offer',
             'accepted_awaiting_payment': 'Accepted - Awaiting Payment',
             'rejected': 'Rejected',
@@ -535,17 +487,12 @@ const TranscriberNegotiations = () => {
         return texts[status] || status;
     }, []);
 
-    // FIXED: Removed proceedToPayment from this component as it's client-side functionality
-    // const proceedToPayment = useCallback((negotiation) => {
-    //     localStorage.setItem('selectedNegotiation', JSON.stringify(negotiation));
-    //     showToast('Redirecting to payment...', 'success');
-    //     setTimeout(() => {
-    //         navigate('/payment');
-    //     }, 1500);
-    // }, [navigate, showToast]);
-
-    const handleDeleteJob = useCallback(async (jobId, jobType) => { // Renamed from handleDeleteNegotiation, added jobType
+    const handleDeleteJob = useCallback(async (jobId, jobType) => { 
         if (!window.confirm('Are you sure you want to delete this job from your list? This action cannot be undone.')) {
+            return;
+        }
+        if (jobType !== 'negotiation') { // Only allow deletion for negotiation jobs here
+            showToast('Only negotiation jobs can be deleted from this view.', 'error');
             return;
         }
 
@@ -556,18 +503,8 @@ const TranscriberNegotiations = () => {
                 return;
             }
 
-            let apiUrl;
-            if (jobType === 'negotiation') {
-                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}`;
-            } else if (jobType === 'direct_upload') {
-                // Assuming an endpoint for deleting direct upload jobs if needed
-                showToast('Direct upload jobs cannot be deleted from this view.', 'error');
-                return; // Prevent deletion for now
-            } else {
-                showToast('Unknown job type for deletion.', 'error');
-                return;
-            }
-
+            let apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}`;
+            
             const response = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
@@ -577,29 +514,31 @@ const TranscriberNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Job deleted successfully!', 'success');
-                fetchAllTranscriberJobs();
+                showToast('Negotiation job deleted successfully!', 'success');
+                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
-                showToast(data.error || 'Failed to delete job', 'error');
+                showToast(data.error || 'Failed to delete negotiation job', 'error');
             }
         } catch (error) {
             showToast('Network error. Please try again.', 'error');
         }
-    }, [showToast, fetchAllTranscriberJobs, logout, fetchTranscriberDetailedStatus]);
+    }, [showToast, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
-    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { // Added jobType
+    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { 
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('Authentication token missing. Please log in again.', 'error');
             logout();
             return;
         }
+        if (jobType !== 'negotiation') { // Only allow download for negotiation jobs here
+            showToast('Only negotiation job files can be downloaded from this view.', 'error');
+            return;
+        }
 
         try {
-            const downloadUrl = jobType === 'direct_upload'
-                ? `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`
-                : `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
+            const downloadUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
             
             const response = await fetch(downloadUrl, {
                 method: 'GET',
@@ -640,7 +579,6 @@ const TranscriberNegotiations = () => {
         );
     }
 
-    // Derived availability: Transcriber is available if online AND has no current job
     const canTranscriberAccept = user?.is_online && !transcriberCurrentJobId;
 
     const query = new URLSearchParams(location.search);
@@ -653,31 +591,27 @@ const TranscriberNegotiations = () => {
     let emptyMessage = "No ongoing negotiations.";
 
     if (statusFilter === 'active') {
-        displayedJobs = allJobs.filter(job =>
-            (job.jobType === 'negotiation' && job.status === 'hired') ||
-            (job.jobType === 'direct_upload' && (job.status === 'taken' || job.status === 'in_progress'))
+        displayedJobs = negotiationJobs.filter(job =>
+            job.status === 'hired'
         );
-        pageTitle = "My Active Jobs";
-        pageDescription = "Track the progress of your assigned transcription jobs and communicate with clients.";
-        listSubtitle = "Currently Assigned Jobs";
-        emptyMessage = "No active jobs assigned to you.";
+        pageTitle = "My Active Negotiation Jobs"; // Specific title
+        pageDescription = "Track the progress of your assigned negotiation jobs and communicate with clients.";
+        listSubtitle = "Currently Assigned Negotiation Jobs";
+        emptyMessage = "No active negotiation jobs assigned to you.";
     } else if (statusFilter === 'completed') {
-        displayedJobs = allJobs.filter(job =>
-            (job.jobType === 'negotiation' && job.status === 'completed') ||
-            (job.jobType === 'direct_upload' && (job.status === 'completed' || job.status === 'client_completed'))
+        displayedJobs = negotiationJobs.filter(job =>
+            job.status === 'completed'
         );
-        pageTitle = "My Completed Jobs";
-        pageDescription = "Review your finished transcription projects and earnings.";
-        listSubtitle = "Completed Jobs";
-        emptyMessage = "No completed jobs yet.";
+        pageTitle = "My Completed Negotiation Jobs"; // Specific title
+        pageDescription = "Review your finished negotiation projects and earnings.";
+        listSubtitle = "Completed Negotiation Jobs";
+        emptyMessage = "No completed negotiation jobs yet.";
     } else { // Default to 'Negotiation Room' view
-        displayedJobs = allJobs.filter(job =>
-            job.jobType === 'negotiation' && (
-                job.status === 'pending' ||
-                job.status === 'transcriber_counter' ||
-                job.status === 'client_counter' ||
-                job.status === 'accepted_awaiting_payment'
-            )
+        displayedJobs = negotiationJobs.filter(job =>
+            job.status === 'pending' ||
+            job.status === 'transcriber_counter' ||
+            job.status === 'client_counter' ||
+            job.status === 'accepted_awaiting_payment'
         );
         pageTitle = "Negotiation Room";
         pageDescription = "Review negotiation requests from clients and decide whether to accept, counter, or reject.";
@@ -713,7 +647,7 @@ const TranscriberNegotiations = () => {
                     </div>
 
                     <h3 className="negotiation-room-subtitle">{listSubtitle}</h3>
-                    {statusFilter === 'completed' ? ( // Render table for completed jobs
+                    {statusFilter === 'completed' ? ( // Render table for completed negotiation jobs
                         <div className="completed-jobs-list-table">
                             {displayedJobs.length === 0 ? (
                                 <p className="no-data-message">{emptyMessage}</p>
@@ -802,7 +736,6 @@ const TranscriberNegotiations = () => {
                                         job={job}
                                         jobType={job.jobType}
                                         onDelete={handleDeleteJob}
-                                        // FIXED: proceedToPayment is not relevant for transcribers, pass null or a no-op
                                         onPayment={null} 
                                         onLogout={logout}
                                         getStatusColor={getStatusColor}
