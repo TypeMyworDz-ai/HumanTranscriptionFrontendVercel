@@ -197,7 +197,7 @@ const ClientJobs = () => {
 
         return () => {
             if (socket) {
-                console.log(`ClientJobs: Cleaning up socket listeners for user ID: ${user.id}`);
+                console.log(`ClientJobs: Cleaning up socket listeners and disconnecting via ChatService for user ID: ${user.id}`);
                 socket.off('job_completed', handleJobUpdate);
                 socket.off('direct_job_completed', handleJobUpdate);
                 socket.off('negotiation_cancelled', handleJobUpdate);
@@ -352,9 +352,9 @@ const ClientJobs = () => {
         try {
             let apiUrl;
             if (jobToComplete.jobType === 'negotiation') { // Use jobType from backend
-                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToToComplete.id}/complete`;
-            } else if (jobToToComplete.jobType === 'direct_upload') { // Use jobType from backend
-                apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToToComplete.id}/complete`;
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`; // Corrected typo here
+            } else if (jobToComplete.jobType === 'direct_upload') { // Use jobType from backend
+                apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToComplete.id}/complete`;
             } else {
                 showToast('Unknown job type for completion.', 'error');
                 setCompleteJobModalLoading(false);
@@ -640,7 +640,6 @@ const ClientJobs = () => {
                         onSubmit={submitMarkJobComplete}
                         submitText="Mark as Complete"
                         loading={completeJobModalLoading}
-                        submitButtonClass="complete-training-confirm-btn"
                     >
                         <p>Provide feedback for the transcriber and mark this job as complete.</p>
                         <div className="form-group">
