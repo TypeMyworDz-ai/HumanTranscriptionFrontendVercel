@@ -14,12 +14,12 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const AdminJobs = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [jobs, setJobs] = useState([]); // State to store fetched jobs (negotiations)
+    const [jobs, setJobs] = useState([]); // State to store fetched jobs (negotiations and direct uploads)
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [jobToDeleteId, setJobToDeleteId] = useState(null);
+    const [jobToDelete, setJobToDelete] = useState(null); // Store entire job object to get jobType for deletion
     const [modalLoading, setModalLoading] = useState(false);
 
 
@@ -36,11 +36,20 @@ const AdminJobs = () => {
             case 'client_counter':
                 return 'Client Countered';
             case 'pending':
+            case 'pending_review': // Direct Upload specific status
                 return 'Pending';
             case 'hired':
                 return 'Hired';
+            case 'available_for_transcriber': // Direct Upload specific status
+                return 'Available for Transcriber';
+            case 'taken': // Direct Upload specific status
+                return 'Taken';
+            case 'in_progress': // Direct Upload specific status
+                return 'In Progress';
             case 'completed':
                 return 'Completed';
+            case 'client_completed': // Direct Upload specific status
+                return 'Client Completed';
             case 'rejected':
                 return 'Rejected';
             case 'cancelled':
@@ -66,7 +75,7 @@ const AdminJobs = () => {
         }
     }, []);
 
-    // Function to fetch all jobs (negotiations) for admin
+    // Function to fetch all jobs (negotiations and direct uploads) for admin
     const fetchAllJobs = useCallback(async () => {
         setLoading(true);
         const token = localStorage.getItem('token');
@@ -76,23 +85,38 @@ const AdminJobs = () => {
         }
 
         try {
-            // NEW: Admin API endpoint for all jobs, ensure it joins client and transcriber user details
-            const response = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, {
+            // Fetch negotiation jobs
+            const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, { // This endpoint now specifically gets negotiation jobs
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await response.json();
-            if (response.ok && Array.isArray(data)) { // CORRECTED: Explicitly check if data is an array
-                setJobs(data); // Assuming data is directly the array of jobs
-            } else if (response.ok && data && Array.isArray(data.jobs)) { // Fallback if backend returns { jobs: [...] }
-                setJobs(data.jobs);
+            const negotiationsData = await negotiationsResponse.json();
+            const fetchedNegotiations = (negotiationsResponse.ok && Array.isArray(negotiationsData))
+                ? negotiationsData.map(job => ({ ...job, jobType: 'negotiation' }))
+                : (negotiationsResponse.ok && negotiationsData && Array.isArray(negotiationsData.jobs) ? negotiationsData.jobs.map(job => ({ ...job, jobType: 'negotiation' })) : []);
+
+            // Fetch direct upload jobs
+            const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/admin/direct-upload-jobs`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const directUploadData = await directUploadResponse.json();
+            const fetchedDirectUploads = (directUploadResponse.ok && Array.isArray(directUploadData.jobs)) // directUploadData.jobs is an array
+                ? directUploadData.jobs.map(job => ({ ...job, jobType: 'direct_upload' }))
+                : [];
+
+            // Combine and sort all jobs by creation date
+            const combinedJobs = [...fetchedNegotiations, ...fetchedDirectUploads].sort((a, b) => {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+
+            setJobs(combinedJobs);
+
+            if (combinedJobs.length === 0) {
+                showToast('No jobs found.', 'info');
             }
-            else {
-                showToast(data.error || 'Failed to fetch jobs.', 'error');
-                setJobs([]); // Ensure jobs is an empty array on error
-            }
+
         } catch (error) {
             console.error('Error fetching jobs:', error);
-            showToast('Network error fetching jobs.', 'error');
+            showToast('Network error fetching jobs.ᐟ', 'error');
             setJobs([]); // Ensure jobs is an empty array on error
         } finally {
             setLoading(false);
@@ -108,20 +132,20 @@ const AdminJobs = () => {
         fetchAllJobs();
     }, [user, navigate, fetchAllJobs]);
 
-    const openDeleteModal = useCallback((jobId) => {
-        setJobToDeleteId(jobId);
+    const openDeleteModal = useCallback((job) => { // Now accepts full job object
+        setJobToDelete(job);
         setShowDeleteModal(true);
     }, []);
 
     const closeDeleteModal = useCallback(() => {
-        setJobToDeleteId(null);
+        setJobToDelete(null);
         setShowDeleteModal(false);
         setModalLoading(false);
     }, []);
 
     // NEW: Handle deletion of a job by Admin
     const handleDeleteJob = useCallback(async () => {
-        if (!jobToDeleteId) return;
+        if (!jobToDelete?.id || !jobToDelete?.jobType) return;
 
         setModalLoading(true);
         const token = localStorage.getItem('token');
@@ -131,7 +155,19 @@ const AdminJobs = () => {
         }
 
         try {
-            const response = await fetch(`${BACKEND_API_URL}/api/negotiations/${jobToDeleteId}`, {
+            let apiUrl;
+            if (jobToDelete.jobType === 'negotiation') {
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToDelete.id}`;
+            } else if (jobToDelete.jobType === 'direct_upload') {
+                // Assuming a similar delete endpoint for direct upload jobs
+                apiUrl = `${BACKEND_API_URL}/api/admin/direct-jobs/${jobToDelete.id}`; // You'll need to create this backend endpoint
+            } else {
+                showToast('Unknown job type for deletion.', 'error');
+                setModalLoading(false);
+                return;
+            }
+
+            const response = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -140,25 +176,25 @@ const AdminJobs = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Job deleted successfully!', 'success');
+                showToast(data.message || 'Job deleted successfully!ᐟ', 'success');
                 closeDeleteModal();
                 fetchAllJobs(); // Refresh the list of jobs
             } else {
-                showToast(data.error || 'Failed to delete job.', 'error');
+                showToast(data.error || 'Failed to delete job.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error deleting job:', error);
-            showToast('Network error deleting job.', 'error');
+            showToast('Network error deleting job.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
-    }, [jobToDeleteId, logout, showToast, fetchAllJobs, closeDeleteModal]);
+    }, [jobToDelete, logout, showToast, fetchAllJobs, closeDeleteModal]);
 
     // NEW: Handle viewing job details (placeholder for now)
-    const handleViewJobDetails = useCallback((jobId) => {
+    const handleViewJobDetails = useCallback((jobId, jobType) => { // Now accepts jobType
         // Implement navigation to a detailed job view page
-        navigate(`/admin/jobs/${jobId}`);
-        console.log(`Viewing details for job: ${jobId}`);
+        navigate(`/admin/jobs/${jobId}?type=${jobType}`); // Pass jobType as a query parameter
+        console.log(`Viewing details for job: ${jobId}, Type: ${jobType}`);
     }, [navigate]);
 
 
@@ -191,13 +227,14 @@ const AdminJobs = () => {
                     <p>Monitor all transcription jobs across the platform.</p>
                     
                     {Array.isArray(jobs) && jobs.length === 0 ? ( // Corrected check for empty array
-                        <p className="no-data-message">No jobs found.</p>
+                        <p className="no-data-message">No jobs found.ᐟ</p>
                     ) : (
                         <div className="jobs-list-table-wrapper"> {/* Added wrapper for table styling */}
                             <table className="jobs-list-table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
+                                        <th>Type</th> {/* NEW: Job Type column */}
                                         <th>Client</th>
                                         <th>Transcriber</th>
                                         <th>Price (USD)</th> {/* Changed to USD */}
@@ -213,10 +250,11 @@ const AdminJobs = () => {
                                     {jobs.map(job => (
                                         <tr key={job.id}>
                                             <td>{job.id.substring(0, 8)}...</td>
+                                            <td>{job.jobType === 'negotiation' ? 'Negotiation' : 'Direct Upload'}</td> {/* Display job type */}
                                             <td>{job.client?.full_name || 'N/A'}</td> {/* Access client.full_name */}
                                             <td>{job.transcriber?.full_name || 'N/A'}</td> {/* Access transcriber.full_name */}
-                                            <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</td> {/* Updated to USD and formatted */}
-                                            <td>{job.deadline_hours} hrs</td>
+                                            <td>USD {(job.agreed_price_usd || job.quote_amount)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</td> {/* Handle both price fields */}
+                                            <td>{job.deadline_hours || job.agreed_deadline_hours} hrs</td> {/* Handle both deadline fields */}
                                             {/* UPDATED: Use formatStatusDisplay helper */}
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusDisplay(job.status)}</span></td>
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
@@ -224,7 +262,7 @@ const AdminJobs = () => {
                                             <td>{job.completed_at ? formatDisplayTimestamp(job.completed_at) : 'N/A'}</td>
                                             {/* NEW: Display Client Feedback */}
                                             <td>
-                                                {job.status === 'completed' && (job.client_feedback_comment || job.client_feedback_rating) ? (
+                                                {(job.status === 'completed' || job.status === 'client_completed') && (job.client_feedback_comment || job.client_feedback_rating) ? (
                                                     <div className="admin-client-feedback">
                                                         {job.client_feedback_rating && (
                                                             <div className="rating-display" style={{ marginBottom: '3px', fontSize: '0.9em' }}>
@@ -246,7 +284,7 @@ const AdminJobs = () => {
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // Prevent event bubbling
-                                                        handleViewJobDetails(job.id);
+                                                        handleViewJobDetails(job.id, job.jobType);
                                                     }} 
                                                     className="action-btn view-btn"
                                                 >
@@ -255,7 +293,7 @@ const AdminJobs = () => {
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // Prevent event bubbling
-                                                        openDeleteModal(job.id);
+                                                        openDeleteModal(job); // Pass the entire job object
                                                     }} 
                                                     className="action-btn delete-btn"
                                                 >
@@ -288,8 +326,8 @@ const AdminJobs = () => {
                     submitText="Confirm Delete"
                     loading={modalLoading}
                 >
-                    <p>Are you sure you want to delete job ID: {jobToDeleteId?.substring(0, 8)}...? This action cannot be undone and will remove all associated data, including messages and files.</p>
-                    <p className="modal-warning">This action is irreversible.</p>
+                    <p>Are you sure you want to delete job ID: {jobToDelete?.id?.substring(0, 8)}...? This action cannot be undone and will remove all associated data, including messages and files.</p>
+                    <p className="modal-warning">This action is irreversible.ᐟ</p>
                 </Modal>
             )}
         </div>
