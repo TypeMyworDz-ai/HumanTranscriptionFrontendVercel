@@ -50,7 +50,7 @@ const TranscriberNegotiations = () => {
     });
     const [rejectReason, setRejectReason] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
-    const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
+    // Removed: showSubmitJobModal state
 
     const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
 
@@ -273,16 +273,8 @@ const TranscriberNegotiations = () => {
         setModalLoading(false);
     }, []);
 
-    const openCompleteJobModal = useCallback((negotiationId) => { // Changed param to negotiationId for consistency
-        setSelectedNegotiationId(negotiationId);
-        setShowCompleteJobModal(true);
-    }, []);
-
-    const closeCompleteJobModal = useCallback(() => {
-        setShowCompleteJobModal(false);
-        setSelectedNegotiationId(null);
-        setModalLoading(false);
-    }, []);
+    // Removed: openSubmitJobModal and closeSubmitJobModal functions
+    // Removed: handleSubmitJob function
 
     const handleCounterOfferChange = useCallback((e) => {
         setCounterOfferData({
@@ -395,7 +387,7 @@ const TranscriberNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Negotiation rejected!.', 'success');
+                showToast(data.message || 'Negotiation rejected!.ᐟ', 'success');
                 closeRejectModal();
                 fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
@@ -410,50 +402,7 @@ const TranscriberNegotiations = () => {
         }
     }, [selectedNegotiationId, rejectReason, showToast, closeRejectModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
-    const handleCompleteJob = useCallback(async () => {
-        setModalLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-            logout();
-            return;
-        }
-
-        // Only handle negotiation jobs here
-        const job = negotiationJobs.find(j => j.id === selectedNegotiationId);
-        if (!job || job.jobType !== 'negotiation') {
-            showToast('Negotiation job not found for completion.', 'error');
-            setModalLoading(false);
-            return;
-        }
-
-        let apiUrl = `${BACKEND_API_URL}/api/transcriber/negotiations/${selectedNegotiationId}/complete`;
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showToast(data.message || 'Negotiation job marked as complete! Awaiting client review.', 'success');
-                closeCompleteJobModal();
-                fetchNegotiationJobs(); // Re-fetch only negotiation jobs
-                fetchTranscriberDetailedStatus();
-            } else {
-                showToast(data.error || 'Failed to mark negotiation job as complete.', 'error');
-            }
-        } catch (error) {
-            console.error('Error completing negotiation job:', error);
-            showToast('Network error while completing negotiation job.', 'error');
-        } finally {
-            setModalLoading(false);
-        }
-    }, [selectedNegotiationId, showToast, closeCompleteJobModal, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus, negotiationJobs]);
-
+    // Removed: handleSubmitJob (as it's not needed for transcribers in negotiation jobs)
 
     const getStatusColor = useCallback((status) => { 
         const colors = {
@@ -465,7 +414,7 @@ const TranscriberNegotiations = () => {
             'hired': '#007bff', 
             'taken': '#007bff', 
             'cancelled': '#dc3545',
-            'completed': '#6f42c1', 
+            'completed': '#6f42c1', // Reverted to original 'completed' status text
             'client_completed': '#6f42c1' 
         };
         return colors[status] || '#6c757d';
@@ -481,7 +430,7 @@ const TranscriberNegotiations = () => {
             'hired': 'Job Hired',
             'taken': 'Job Taken',
             'cancelled': 'Cancelled',
-            'completed': 'Completed',
+            'completed': 'Completed', // Reverted to original 'completed' status text
             'client_completed': 'Completed by Client'
         };
         return texts[status] || status;
@@ -514,14 +463,14 @@ const TranscriberNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Negotiation job deleted successfully!', 'success');
+                showToast('Negotiation job deleted successfully!ᐟ', 'success');
                 fetchNegotiationJobs(); // Re-fetch only negotiation jobs
                 fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to delete negotiation job', 'error');
             }
         } catch (error) {
-            showToast('Network error. Please try again.', 'error');
+            showToast('Network error. Please try again.ᐟ', 'error');
         }
     }, [showToast, fetchNegotiationJobs, logout, fetchTranscriberDetailedStatus]);
 
@@ -600,7 +549,7 @@ const TranscriberNegotiations = () => {
         emptyMessage = "No active negotiation jobs assigned to you.";
     } else if (statusFilter === 'completed') {
         displayedJobs = negotiationJobs.filter(job =>
-            job.status === 'completed'
+            job.status === 'completed' || job.status === 'client_completed' // Include client_completed for transcriber's completed view
         );
         pageTitle = "My Completed Negotiation Jobs"; // Specific title
         pageDescription = "Review your finished negotiation projects and earnings.";
@@ -631,8 +580,8 @@ const TranscriberNegotiations = () => {
                             Logout
                         </button>
                     </div>
-                </div>
-            </header>
+                </div >
+            </header >
 
             <main className="transcriber-negotiations-main">
                 <div className="transcriber-negotiations-content">
@@ -752,7 +701,8 @@ const TranscriberNegotiations = () => {
                                         }
                                         onOpenCounterModal={openCounterModal}
                                         openRejectModal={openRejectModal}
-                                        openCompleteJobModal={openCompleteJobModal}
+                                        openCompleteJobModal={null} // Client's complete job modal should not be passed here
+                                        // Removed: openTranscriberSubmitJobModal prop
                                         onDownloadFile={handleDownloadFile}
                                         clientCompletedJobs={job.client_info?.client_completed_jobs || job.client?.client_completed_jobs || 0}
                                         clientAverageRating={parseFloat(job.client_info?.client_average_rating || job.client?.client_average_rating) || 0}
@@ -842,19 +792,7 @@ const TranscriberNegotiations = () => {
                 </Modal>
             )}
 
-            {showCompleteJobModal && (
-                <Modal
-                    show={showCompleteJobModal}
-                    title="Mark Job as Complete"
-                    onClose={closeCompleteJobModal}
-                    onSubmit={handleCompleteJob}
-                    submitText="Confirm Completion"
-                    loading={modalLoading}
-                >
-                    <p>Are you sure you want to mark this job as complete?</p>
-                    <p>This will update your status and notify the client.</p>
-                </Modal>
-            )}
+            {/* Removed: showSubmitJobModal and its associated Modal JSX */}
 
             <Toast
                 message={toast.message}

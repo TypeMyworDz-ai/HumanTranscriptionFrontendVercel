@@ -44,6 +44,7 @@ const arePropsEqual = (prevProps, nextProps) => {
     if (prevProps.onOpenCounterModal !== nextProps.onOpenCounterModal) return false;
     if (prevProps.openRejectModal !== nextProps.openRejectModal) return false;
     if (prevProps.openCompleteJobModal !== nextProps.openCompleteJobModal) return false; 
+    // Removed openTranscriberSubmitJobModal prop comparison
     if (prevProps.canCounter !== nextProps.canCounter) return false;
     if (prevProps.onDownloadFile !== nextProps.onDownloadFile) return false;
     if (prevProps.clientCompletedJobs !== nextProps.clientCompletedJobs) return false;
@@ -72,6 +73,7 @@ const NegotiationCard = React.memo(({
   onOpenCounterModal, 
   openRejectModal,
   openCompleteJobModal, // For client to mark negotiation job complete (passed from ClientJobs)
+  // Removed openTranscriberSubmitJobModal prop
   canCounter,
   onDownloadFile,
   clientCompletedJobs,
@@ -354,7 +356,7 @@ const NegotiationCard = React.memo(({
 
         showToast('File sent successfully! Transcriber will review.', 'success');
       } else {
-        showToast('File upload failed: No URL returned.','error');
+        showToast('File upload failed: No URL returned.', 'error');
       }
     } catch (error) {
       console.error('Error uploading or sending file:', error);
@@ -375,7 +377,7 @@ const NegotiationCard = React.memo(({
   // Condition for displaying chat - Only for negotiation jobs
   const shouldDisplayChat = (
     (currentUserType === 'client' && (job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed')) ||
-    (currentUserType === 'transcriber' && (job.status === 'hired' || job.status === 'in_progress')) // Removed 'taken' as it's not a negotiation status for chat
+    (currentUserType === 'transcriber' && (job.status === 'hired' || job.status === 'in_progress')) 
   );
 
 
@@ -676,9 +678,9 @@ const NegotiationCard = React.memo(({
             )}
 
             {/* Client can mark negotiation jobs complete if transcriber has completed it */}
-            {(job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed') && openCompleteJobModal && (
+            {job.status === 'completed' && openCompleteJobModal && ( 
                 <div className="hired-actions">
-                    <span className="info-text">🎉 Job Active! Transcriber hired.</span> 
+                    <span className="info-text">🎉 Transcriber Submitted! Review & Complete.</span> 
                     <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(job); }} className="action-btn complete-job-btn">Mark as Complete</button>
                 </div>
             )}
@@ -713,7 +715,7 @@ const NegotiationCard = React.memo(({
           </div>
         ) : (
           <>
-            {/* Transcriber Actions */}
+            {/* Transcriber Actions (NO 'Submit Job' button for negotiation jobs) */}
             {job.status === 'pending' && (
               <div className="transcriber-pending-actions" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
                 {openAcceptModal && <button
@@ -741,14 +743,10 @@ const NegotiationCard = React.memo(({
                     <span className="info-text">⏳ Awaiting Client Payment...</span>
                 </div>
             )}
+            {/* Removed the 'Submit Job' button for transcribers for negotiation jobs */}
             {(job.status === 'hired' || job.status === 'in_progress') && ( 
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
-                    {(job.status === 'hired' || job.status === 'in_progress') && openCompleteJobModal && (
-                        <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(jobId); }} className="action-btn submit-job-btn">
-                            Mark as Complete
-                        </button>
-                    )}
                 </div>
             )}
             {job.status === 'client_counter' && (

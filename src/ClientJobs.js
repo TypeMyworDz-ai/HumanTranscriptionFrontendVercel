@@ -301,10 +301,10 @@ const ClientJobs = () => {
 
 
     const openMarkJobCompleteModal = useCallback((job) => {
-        const isNegotiationJob = job.negotiation_id;
-        const isDirectUploadJob = job.file_name;
+        const isNegotiationJob = job.jobType === 'negotiation'; // Use jobType from backend
+        const isDirectUploadJob = job.jobType === 'direct_upload'; // Use jobType from backend
 
-        if (isNegotiationJob && (job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed')) {
+        if (isNegotiationJob && job.status === 'completed') { // UPDATED: Allow client to complete negotiation job when transcriber has set status to 'completed'
             setJobToComplete(job);
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
@@ -351,10 +351,10 @@ const ClientJobs = () => {
 
         try {
             let apiUrl;
-            if (jobToComplete.negotiation_id) {
-                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
-            } else if (jobToComplete.file_name) {
-                apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToComplete.id}/complete`;
+            if (jobToComplete.jobType === 'negotiation') { // Use jobType from backend
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToToComplete.id}/complete`;
+            } else if (jobToToComplete.jobType === 'direct_upload') { // Use jobType from backend
+                apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToToComplete.id}/complete`;
             } else {
                 showToast('Unknown job type for completion.', 'error');
                 setCompleteJobModalLoading(false);
