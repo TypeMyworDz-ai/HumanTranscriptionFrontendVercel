@@ -17,7 +17,9 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [adminStats, setAdminStats] = useState({
         pendingTranscriberTests: 0,
-        activeJobs: 0,
+        negotiationJobsCount: 0, // UPDATED: Separate count for negotiation jobs
+        directUploadJobsCount: 0, // UPDATED: Separate count for direct upload jobs
+        totalActiveJobs: 0, // Keep total for overall dashboard stat
         disputes: 0,
         totalUsers: 0,
     });
@@ -76,27 +78,29 @@ const AdminDashboard = () => {
 
             const [
                 testsResponse,
-                jobsResponse,
+                jobsCountResponse, // UPDATED: Renamed to reflect it's for counts
                 disputesResponse,
                 usersResponse
             ] = await Promise.all([
                 // FIXED: Use BACKEND_API_URL constant for all fetch calls
                 fetch(`${BACKEND_API_URL}/api/admin/stats/pending-tests`, { headers }),
-                fetch(`${BACKEND_API_URL}/api/admin/stats/active-jobs`, { headers }),
+                fetch(`${BACKEND_API_URL}/api/admin/stats/active-jobs`, { headers }), // This now returns separate counts
                 fetch(`${BACKEND_API_URL}/api/admin/stats/disputes`, { headers }),
                 fetch(`${BACKEND_API_URL}/api/admin/stats/total-users`, { headers })
             ]);
 
-            const [testsData, jobsData, disputesData, usersData] = await Promise.all([
+            const [testsData, jobsCountData, disputesData, usersData] = await Promise.all([ // UPDATED: Renamed
                 testsResponse.json(),
-                jobsResponse.json(),
+                jobsCountResponse.json(), // UPDATED: Renamed
                 disputesResponse.json(),
                 usersResponse.json()
             ]);
 
             setAdminStats({
                 pendingTranscriberTests: testsResponse.ok ? testsData.count : 0,
-                activeJobs: jobsResponse.ok ? jobsData.count : 0,
+                negotiationJobsCount: jobsCountResponse.ok ? jobsCountData.negotiationJobsCount : 0, // UPDATED: Set negotiationJobsCount
+                directUploadJobsCount: jobsCountResponse.ok ? jobsCountData.directUploadJobsCount : 0, // UPDATED: Set directUploadJobsCount
+                totalActiveJobs: jobsCountResponse.ok ? jobsCountData.totalActiveJobs : 0, // Keep total for overall dashboard stat
                 disputes: disputesResponse.ok ? disputesData.count : 0,
                 totalUsers: usersResponse.ok ? usersData.count : 0,
             });
@@ -252,8 +256,12 @@ const AdminDashboard = () => {
                             <p className="stat-value">{adminStats.pendingTranscriberTests}</p>
                         </div>
                         <div className="stat-card">
-                            <h4>Active Jobs</h4>
-                            <p className="stat-value">{adminStats.activeJobs}</p>
+                            <h4>Negotiation Jobs</h4> {/* UPDATED: Card title */}
+                            <p className="stat-value">{adminStats.negotiationJobsCount}</p> {/* UPDATED: Display negotiationJobsCount */}
+                        </div>
+                        <div className="stat-card">
+                            <h4>DU Jobs</h4> {/* UPDATED: Card title */}
+                            <p className="stat-value">{adminStats.directUploadJobsCount}</p> {/* UPDATED: Display directUploadJobsCount */}
                         </div>
                         <div className="stat-card">
                             <h4>Open Disputes</h4>
@@ -278,15 +286,15 @@ const AdminDashboard = () => {
                             <p>View, edit, or remove clients and transcribers.</p>
                         </Link>
 
-                        <Link to="/admin/negotiation-jobs" className="admin-card"> {/* UPDATED: Link path */}
-                            <div className="card-icon">🤝</div> {/* UPDATED: Icon */}
-                            <h3>Negotiation Jobs ({adminStats.activeJobs})</h3> {/* UPDATED: Card title */}
-                            <p>Monitor all ongoing and completed negotiation jobs.</p> {/* UPDATED: Card description */}
+                        <Link to="/admin/negotiation-jobs" className="admin-card">
+                            <div className="card-icon">🤝</div>
+                            <h3>Negotiation Jobs ({adminStats.negotiationJobsCount})</h3> {/* UPDATED: Card title and count */}
+                            <p>Monitor all ongoing and completed negotiation jobs.</p>
                         </Link>
 
                         <Link to="/admin/direct-upload-jobs" className="admin-card">
                             <div className="card-icon">📤</div>
-                            <h3>DU Jobs</h3> {/* UPDATED: Card title */}
+                            <h3>DU Jobs ({adminStats.directUploadJobsCount})</h3> {/* UPDATED: Card title and count */}
                             <p>Review and manage all client direct upload requests.</p>
                         </Link>
 

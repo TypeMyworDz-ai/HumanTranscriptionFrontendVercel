@@ -99,11 +99,13 @@ const AdminDirectUploadJobs = () => {
 
 
     const openDeleteModal = useCallback((job) => { // Now accepts full job object
+        console.log("openDeleteModal called with job:", job); // NEW LOG
         setJobToDelete(job);
         setShowDeleteModal(true);
     }, []);
 
     const closeDeleteModal = useCallback(() => {
+        console.log("closeDeleteModal called."); // NEW LOG
         setJobToDelete(null);
         setShowDeleteModal(false);
         setModalLoading(false);
@@ -111,17 +113,25 @@ const AdminDirectUploadJobs = () => {
 
     // Handle deletion of a direct upload job by Admin
     const handleDeleteJob = useCallback(async () => {
-        if (!jobToDelete?.id || jobToDelete.jobType !== 'direct_upload') return; // Ensure it's a direct upload job
+        console.log("handleDeleteJob called. jobToDelete:", jobToDelete); // NEW LOG
+        if (!jobToDelete?.id || jobToDelete.jobType !== 'direct_upload') {
+            console.error("handleDeleteJob: Invalid jobToDelete or jobType is not 'direct_upload'.", jobToDelete); // NEW LOG
+            showToast('Invalid job selected for deletion.ᐟ', 'error');
+            setModalLoading(false); // Ensure loading is reset
+            return;
+        }
 
         setModalLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
             logout();
+            setModalLoading(false); // Ensure loading is reset
             return;
         }
 
         try {
             const apiUrl = `${BACKEND_API_URL}/api/admin/direct-jobs/${jobToDelete.id}`; // Direct upload delete endpoint
+            console.log("handleDeleteJob: Deleting direct upload job with URL:", apiUrl); // NEW LOG
 
             const response = await fetch(apiUrl, {
                 method: 'DELETE',
@@ -136,6 +146,7 @@ const AdminDirectUploadJobs = () => {
                 closeDeleteModal();
                 fetchAllDirectUploadJobs(); // Refresh the list of direct upload jobs
             } else {
+                console.error("handleDeleteJob: Backend error response:", data); // NEW LOG
                 showToast(data.error || 'Failed to delete direct upload job.ᐟ', 'error');
             }
         } catch (error) {
