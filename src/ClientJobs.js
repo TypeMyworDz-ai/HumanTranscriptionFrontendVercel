@@ -125,7 +125,7 @@ const ClientJobs = () => {
             console.log("ClientJobs: Combined Active Jobs:", combinedActiveJobs.map(j => ({
                 id: j.id,
                 status: j.status,
-                type: j.negotiation_id ? 'negotiation' : (j.file_name ? 'direct_upload' : 'unknown')
+                type: j.jobType || (j.negotiation_id ? 'negotiation' : (j.file_name ? 'direct_upload' : 'unknown')) // UPDATED line
             })));
             setActiveJobs(combinedActiveJobs);
 
@@ -396,7 +396,7 @@ const ClientJobs = () => {
             return;
         }
 
-        const jobType = job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown');
+        const jobType = job.jobType || (job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown')); // UPDATED line
 
         setJobToPayFor({ ...job, jobType: jobType });
         setSelectedPaymentMethod('paystack');
@@ -573,7 +573,7 @@ const ClientJobs = () => {
                                 <p className="no-data-message">You currently have no active jobs.</p>
                             ) : (
                                 activeJobs.map((job) => {
-                                    const jobType = job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown');
+                                    const jobType = job.jobType || (job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown')); // UPDATED line
 
                                     if (jobType === 'direct_upload') {
                                         console.log(`ClientJobs: Full Direct Upload Job Object for ${job.id}:`, job);
