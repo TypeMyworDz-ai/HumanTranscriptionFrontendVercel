@@ -103,7 +103,7 @@ const AdminDashboard = () => {
 
         } catch (error) {
             console.error('Error fetching admin stats:', error);
-            showToast('Failed to fetch admin statistics.', 'error');
+            showToast('Failed to fetch admin statistics.ᐟ', 'error');
         } finally {
             // setLoading(false); // Will be set by the main useEffect after all promises settle
         }
@@ -163,16 +163,16 @@ const AdminDashboard = () => {
         
 
         const handleNegotiationUpdate = (data) => {
-            console.log('AdminDashboard Real-time: Negotiation update received!', data);
+            console.log('AdminDashboard Real-time: Negotiation update received!ᐟ', data);
             showToast(`Negotiation ${data.negotiationId} was updated!`, 'info');
             fetchAdminStats();
         };
 
         const handleUnreadMessageCountUpdate = (data) => {
             if (data.userId === user.id) {
-                console.log('AdminDashboard Real-time: Unread message count update received!', data);
+                console.log('AdminDashboard Real-time: Unread message count update received!ᐟ', data);
                 fetchUnreadMessageCount();
-                showToast('You have a new message!', 'info');
+                showToast('You have a new message!ᐟ', 'info');
                 if (data.change > 0) {
                     playNotificationSound();
                 }
@@ -180,7 +180,7 @@ const AdminDashboard = () => {
         };
 
         const handleNewChatMessage = (data) => {
-            console.log('AdminDashboard Real-time: New chat message received!', data);
+            console.log('AdminDashboard Real-time: New chat message received!ᐟ', data);
             if (data.sender_id !== user.id) {
                 showToast(`New message from ${data.sender_name || 'User'}!`, 'info');
                 fetchUnreadMessageCount();
@@ -217,14 +217,14 @@ const AdminDashboard = () => {
             <div className="admin-dashboard-container">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-                    <p className="ml-4 text-gray-600">Loading admin data...</p>
+                    <p className="ml-4 text-gray-600">Loading admin data...ᐟ</p>
                 </div>
             </div>
         );
     }
 
     if (!user || user.user_type !== 'admin') {
-        return <div>Unauthorized access. Redirecting...</div>;
+        return <div>Unauthorized access. Redirecting...ᐟ</div>;
     }
 
     return (
@@ -278,19 +278,19 @@ const AdminDashboard = () => {
                             <p>View, edit, or remove clients and transcribers.</p>
                         </Link>
 
-                        <Link to="/admin/jobs" className="admin-card">
-                            <div className="card-icon">💼</div>
-                            <h3>Manage All Jobs ({adminStats.activeJobs})</h3>
-                            <p>Monitor all ongoing and completed transcription jobs.</p>
+                        <Link to="/admin/negotiation-jobs" className="admin-card"> {/* UPDATED: Link path */}
+                            <div className="card-icon">🤝</div> {/* UPDATED: Icon */}
+                            <h3>Negotiation Jobs ({adminStats.activeJobs})</h3> {/* UPDATED: Card title */}
+                            <p>Monitor all ongoing and completed negotiation jobs.</p> {/* UPDATED: Card description */}
                         </Link>
 
-                        <Link to="/admin/direct-upload-jobs" className="admin-card"> {/* NEW CARD */}
+                        <Link to="/admin/direct-upload-jobs" className="admin-card">
                             <div className="card-icon">📤</div>
-                            <h3>Direct Upload Jobs</h3>
+                            <h3>DU Jobs</h3> {/* UPDATED: Card title */}
                             <p>Review and manage all client direct upload requests.</p>
                         </Link>
 
-                        <Link to="/admin/payments" className="admin-card"> {/* NEW CARD */}
+                        <Link to="/admin/payments" className="admin-card">
                             <div className="card-icon">💳</div>
                             <h3>Payment History</h3>
                             <p>View all client payments and transcriber earnings.</p>
@@ -308,13 +308,13 @@ const AdminDashboard = () => {
                             <p>View and respond to direct messages from users.</p>
                         </Link>
 
-                        <Link to="/admin/training-materials" className="admin-card"> {/* NEW: Knowledge Base Card */}
+                        <Link to="/admin/training-materials" className="admin-card">
                             <div className="card-icon">📚</div>
                             <h3>Knowledge Base</h3>
                             <p>Manage training materials and resources for trainees.</p>
                         </Link>
 
-                        <Link to="/admin/training-rooms" className="admin-card"> {/* NEW: Training Room Management Card */}
+                        <Link to="/admin/training-rooms" className="admin-card">
                             <div className="card-icon">🧑‍🏫</div>
                             <h3>Manage Training Rooms</h3>
                             <p>Oversee and participate in trainee communication channels.</p>

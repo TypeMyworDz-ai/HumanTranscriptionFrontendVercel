@@ -7,71 +7,71 @@ import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 
 // Import your existing page components
-import LandingPage from '../LandingPage';
-import Login from '../Login';
-import ClientRegister from '../ClientRegister';
-import WorkerRegister from '../WorkerRegister'; 
-import ClientDashboard from '../ClientDashboard';
-import ClientNegotiations from '../ClientNegotiations';
-import TranscriberDashboard from '../TranscriberDashboard';
-import TranscriberNegotiations from '../TranscriberNegotiations';
-import TranscriberPool from '../TranscriberPool';
-import TranscriberTest from '../TranscriberTest';
-import TranscriberWaiting from '../TranscriberWaiting';
-import AdminDashboard from '../AdminDashboard';
-import AdminTranscriberTests from '../AdminTranscriberTests.js';
-import AdminUsers from '../AdminUsers.js';
-import AdminJobs from '../AdminJobs';
-import AdminDisputes from '../AdminDisputes';
-import AdminSettings from '../AdminSettings';
-import AdminTranscriberTestDetails from '../AdminTranscriberTestDetails.js';
-import AdminChat from '../AdminChat.js';
-import UserChat from '../UserChat.js';
-import AdminMessageList from '../AdminMessageList.js';
+import LandingPage from '..//LandingPage';
+import Login from '..//Login';
+import ClientRegister from '..//ClientRegister';
+import WorkerRegister from '..//WorkerRegister'; 
+import ClientDashboard from '..//ClientDashboard';
+import ClientNegotiations from '..//ClientNegotiations';
+import TranscriberDashboard from '..//TranscriberDashboard';
+import TranscriberNegotiations from '..//TranscriberNegotiations';
+import TranscriberPool from '..//TranscriberPool';
+import TranscriberTest from '..//TranscriberTest';
+import TranscriberWaiting from '..//TranscriberWaiting';
+import AdminDashboard from '..//AdminDashboard';
+import AdminTranscriberTests from '..//AdminTranscriberTests.js';
+import AdminUsers from '..//AdminUsers.js';
+import AdminNegotiationJobs from '..//AdminNegotiationJobs'; // UPDATED: Renamed import from AdminJobs
+import AdminDisputes from '..//AdminDisputes';
+import AdminSettings from '..//AdminSettings';
+import AdminTranscriberTestDetails from '..//AdminTranscriberTestDetails.js';
+import AdminChat from '..//AdminChat.js';
+import UserChat from '..//UserChat.js';
+import AdminMessageList from '..//AdminMessageList.js';
 
 // NEW: Import the ResetPassword component
-import ResetPassword from '../ResetPassword.js';
+import ResetPassword from '..//ResetPassword.js';
 // NEW: Import Payment-related components
-import TranscriberPaymentHistory from '../TranscriberPaymentHistory';
-import PaymentCallback from '../PaymentCallback';
+import TranscriberPaymentHistory from '..//TranscriberPaymentHistory';
+import PaymentCallback from '..//PaymentCallback';
 // NEW: Import Client-specific components
-import ClientPaymentHistory from '../ClientPaymentHistory';
-import ClientJobs from '../ClientJobs';
+import ClientPaymentHistory from '..//ClientPaymentHistory';
+import ClientJobs from '..//ClientJobs';
 // NEW: Import ClientCompletedJobs
-import ClientCompletedJobs from '../ClientCompletedJobs'; 
+import ClientCompletedJobs from '..//ClientCompletedJobs'; 
 // NEW: Import Profile-related components
-import ClientProfile from '../ClientProfile';
-import TranscriberProfile from '../TranscriberProfile';
+import ClientProfile from '..//ClientProfile';
+import TranscriberProfile from '..//TranscriberProfile';
 // NEW: Import Direct Upload-related components
-import ClientDirectUpload from '../ClientDirectUpload'; 
-import TranscriberOtherJobs from '../TranscriberOtherJobs'; 
+import ClientDirectUpload from '..//ClientDirectUpload'; 
+import TranscriberOtherJobs from '..//TranscriberOtherJobs'; 
 
 // NEW: Import the new TranscriberDirectUploadJobs component
-import TranscriberDirectUploadJobs from '../TranscriberDirectUploadJobs'; 
+import TranscriberDirectUploadJobs from '..//TranscriberDirectUploadJobs'; 
 
 // NEW: Import Admin Oversight components
-import AdminPaymentHistory from '../AdminPaymentHistory'; 
-import AdminDirectUploadJobs from '../AdminDirectUploadJobs'; 
-import AdminJobDetails from '../AdminJobDetails'; 
+import AdminPaymentHistory from '..//AdminPaymentHistory'; 
+import AdminDirectUploadJobs from '..//AdminDirectUploadJobs'; 
+import AdminJobDetails from '..//AdminJobDetails'; 
 // NEW: Import AdminTranscriberPayouts
-import AdminTranscriberPayouts from '../AdminTranscriberPayouts'; 
+import AdminTranscriberPayouts from '..//AdminTranscriberPayouts'; 
 
 // NEW: Import Trainee-related components
-import TraineeRegister from '../TraineeRegister'; 
-import TrainingPayment from '../TrainingPayment'; 
-import TraineeDashboard from '../TraineeDashboard'; 
-import TraineeTrainingMaterials from '../TraineeTrainingMaterials'; 
-import TraineeTrainingRoom from '../TraineeTrainingRoom'; 
+import TraineeRegister from '..//TraineeRegister'; 
+import TrainingPayment from '..//TrainingPayment'; 
+import TraineeDashboard from '..//TraineeDashboard'; 
+import TraineeTrainingMaterials from '..//TraineeTrainingMaterials'; 
+import TraineeTrainingRoom from '..//TraineeTrainingRoom'; 
 // NEW: Import AdminTrainingMaterials for Knowledge Base management
-import AdminTrainingMaterials from '../AdminTrainingMaterials';
+import AdminTrainingMaterials from '..//AdminTrainingMaterials';
 // NEW: Import AdminTrainingRoom for managing trainee communications
-import AdminTrainingRoom from '../AdminTrainingRoom';
+import AdminTrainingRoom from '..//AdminTrainingRoom';
 
 // NEW: Import GuidelinesPage
-import GuidelinesPage from '../GuidelinesPage'; 
+import GuidelinesPage from '..//GuidelinesPage'; 
 
 // NEW: Import the WhatsAppButton component
-import WhatsAppButton from '../WhatsAppButton'; // NEW: Import WhatsAppButton
+import WhatsAppButton from '..//WhatsAppButton'; // NEW: Import WhatsAppButton
 
 
 const AppRoutes = () => {
@@ -130,8 +130,9 @@ const AppRoutes = () => {
                     <Route path="/admin/transcriber-tests" element={<AdminTranscriberTests />} />
                     <Route path="/admin/transcriber-tests/:submissionId" element={<AdminTranscriberTestDetails />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
-                    <Route path="/admin/jobs" element={<AdminJobs />} />
-                    <Route path="/admin/jobs/:jobId" element={<AdminJobDetails />} />
+                    <Route path="/admin/negotiation-jobs" element={<AdminNegotiationJobs />} /> {/* UPDATED: New path for negotiation jobs */}
+                    <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> {/* This path remains */}
+                    <Route path="/admin/jobs/:jobId" element={<AdminJobDetails />} /> {/* Unified job details route */}
                     <Route path="/admin/disputes" element={<AdminDisputes />} />
                     <Route path="/admin/settings" element={<AdminSettings />} />
                     {/* Admin Chat Routes */}
@@ -139,8 +140,7 @@ const AppRoutes = () => {
                     <Route path="/admin/chat/:userId" element={<AdminChat />} />
                     {/* NEW: Admin Oversight Routes */}
                     <Route path="/admin/payments" element={<AdminPaymentHistory />} /> 
-                    <Route path="/admin/direct-upload-jobs" element={<AdminDirectUploadJobs />} /> 
-                    <Route path="/admin/job-details/:jobId" element={<AdminJobDetails />} /> 
+                    {/* Removed redundant /admin/job-details/:jobId route */}
                     {/* NEW: AdminTranscriberPayouts Route */}
                     <Route path="/admin/payments/transcriber/:transcriberId" element={<AdminTranscriberPayouts />} /> 
                     {/* NEW: Admin Route for Training Materials (Knowledge Base) */}

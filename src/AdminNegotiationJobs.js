@@ -1,4 +1,4 @@
-// frontend/client/src/AdminJobs.js - COMPLETE AND UPDATED with functionality for admin job management
+// frontend/client/src/AdminNegotiationJobs.js - COMPLETE AND UPDATED for Admin Negotiation Job Management
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
@@ -6,15 +6,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast'; // Import Toast component
 import Modal from './Modal'; // Import Modal component for delete confirmation
 import './AdminManagement.css'; // Assuming common admin styles
-import './AdminJobs.css'; // You'll need to create this CSS file for specific job table styling
+import './AdminJobs.css'; // Assuming styling for job tables
 
 // Define the backend URL constant for API calls within this component
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-const AdminJobs = () => {
+const AdminNegotiationJobs = () => { // UPDATED: Component name
     const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const [jobs, setJobs] = useState([]); // State to store fetched jobs (negotiations and direct uploads)
+    const navigate = useNavigate(); // Use useNavigate
+    const [negotiationJobs, setNegotiationJobs] = useState([]); // UPDATED: State to store fetched negotiation jobs
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -26,7 +26,7 @@ const AdminJobs = () => {
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
-    // Helper function to format status for display
+    // Helper function to format status for display (specific to negotiation jobs)
     const formatStatusDisplay = useCallback((status) => {
         switch (status) {
             case 'accepted_awaiting_payment':
@@ -36,19 +36,12 @@ const AdminJobs = () => {
             case 'client_counter':
                 return 'Client Countered';
             case 'pending':
-            case 'pending_review': // Direct Upload specific status
                 return 'Pending';
             case 'hired':
                 return 'Hired';
-            case 'available_for_transcriber': // Direct Upload specific status
-                return 'Available for Transcriber';
-            case 'taken': // Direct Upload specific status
-                return 'Taken';
-            case 'in_progress': // Direct Upload specific status
-                return 'In Progress';
             case 'completed':
                 return 'Completed';
-            case 'client_completed': // Direct Upload specific status
+            case 'client_completed':
                 return 'Client Completed';
             case 'rejected':
                 return 'Rejected';
@@ -75,8 +68,8 @@ const AdminJobs = () => {
         }
     }, []);
 
-    // Function to fetch all jobs (negotiations and direct uploads) for admin
-    const fetchAllJobs = useCallback(async () => {
+    // Function to fetch all negotiation jobs for admin
+    const fetchNegotiationJobs = useCallback(async () => { // UPDATED: Function name
         setLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
@@ -85,39 +78,28 @@ const AdminJobs = () => {
         }
 
         try {
-            // Fetch negotiation jobs
-            const negotiationsResponse = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, { // This endpoint now specifically gets negotiation jobs
+            // Fetch negotiation jobs only
+            const response = await fetch(`${BACKEND_API_URL}/api/admin/jobs`, { 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const negotiationsData = await negotiationsResponse.json();
-            const fetchedNegotiations = (negotiationsResponse.ok && Array.isArray(negotiationsData))
-                ? negotiationsData.map(job => ({ ...job, jobType: 'negotiation' }))
-                : (negotiationsResponse.ok && negotiationsData && Array.isArray(negotiationsData.jobs) ? negotiationsData.jobs.map(job => ({ ...job, jobType: 'negotiation' })) : []);
+            const data = await response.json();
 
-            // Fetch direct upload jobs
-            const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/admin/direct-upload-jobs`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const directUploadData = await directUploadResponse.json();
-            const fetchedDirectUploads = (directUploadResponse.ok && Array.isArray(directUploadData.jobs)) // directUploadData.jobs is an array
-                ? directUploadData.jobs.map(job => ({ ...job, jobType: 'direct_upload' }))
-                : [];
-
-            // Combine and sort all jobs by creation date
-            const combinedJobs = [...fetchedNegotiations, ...fetchedDirectUploads].sort((a, b) => {
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-
-            setJobs(combinedJobs);
-
-            if (combinedJobs.length === 0) {
-                showToast('No jobs found.', 'info');
+            if (response.ok && Array.isArray(data)) { 
+                const typedNegotiations = data.map(job => ({ ...job, jobType: 'negotiation' }));
+                setNegotiationJobs(typedNegotiations); // UPDATED: Set negotiationJobs
+            } else if (response.ok && data && Array.isArray(data.jobs)) { 
+                const typedNegotiations = data.jobs.map(job => ({ ...job, jobType: 'negotiation' }));
+                setNegotiationJobs(typedNegotiations); // UPDATED: Set negotiationJobs
+            }
+            else {
+                showToast(data.error || 'Failed to fetch negotiation jobs.ᐟ', 'error');
+                setNegotiationJobs([]); // UPDATED: Ensure negotiationJobs is an empty array on error
             }
 
         } catch (error) {
-            console.error('Error fetching jobs:', error);
-            showToast('Network error fetching jobs.ᐟ', 'error');
-            setJobs([]); // Ensure jobs is an empty array on error
+            console.error('Error fetching negotiation jobs:', error);
+            showToast('Network error fetching negotiation jobs.ᐟ', 'error');
+            setNegotiationJobs([]); // UPDATED: Ensure negotiationJobs is an empty array on error
         } finally {
             setLoading(false);
         }
@@ -129,8 +111,8 @@ const AdminJobs = () => {
             navigate('/admin-dashboard'); // Redirect if not admin
             return;
         }
-        fetchAllJobs();
-    }, [user, navigate, fetchAllJobs]);
+        fetchNegotiationJobs(); // UPDATED: Call fetchNegotiationJobs
+    }, [user, navigate, fetchNegotiationJobs]);
 
     const openDeleteModal = useCallback((job) => { // Now accepts full job object
         setJobToDelete(job);
@@ -143,9 +125,9 @@ const AdminJobs = () => {
         setModalLoading(false);
     }, []);
 
-    // NEW: Handle deletion of a job by Admin
+    // Handle deletion of a negotiation job by Admin
     const handleDeleteJob = useCallback(async () => {
-        if (!jobToDelete?.id || !jobToDelete?.jobType) return;
+        if (!jobToDelete?.id || jobToDelete.jobType !== 'negotiation') return; // Ensure it's a negotiation job
 
         setModalLoading(true);
         const token = localStorage.getItem('token');
@@ -155,17 +137,7 @@ const AdminJobs = () => {
         }
 
         try {
-            let apiUrl;
-            if (jobToDelete.jobType === 'negotiation') {
-                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToDelete.id}`;
-            } else if (jobToDelete.jobType === 'direct_upload') {
-                // Assuming a similar delete endpoint for direct upload jobs
-                apiUrl = `${BACKEND_API_URL}/api/admin/direct-jobs/${jobToDelete.id}`; // You'll need to create this backend endpoint
-            } else {
-                showToast('Unknown job type for deletion.', 'error');
-                setModalLoading(false);
-                return;
-            }
+            const apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToDelete.id}`; // Always negotiation delete endpoint
 
             const response = await fetch(apiUrl, {
                 method: 'DELETE',
@@ -176,23 +148,22 @@ const AdminJobs = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Job deleted successfully!ᐟ', 'success');
+                showToast(data.message || 'Negotiation job deleted successfully!ᐟ', 'success');
                 closeDeleteModal();
-                fetchAllJobs(); // Refresh the list of jobs
+                fetchNegotiationJobs(); // Refresh the list of negotiation jobs
             } else {
-                showToast(data.error || 'Failed to delete job.ᐟ', 'error');
+                showToast(data.error || 'Failed to delete negotiation job.ᐟ', 'error');
             }
         } catch (error) {
-            console.error('Error deleting job:', error);
-            showToast('Network error deleting job.ᐟ', 'error');
+            console.error('Error deleting negotiation job:', error);
+            showToast('Network error deleting negotiation job.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
-    }, [jobToDelete, logout, showToast, fetchAllJobs, closeDeleteModal]);
+    }, [jobToDelete, logout, showToast, fetchNegotiationJobs, closeDeleteModal]);
 
-    // NEW: Handle viewing job details (placeholder for now)
-    const handleViewJobDetails = useCallback((jobId, jobType) => { // Now accepts jobType
-        // Implement navigation to a detailed job view page
+    // Handle viewing job details
+    const handleViewJobDetails = useCallback((jobId, jobType) => { 
         navigate(`/admin/jobs/${jobId}?type=${jobType}`); // Pass jobType as a query parameter
         console.log(`Viewing details for job: ${jobId}, Type: ${jobType}`);
     }, [navigate]);
@@ -201,7 +172,7 @@ const AdminJobs = () => {
     if (loading) {
         return (
             <div className="admin-management-container">
-                <div className="loading-spinner">Loading jobs...</div>
+                <div className="loading-spinner">Loading negotiation jobs...</div> {/* UPDATED: Loading message */}
             </div>
         );
     }
@@ -210,7 +181,7 @@ const AdminJobs = () => {
         <div className="admin-management-container">
             <header className="admin-management-header">
                 <div className="header-content">
-                    <h1>Manage All Jobs</h1>
+                    <h1>Manage Negotiation Jobs</h1> {/* UPDATED: Title */}
                     <div className="user-info">
                         <span>Welcome, {user?.full_name || 'Admin'}!</span>
                         <button onClick={logout} className="logout-btn">Logout</button>
@@ -223,44 +194,39 @@ const AdminJobs = () => {
                 </div>
 
                 <div className="admin-content-section">
-                    <h2>Ongoing & Completed Jobs</h2>
-                    <p>Monitor all transcription jobs across the platform.</p>
+                    <h2>All Negotiation Jobs</h2> {/* UPDATED: Subtitle */}
+                    <p>Monitor all negotiation jobs across the platform.</p> {/* UPDATED: Description */}
                     
-                    {Array.isArray(jobs) && jobs.length === 0 ? ( // Corrected check for empty array
-                        <p className="no-data-message">No jobs found.ᐟ</p>
+                    {Array.isArray(negotiationJobs) && negotiationJobs.length === 0 ? ( // UPDATED: Check negotiationJobs
+                        <p className="no-data-message">No negotiation jobs found.ᐟ</p> 
                     ) : (
-                        <div className="jobs-list-table-wrapper"> {/* Added wrapper for table styling */}
+                        <div className="jobs-list-table-wrapper"> 
                             <table className="jobs-list-table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Type</th> {/* NEW: Job Type column */}
                                         <th>Client</th>
                                         <th>Transcriber</th>
-                                        <th>Price (USD)</th> {/* Changed to USD */}
+                                        <th>Price (USD)</th>
                                         <th>Deadline</th>
                                         <th>Status</th>
                                         <th>Requested On</th>
-                                        <th>Completed At</th> {/* NEW: Completed At column */}
-                                        <th>Client Feedback</th> {/* NEW: Client Feedback column */}
-                                        <th>Actions</th> {/* NEW: Actions column */}
+                                        <th>Completed At</th>
+                                        <th>Client Feedback</th>
+                                        <th>Actions</th> 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {jobs.map(job => (
+                                    {negotiationJobs.map(job => ( // UPDATED: Map negotiationJobs
                                         <tr key={job.id}>
                                             <td>{job.id.substring(0, 8)}...</td>
-                                            <td>{job.jobType === 'negotiation' ? 'Negotiation' : 'Direct Upload'}</td> {/* Display job type */}
-                                            <td>{job.client?.full_name || 'N/A'}</td> {/* Access client.full_name */}
-                                            <td>{job.transcriber?.full_name || 'N/A'}</td> {/* Access transcriber.full_name */}
-                                            <td>USD {(job.agreed_price_usd || job.quote_amount)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</td> {/* Handle both price fields */}
-                                            <td>{job.deadline_hours || job.agreed_deadline_hours} hrs</td> {/* Handle both deadline fields */}
-                                            {/* UPDATED: Use formatStatusDisplay helper */}
+                                            <td>{job.client?.full_name || 'N/A'}</td> 
+                                            <td>{job.transcriber?.full_name || 'N/A'}</td> 
+                                            <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</td> 
+                                            <td>{job.deadline_hours} hrs</td> 
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusDisplay(job.status)}</span></td>
                                             <td>{new Date(job.created_at).toLocaleDateString()}</td>
-                                            {/* NEW: Display Completed At */}
                                             <td>{job.completed_at ? formatDisplayTimestamp(job.completed_at) : 'N/A'}</td>
-                                            {/* NEW: Display Client Feedback */}
                                             <td>
                                                 {(job.status === 'completed' || job.status === 'client_completed') && (job.client_feedback_comment || job.client_feedback_rating) ? (
                                                     <div className="admin-client-feedback">
@@ -283,7 +249,7 @@ const AdminJobs = () => {
                                             <td>
                                                 <button 
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // Prevent event bubbling
+                                                        e.stopPropagation(); 
                                                         handleViewJobDetails(job.id, job.jobType);
                                                     }} 
                                                     className="action-btn view-btn"
@@ -292,14 +258,14 @@ const AdminJobs = () => {
                                                 </button>
                                                 <button 
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // Prevent event bubbling
-                                                        openDeleteModal(job); // Pass the entire job object
+                                                        e.stopPropagation(); 
+                                                        openDeleteModal(job); 
                                                     }} 
                                                     className="action-btn delete-btn"
                                                 >
                                                     Delete
                                                 </button>
-                                            </td> {/* NEW: Action buttons */}
+                                            </td> 
                                         </tr>
                                     ))}
                                 </tbody>
@@ -316,7 +282,7 @@ const AdminJobs = () => {
                 duration={toast.type === 'error' ? 4000 : 3000}
             />
 
-            {/* NEW: Delete Confirmation Modal */}
+            {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <Modal
                     show={showDeleteModal}
@@ -334,4 +300,4 @@ const AdminJobs = () => {
     );
 };
 
-export default AdminJobs;
+export default AdminNegotiationJobs; // UPDATED: Export new component name
