@@ -6,6 +6,7 @@
 // UPDATED: KoraPay initialization to remove explicit channels (backend change), and added extensive logging for verification.
 // UPDATED: KoraPay onSuccess/onClose callbacks to handle modal closure more gracefully and ensure verification params are logged.
 // FIXED: KoraPay TypeError by explicitly calling Korapay.close() and adding a small delay for modal cleanup.
+// UPDATED: Added client-side 'Mark as Complete' functionality for negotiation jobs.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
@@ -44,6 +45,13 @@ const ClientNegotiations = () => {
     const [showPaymentSelectionModal, setShowPaymentSelectionModal] = useState(false);
     const [negotiationToPayFor, setNegotiationToPayFor] = useState(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack');
+
+    // NEW: State for Mark Job Complete Modal (Client's action for Negotiation Jobs)
+    const [showCompleteJobModal, setShowCompleteJobModal] = useState(false);
+    const [jobToComplete, setJobToComplete] = useState(null); // Renamed from negotiationToComplete for consistency with ClientJobs
+    const [clientFeedbackComment, setClientFeedbackComment] = useState('');
+    const [clientFeedbackRating, setClientFeedbackRating] = useState(5);
+    const [completeJobModalLoading, setCompleteJobModalLoading] = useState(false);
 
 
     const showToast = useCallback((message, type = 'success') => {
@@ -97,11 +105,11 @@ const ClientNegotiations = () => {
             })));
 
             if (typedNegotiations.length === 0) {
-                showToast('No negotiations found.', 'info');
+                showToast('No negotiations found.ᐟ', 'info');
             }
         } catch (error) {
             console.error("Network error while fetching client negotiations:", error);
-            showToast('Network error while fetching negotiations.', 'error');
+            showToast('Network error while fetching negotiations.ᐟ', 'error');
         } finally {
             setLoading(false);
         }
@@ -121,7 +129,7 @@ const ClientNegotiations = () => {
     }, [isAuthenticated, authLoading, user, navigate, fetchNegotiationJobs]);
 
     const handleNegotiationUpdate = useCallback((data) => {
-        console.log('ClientNegotiations Real-time: Negotiation status update received! Triggering re-fetch for list cleanup.', data);
+        console.log('ClientNegotiations Real-time: Negotiation status update received! Triggering re-fetch for list cleanup.ᐟ', data);
         const negotiationId = data.negotiationId;
         showToast(`Negotiation status updated for ID: ${negotiationId?.substring(0, 8)}.`, 'info');
         fetchNegotiationJobs();
@@ -229,15 +237,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer accepted! Proceed to payment.', 'success');
+                showToast(data.message || 'Counter-offer accepted! Proceed to payment.ᐟ', 'success');
                 closeAcceptCounterModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to accept counter-offer.', 'error');
+                showToast(data.error || 'Failed to accept counter-offer.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error accepting counter-offer:', error);
-            showToast('Network error while accepting counter-offer.', 'error');
+            showToast('Network error while accepting counter-offer.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
@@ -259,15 +267,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer rejected!', 'success');
+                showToast(data.message || 'Counter-offer rejected!ᐟ', 'success');
                 closeRejectCounterModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to reject counter-offer.', 'error');
+                showToast(data.error || 'Failed to reject counter-offer.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error rejecting counter-offer:', error);
-            showToast('Network error while rejecting counter-offer.', 'error');
+            showToast('Network error while rejecting counter-offer.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
@@ -276,7 +284,7 @@ const ClientNegotiations = () => {
     const confirmCounterBack = useCallback(async () => {
         setModalLoading(true);
         if (!counterOfferData.proposedPrice) {
-            showToast('Please provide a proposed price for your counter-offer.', 'error');
+            showToast('Please provide a proposed price for your counter-offer.ᐟ', 'error');
             setModalLoading(false);
             return;
         }
@@ -298,15 +306,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer sent successfully!', 'success');
+                showToast(data.message || 'Counter-offer sent successfully!ᐟ', 'success');
                 closeCounterBackModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to send counter-offer.', 'error');
+                showToast(data.error || 'Failed to send counter-offer.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error sending counter-offer back:', error);
-            showToast('Network error while sending counter-offer.', 'error');
+            showToast('Network error while sending counter-offer.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
@@ -314,7 +322,7 @@ const ClientNegotiations = () => {
 
     const handleProceedToPayment = useCallback(async (negotiation) => {
         if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) {
-            showToast('Missing client email, negotiation ID, or agreed price for payment.', 'error');
+            showToast('Missing client email, negotiation ID, or agreed price for payment.ᐟ', 'error');
             return;
         }
 
@@ -325,7 +333,7 @@ const ClientNegotiations = () => {
 
     const initiatePayment = useCallback(async () => {
         if (!negotiationToPayFor?.id || !selectedPaymentMethod) {
-            showToast('Negotiation or payment method not selected.', 'error');
+            showToast('Negotiation or payment method not selected.ᐟ', 'error');
             return;
         }
 
@@ -398,7 +406,7 @@ const ClientNegotiations = () => {
                                     }
                                 }
                                 setTimeout(() => { // Add a slight delay before closing React modal
-                                    showToast("Payment cancelled by user.", "info");
+                                    showToast("Payment cancelled by user.ᐟ", "info");
                                     setModalLoading(false);
                                     setShowPaymentSelectionModal(false);
                                     fetchNegotiationJobs();
@@ -408,7 +416,7 @@ const ClientNegotiations = () => {
                                 console.log("KoraPay payment successful for negotiation:", korapayResponse);
                                 console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference);
 
-                                showToast("Payment successful! Verifying...", "success");
+                                showToast("Payment successful! Verifying...ᐟ", "success");
                                 // Safely close KoraPay modal immediately
                                 if (window.Korapay && typeof window.Korapay.close === 'function') {
                                     try {
@@ -428,19 +436,19 @@ const ClientNegotiations = () => {
                                         const verifyData = await verifyResponse.json();
 
                                         if (verifyResponse.ok) {
-                                            showToast("Payment successfully verified. Redirecting to dashboard!", "success");
+                                            showToast("Payment successfully verified. Redirecting to dashboard!ᐟ", "success");
                                             setShowPaymentSelectionModal(false);
                                             fetchNegotiationJobs();
                                             navigate('/client-dashboard');
                                         } else {
                                             console.error("KoraPay verification failed with backend:", verifyData.error);
-                                            showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
+                                            showToast(verifyData.error || "Payment verification failed. Please contact support.ᐟ", "error");
                                             setModalLoading(false);
                                             setShowPaymentSelectionModal(false);
                                         }
                                     } catch (verifyError) {
                                         console.error('Error during KoraPay verification for negotiation:', verifyError);
-                                        showToast('Network error during payment verification. Please contact support.', 'error');
+                                        showToast('Network error during payment verification. Please contact support.ᐟ', 'error');
                                         setModalLoading(false);
                                         setShowPaymentSelectionModal(false);
                                     }
@@ -448,28 +456,28 @@ const ClientNegotiations = () => {
                             },
                             onFailed: (korapayResponse) => {
                                 console.error("KoraPay payment failed for negotiation:", korapayResponse);
-                                showToast("Payment failed. Please try again.", "error");
+                                showToast("Payment failed. Please try again.ᐟ", "error");
                                 setModalLoading(false);
                                 setShowPaymentSelectionModal(false);
                                 fetchNegotiationJobs();
                             }
                         });
                     } else {
-                        showToast('Failed to load KoraPay script. Please try again or contact support.', 'error');
+                        showToast('Failed to load KoraPay script. Please try again or contact support.ᐟ', 'error');
                         setModalLoading(false);
                         setShowPaymentSelectionModal(false);
                     }
                 } else {
-                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data from server.', 'error');
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data from server.ᐟ', 'error');
                 }
                 setModalLoading(false);
             } else {
-                showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
+                showToast(data.error || 'Failed to initiate payment. Please try again.ᐟ', 'error');
                 setModalLoading(false);
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
-            showToast('Network error while initiating payment. Please try again.', 'error');
+            showToast('Network error while initiating payment. Please try again.ᐟ', 'error');
             setModalLoading(false);
         } finally {
             // Handled within callbacks
@@ -479,10 +487,10 @@ const ClientNegotiations = () => {
 
     const handleDeleteJob = useCallback(async (jobId, jobType) => {
         if (jobType !== 'negotiation') {
-            showToast('This action is only for negotiation jobs.', 'error');
+            showToast('This action is only for negotiation jobs.ᐟ', 'error');
             return;
         }
-        if (!window.confirm('Are you sure you want to cancel/delete this negotiation? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to cancel/delete this negotiation? This action cannot be undone.ᐟ')) {
             return;
         }
 
@@ -504,24 +512,24 @@ const ClientNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Negotiation cancelled/deleted successfully!', 'success');
+                showToast('Negotiation cancelled/deleted successfully!ᐟ', 'success');
                 fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to cancel/delete negotiation', 'error');
             }
         } catch (error) {
-            showToast('Network error. Please try again.', 'error');
+            showToast('Network error. Please try again.ᐟ', 'error');
         }
     }, [showToast, fetchNegotiationJobs, logout]);
 
     const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {
         if (jobType !== 'negotiation') {
-            showToast('This action is only for negotiation files.', 'error');
+            showToast('This action is only for negotiation files.ᐟ', 'error');
             return;
         }
         const token = localStorage.getItem('token');
         if (!token) {
-            showToast('Authentication token missing. Please log in again.', 'error');
+            showToast('Authentication token missing. Please log in again.ᐟ', 'error');
             logout();
             return;
         }
@@ -586,6 +594,83 @@ const ClientNegotiations = () => {
         };
         return texts[status] || status.replace(/_/g, ' ');
     }, []);
+
+    // NEW: Open Mark Job Complete Modal
+    const openMarkJobCompleteModal = useCallback((job) => {
+        // This function is specifically for negotiation jobs in ClientNegotiations.js
+        if (job.jobType === 'negotiation' && job.status === 'hired') {
+            setJobToComplete(job);
+            setClientFeedbackComment('');
+            setClientFeedbackRating(5);
+            setShowCompleteJobModal(true);
+        } else {
+            showToast('This job cannot be marked complete at this time.ᐟ', 'info');
+        }
+    }, [showToast]);
+
+    // NEW: Close Mark Job Complete Modal
+    const closeMarkJobCompleteModal = useCallback(() => {
+        setShowCompleteJobModal(false);
+        setJobToComplete(null);
+        setClientFeedbackComment('');
+        setClientFeedbackRating(5);
+        setCompleteJobModalLoading(false);
+    }, []);
+
+    // NEW: Handle Feedback Comment Change
+    const handleFeedbackCommentChange = useCallback((e) => {
+        setClientFeedbackComment(e.target.value);
+    }, []);
+
+    // NEW: Handle Feedback Rating Change
+    const handleFeedbackRatingChange = useCallback((e) => {
+        setClientFeedbackRating(parseInt(e.target.value, 10));
+    }, []);
+
+    // NEW: Submit Mark Job Complete
+    const submitMarkJobComplete = useCallback(async () => {
+        if (!jobToComplete?.id) {
+            showToast('No job selected for completion!ᐟ', 'error');
+            return;
+        }
+
+        setCompleteJobModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            logout();
+            return;
+        }
+
+        try {
+            let apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
+
+            const response = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    clientFeedbackComment: clientFeedbackComment,
+                    clientFeedbackRating: clientFeedbackRating
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showToast('Job marked as complete successfully! Thank you for your feedback.ᐟ', 'success');
+                closeMarkJobCompleteModal();
+                fetchNegotiationJobs(); // Re-fetch negotiations to update status
+            } else {
+                showToast(data.error || 'Failed to mark job as complete.ᐟ', 'error');
+            }
+        } catch (error) {
+            console.error('Network error marking job as complete: ', error);
+            showToast('Network error while marking job as complete. Please try again.ᐟ', 'error');
+        } finally {
+            setCompleteJobModalLoading(false);
+        }
+    }, [jobToComplete, clientFeedbackComment, clientFeedbackRating, showToast, logout, closeMarkJobCompleteModal, fetchNegotiationJobs]);
 
 
     if (authLoading || !isAuthenticated || !user) {
@@ -684,6 +769,7 @@ const ClientNegotiations = () => {
                                     openAcceptCounterModal={openAcceptCounterModal}
                                     openRejectCounterModal={openRejectCounterModal}
                                     openCounterBackModal={openCounterBackModal}
+                                    openCompleteJobModal={openMarkJobCompleteModal}
                                     onDownloadFile={handleDownloadFile}
                                     clientAverageRating={parseFloat(user.client_average_rating) || 0}
                                     clientCompletedJobs={parseFloat(user.client_completed_jobs) || 0}
@@ -778,7 +864,7 @@ const ClientNegotiations = () => {
                     title={`Choose Payment Method for Negotiation: ${negotiationToPayFor.id?.substring(0, 8)}...`}
                     onClose={() => setShowPaymentSelectionModal(false)}
                     onSubmit={initiatePayment}
-                    submitText={`Pay Now (USD ${((negotiationToPayFor.agreed_price_usd) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                    submitText={`Pay Now (USD ${((negotiationToPayFor.agreed_price_usd || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     loading={modalLoading}
                 >
                     <p>Select your preferred payment method:</p>
@@ -804,6 +890,46 @@ const ClientNegotiations = () => {
                             KoraPay (Card, Bank Transfer, Mobile Money)
                         </label>
                     </div>
+                </Modal>
+            )}
+
+            {/* NEW: Mark Job Complete with Feedback Modal (Client's action for Negotiation Jobs) */}
+            {showCompleteJobModal && jobToComplete && (
+                <Modal
+                    show={showCompleteJobModal}
+                    title={`Complete Job: ${jobToComplete.id?.substring(0, 8)}...`}
+                    onClose={closeMarkJobCompleteModal}
+                    onSubmit={submitMarkJobComplete}
+                    submitText="Mark as Complete"
+                    loading={completeJobModalLoading}
+                >
+                    <p>Provide feedback for the transcriber and mark this job as complete.</p>
+                    <div className="form-group">
+                        <label htmlFor="clientFeedbackComment">Your Feedback (Optional):</label>
+                        <textarea
+                            id="clientFeedbackComment"
+                            value={clientFeedbackComment}
+                            onChange={handleFeedbackCommentChange}
+                            placeholder="Share your thoughts on the transcriber's performance, quality of work, communication, etc."
+                            rows="4"
+                        ></textarea>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="clientFeedbackRating">Rate Transcriber (1-5 Stars):</label>
+                        <select
+                            id="clientFeedbackRating"
+                            value={clientFeedbackRating}
+                            onChange={handleFeedbackRatingChange}
+                            required
+                        >
+                            <option value="5">5 Stars - Excellent</option>
+                            <option value="4">4 Stars - Very Good</option>
+                            <option value="3">3 Stars - Good</option>
+                            <option value="2">2 Stars - Fair</option>
+                            <option value="1">1 Star - Poor</option>
+                        </select>
+                    </div>
+                    <p className="modal-note">Your rating here will be visible to the admin and will help in their overall evaluation of the transcriber.</p>
                 </Modal>
             )}
 

@@ -304,7 +304,7 @@ const ClientJobs = () => {
         const isNegotiationJob = job.jobType === 'negotiation'; // Use jobType from backend
         const isDirectUploadJob = job.jobType === 'direct_upload'; // Use jobType from backend
 
-        if (isNegotiationJob && job.status === 'completed') { // UPDATED: Allow client to complete negotiation job when transcriber has set status to 'completed'
+        if (isNegotiationJob && job.status === 'hired') { // UPDATED: Client can mark negotiation job complete when status is 'hired'
             setJobToComplete(job);
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
@@ -352,7 +352,7 @@ const ClientJobs = () => {
         try {
             let apiUrl;
             if (jobToComplete.jobType === 'negotiation') { // Use jobType from backend
-                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`; // Corrected typo here
+                apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
             } else if (jobToComplete.jobType === 'direct_upload') { // Use jobType from backend
                 apiUrl = `${BACKEND_API_URL}/api/client/direct-jobs/${jobToComplete.id}/complete`;
             } else {
@@ -457,7 +457,7 @@ const ClientJobs = () => {
                         script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
                         script.async = true;
                         document.body.appendChild(script);
-                        await new Promise(resolve => script.onload = resolve);
+                        await new Promise(resolve => script.onload = resolve); // Corrected here
                     }
 
                     const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
@@ -515,7 +515,6 @@ const ClientJobs = () => {
                 setModalLoading(false);
             } else {
                 showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
-                setModalLoading(false);
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
