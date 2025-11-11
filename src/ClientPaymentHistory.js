@@ -1,10 +1,9 @@
-// src/ClientPaymentHistory.js - UPDATED for USD currency consistency and error handling
-
+// src/ClientPaymentHistory.js - UPDATED to display only two summary cards
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Toast from './Toast'; // Assuming you have a Toast component
+import Toast from './Toast'; 
 import { useAuth } from './contexts/AuthContext';
-import './ClientPaymentHistory.css'; // You'll need to create this CSS file
+import './ClientPaymentHistory.css'; 
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -12,8 +11,9 @@ const ClientPaymentHistory = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [payments, setPayments] = useState([]);
-    const [summary, setSummary] = useState({ totalPayments: 0, monthlyPayments: 0 });
+    // Removed 'payments' state as the detailed table is no longer needed
+    const [totalPayments, setTotalPayments] = useState(0); // State for Total Payments card
+    const [thisMonthsPayments, setThisMonthsPayments] = useState(0); // State for This Month's Payments card
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -46,9 +46,10 @@ const ClientPaymentHistory = () => {
             const data = await response.json();
 
             if (response.ok) {
-                setPayments(data.payments || []);
-                setSummary(data.summary || { totalPayments: 0, monthlyPayments: 0 });
-                if (data.payments?.length === 0) {
+                // Set summary values directly for the cards
+                setTotalPayments(data.summary?.totalPayments || 0);
+                setThisMonthsPayments(data.summary?.thisMonthsPayments || 0); // Corrected to thisMonthsPayments
+                if (data.summary?.totalPayments === 0 && data.summary?.thisMonthsPayments === 0) {
                     showToast('No payment history found yet.', 'info');
                 }
             } else {
@@ -67,7 +68,7 @@ const ClientPaymentHistory = () => {
 
         if (!isAuthenticated || !user || user.user_type !== 'client') {
             console.warn("ClientPaymentHistory: Unauthorized access or not a client. Redirecting.");
-            navigate('/'); // Redirect to home or login
+            navigate('/'); 
             return;
         }
 
@@ -111,58 +112,16 @@ const ClientPaymentHistory = () => {
                     <div className="summary-cards-grid">
                         <div className="summary-card">
                             <h3>Total Payments</h3>
-                            <p className="summary-value">USD {summary.totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
+                            <p className="summary-value">USD {totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         <div className="summary-card">
                             <h3>This Month's Payments</h3>
-                            <p className="summary-value">USD {summary.monthlyPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p> {/* UPDATED: KES to USD, added formatting */}
+                            <p className="summary-value">USD {thisMonthsPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
-                        {/* Add more summary cards here (e.g., weekly, last 7 days) if your backend supports it */}
                     </div>
 
-                    <h3>All Your Transactions</h3>
-                    {payments.length === 0 ? (
-                        <p className="no-data-message">No completed payment transactions found.</p>
-                    ) : (
-                        <div className="payments-table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Job Type</th> {/* NEW: Added Job Type column */}
-                                        <th>Job ID</th>    {/* NEW: Added Job ID column */}
-                                        <th>Transcriber</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th>Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {payments.map((payment) => (
-                                        <tr key={payment.id}>
-                                            <td>{new Date(payment.transaction_date).toLocaleDateString()}</td>
-                                            <td>{payment.related_job_type?.replace('_', ' ') || 'N/A'}</td> {/* Display job type */}
-                                            {/* Conditionally display job ID based on type */}
-                                            <td>
-                                                {payment.related_job_type === 'negotiation' && payment.negotiation_id?.substring(0, 8)}
-                                                {payment.related_job_type === 'direct_upload' && payment.direct_upload_job_id?.substring(0, 8)}
-                                                {payment.related_job_type === 'training' && payment.client_id?.substring(0, 8)} {/* For training, client_id is the relevant ID */}
-                                                ...
-                                            </td>
-                                            <td>{payment.transcriber?.full_name || 'N/A'}</td>
-                                            <td>USD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: KES to USD, added formatting */}
-                                            <td>{payment.paystack_status}</td>
-                                            {/* Conditionally display job requirements/instructions */}
-                                            <td>
-                                                {payment.related_job_type === 'negotiation' && payment.negotiation?.requirements ? `${payment.negotiation.requirements.substring(0, 50)}...` :
-                                                 payment.related_job_type === 'direct_upload' && payment.direct_upload_job?.client_instructions ? `${payment.direct_upload_job.client_instructions.substring(0, 50)}...` : 'N/A'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    {/* REMOVED: All table rendering logic */}
+                    {/* The detailed table is removed as per requirement */}
                 </div>
             </main>
 
