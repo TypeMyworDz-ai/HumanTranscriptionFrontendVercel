@@ -11,9 +11,8 @@ const ClientPaymentHistory = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
     const navigate = useNavigate();
 
-    // Removed 'payments' state as the detailed table is no longer needed
-    const [totalPayments, setTotalPayments] = useState(0); // State for Total Payments card
-    const [thisMonthsPayments, setThisMonthsPayments] = useState(0); // State for This Month's Payments card
+    const [totalPayments, setTotalPayments] = useState(0); 
+    const [thisMonthsPayments, setThisMonthsPayments] = useState(0); 
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
@@ -46,18 +45,23 @@ const ClientPaymentHistory = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Set summary values directly for the cards
                 setTotalPayments(data.summary?.totalPayments || 0);
-                setThisMonthsPayments(data.summary?.thisMonthsPayments || 0); // Corrected to thisMonthsPayments
-                if (data.summary?.totalPayments === 0 && data.summary?.thisMonthsPayments === 0) {
+                setThisMonthsPayments(data.summary?.thisMonthsPayments || 0); 
+                if ((data.summary?.totalPayments || 0) === 0 && (data.summary?.thisMonthsPayments || 0) === 0) { // Robust check
                     showToast('No payment history found yet.', 'info');
                 }
             } else {
                 showToast(data.error || 'Failed to load payment history.', 'error');
+                // Ensure state is reset to default on error to prevent TypeError
+                setTotalPayments(0); 
+                setThisMonthsPayments(0);
             }
         } catch (error) {
             console.error('Network error fetching client payment history:', error);
             showToast('Network error while fetching payment history.', 'error');
+            // Ensure state is reset to default on network error
+            setTotalPayments(0);
+            setThisMonthsPayments(0);
         } finally {
             setLoading(false);
         }
@@ -112,16 +116,15 @@ const ClientPaymentHistory = () => {
                     <div className="summary-cards-grid">
                         <div className="summary-card">
                             <h3>Total Payments</h3>
-                            <p className="summary-value">USD {totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            {/* Ensure totalPayments is a number before calling toLocaleString */}
+                            <p className="summary-value">USD {(totalPayments || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         <div className="summary-card">
                             <h3>This Month's Payments</h3>
-                            <p className="summary-value">USD {thisMonthsPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            {/* Ensure thisMonthsPayments is a number before calling toLocaleString */}
+                            <p className="summary-value">USD {(thisMonthsPayments || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                     </div>
-
-                    {/* REMOVED: All table rendering logic */}
-                    {/* The detailed table is removed as per requirement */}
                 </div>
             </main>
 
