@@ -188,6 +188,46 @@ const TranscriberOtherJobs = () => {
         }
     }, [selectedJobId, logout, navigate, showToast, closeTakeJobModal, fetchAvailableJobs]);
 
+    // NEW: Handle file download with authentication token
+    const handleDownloadFile = useCallback(async (jobId, fileName) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+
+        try {
+            const downloadUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`;
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast(`Downloading ${fileName}...`, 'success');
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.error || `Failed to download ${fileName}.`, 'error');
+            }
+        } catch (error) {
+            console.error('Network error during file download:', error);
+            showToast('Network error during file download. Please try again.', 'error');
+        }
+    }, [showToast, logout]);
+
+
     // Helper function to format status text for display
     const formatStatusText = (status) => {
         if (status === 'available_for_transcriber') {
@@ -273,18 +313,28 @@ const TranscriberOtherJobs = () => {
                                             <td>{job.id.substring(0, 8)}...</td>
                                             <td>{job.client?.full_name || 'N/A'}</td>
                                             <td>
-                                                <a href={`${BACKEND_API_URL}/api/direct-jobs/${job.id}/download/${job.file_name}`} target="_blank" rel="noopener noreferrer">
+                                                {/* UPDATED: Use onClick to handle download with token */}
+                                                <button 
+                                                    onClick={() => handleDownloadFile(job.id, job.file_name)} 
+                                                    className="file-download-btn"
+                                                >
                                                     {job.file_name}
-                                                </a>
+                                                </button>
                                             </td>
                                             <td>{job.audio_length_minutes?.toFixed(1)}</td>
                                             <td>{job.client_instructions || 'N/A'}</td>
                                             <td>
                                                 {job.instruction_files && job.instruction_files.length > 0 ? (
                                                     job.instruction_files.split(',').map((file, i) => (
-                                                        <a key={i} href={`${BACKEND_API_URL}/api/direct-jobs/${job.id}/download/${file}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                                                        // UPDATED: Use onClick for additional files as well
+                                                        <button 
+                                                            key={i} 
+                                                            onClick={() => handleDownloadFile(job.id, file)} 
+                                                            className="file-download-btn" 
+                                                            style={{ display: 'block' }}
+                                                        >
                                                             {file}
-                                                        </a>
+                                                        </button>
                                                     ))
                                                 ) : 'N/A'}
                                             </td>
