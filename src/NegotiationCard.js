@@ -21,20 +21,14 @@ const formatDisplayTimestamp = (isoTimestamp) => {
     }
 };
 
-// Custom comparison function for React.memo
+// Custom comparison function for React.memo - now assumes only negotiation jobs
 const arePropsEqual = (prevProps, nextProps) => {
-    // Compare job prop deeply
     if (JSON.stringify(prevProps.job) !== JSON.stringify(nextProps.job)) {
         console.log(`NegotiationCard: Props changed - job. Prev:`, prevProps.job, `Next:`, nextProps.job);
         return false;
     }
-    // Compare jobType prop
-    if (prevProps.jobType !== nextProps.jobType) {
-        console.log(`NegotiationCard: Props changed - jobType.`);
-        return false;
-    }
+    // Removed jobType comparison as it's now implicitly 'negotiation'
 
-    // Compare simple props
     if (prevProps.onDelete !== nextProps.onDelete) return false;
     if (prevProps.onPayment !== nextProps.onPayment) return false;
     if (prevProps.onLogout !== nextProps.onLogout) return false;
@@ -62,7 +56,7 @@ const arePropsEqual = (prevProps, nextProps) => {
 
 const NegotiationCard = React.memo(({ 
   job, 
-  jobType, // This component now assumes jobType === 'negotiation'
+  // Removed jobType prop as this component now only handles negotiation jobs
   onDelete,
   onPayment,
   onLogout,
@@ -96,12 +90,10 @@ const NegotiationCard = React.memo(({
 
   if (isClientViewing) {
       otherPartyId = job.transcriber_id;
-      // Assume job.transcriber_info is always present for client view of negotiation
       otherPartyDetails = job.transcriber_info; 
       otherPartyName = otherPartyDetails?.full_name || 'Unknown Transcriber';
   } else { // Transcriber viewing
       otherPartyId = job.client_id;
-      // Assume job.client_info is always present for transcriber view of negotiation
       otherPartyDetails = job.client_info; 
       otherPartyName = otherPartyDetails?.full_name || 'Unknown Client';
   }
@@ -114,10 +106,10 @@ const NegotiationCard = React.memo(({
   const [timeLeft, setTimeLeft] = useState(null); 
 
   const calculateTimeLeft = useCallback(() => {
-    console.log(`[NegotiationCard: ${jobId}] calculateTimeLeft triggered. Type: ${jobType}`);
-    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, job.due_date); // Only job.due_date for negotiation jobs
+    console.log(`[NegotiationCard: ${jobId}] calculateTimeLeft triggered.`);
+    console.log(`[NegotiationCard: ${jobId}] Raw due_date:`, job.due_date);
 
-    const deadlineTimestamp = job.due_date; // Only job.due_date for negotiation jobs
+    const deadlineTimestamp = job.due_date; 
 
     if (!deadlineTimestamp) {
         console.log(`[NegotiationCard: ${jobId}] No deadline timestamp found.`);
@@ -152,16 +144,16 @@ const NegotiationCard = React.memo(({
     const result = `${hours}h ${minutes}m ${seconds}s`;
     console.log(`[NegotiationCard: ${jobId}] Time left calculated:`, result);
     return result;
-  }, [job.due_date, jobId, jobType]);
+  }, [job.due_date, jobId]);
 
 
   const isOverdue = (job.status !== 'completed' && job.status !== 'client_completed' && job.status !== 'rejected' && job.status !== 'cancelled') && (
-    job.due_date && new Date(job.due_date) < new Date() // Only check job.due_date for negotiation jobs
+    job.due_date && new Date(job.due_date) < new Date() 
   );
 
 
   useEffect(() => {
-    console.log(`[NegotiationCard: ${jobId}] useEffect for deadline counter triggered. Type: ${jobType}`);
+    console.log(`[NegotiationCard: ${jobId}] useEffect for deadline counter triggered.`);
     console.log(`[NegotiationCard: ${jobId}] Current job status: ${job.status}`);
     console.log(`[NegotiationCard: ${jobId}] Has deadline: ${!!(job.due_date)}`);
 
@@ -182,11 +174,11 @@ const NegotiationCard = React.memo(({
         console.log(`[NegotiationCard: ${jobId}] Clearing deadline counter interval.`);
         clearInterval(timer);
     }
-  }, [job.due_date, job.status, calculateTimeLeft, jobId, jobType]);
+  }, [job.due_date, job.status, calculateTimeLeft, jobId]);
 
 
   const handleReceiveMessageForCard = useCallback((data) => {
-    const isMessageForThisJob = (data.negotiation_id === jobId && jobType === 'negotiation'); // Only check for negotiation_id
+    const isMessageForThisJob = (data.negotiation_id === jobId); 
 
     if (isMessageForThisJob) {
       setCardMessages(prevMessages => {
@@ -208,27 +200,27 @@ const NegotiationCard = React.memo(({
         }
         return updatedMessages;
       });
-      console.log(`NegotiationCard: Message for ${jobId} received (Type: ${jobType}):`, data);
+      console.log(`NegotiationCard: Message for ${jobId} received:`, data);
     } else {
         console.log(`NegotiationCard: Received message not for this card (${jobId}) or is a direct message. Data:`, data);
     }
-  }, [jobId, jobType]);
+  }, [jobId]);
 
   useEffect(() => {
     const socket = getSocketInstance();
 
     if (socket) {
       socket.on('newChatMessage', handleReceiveMessageForCard);
-      console.log(`NegotiationCard: Attached 'newChatMessage' listener for jobId: ${jobId} (Type: ${jobType})`);
+      console.log(`NegotiationCard: Attached 'newChatMessage' listener for jobId: ${jobId}`);
     }
 
     return () => {
       if (socket) {
         socket.off('newChatMessage', handleReceiveMessageForCard);
-        console.log(`NegotiationCard: Detached 'newChatMessage' listener for jobId: ${jobId} (Type: ${jobType})`);
+        console.log(`NegotiationCard: Detached 'newChatMessage' listener for jobId: ${jobId}`);
       }
     };
-  }, [jobId, handleReceiveMessageForCard, jobType]); 
+  }, [jobId, handleReceiveMessageForCard]); 
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -239,7 +231,7 @@ const NegotiationCard = React.memo(({
           return;
         }
 
-        const response = await fetch(`${BACKEND_API_URL}/api/messages/${jobId}`, { // API to fetch messages for negotiation
+        const response = await fetch(`${BACKEND_API_URL}/api/messages/${jobId}`, { 
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}` 
@@ -252,7 +244,7 @@ const NegotiationCard = React.memo(({
             timestamp: formatDisplayTimestamp(msg.timestamp)
           }));
           setCardMessages(formattedMessages);
-          console.log(`NegotiationCard: Fetched ${formattedMessages.length} messages for ${jobId} (Type: ${jobType})`);
+          console.log(`NegotiationCard: Fetched ${formattedMessages.length} messages for ${jobId}`);
         } else {
           console.error('Failed to fetch messages:', data.error);
           showToast(data.error || 'Failed to load messages.', 'error');
@@ -264,7 +256,7 @@ const NegotiationCard = React.memo(({
     };
 
     fetchMessages();
-  }, [jobId, showToast, jobType]);
+  }, [jobId, showToast]);
 
   useEffect(() => {
     if (chatWindowRef.current) {
@@ -291,7 +283,7 @@ const NegotiationCard = React.memo(({
       senderUserType: currentUserType
     };
 
-    messageData.negotiationId = jobId; // Only negotiationId for negotiation jobs
+    messageData.negotiationId = jobId; 
 
     let tempMessageId; 
     try {
@@ -300,7 +292,7 @@ const NegotiationCard = React.memo(({
           id: tempMessageId,
           sender_id: currentUserId,
           receiver_id: otherPartyId,
-          negotiation_id: jobId, // Only negotiation_id
+          negotiation_id: jobId, 
           content: cardNewMessage,
           timestamp: formatDisplayTimestamp(new Date().toISOString()),
           sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
@@ -341,14 +333,14 @@ const NegotiationCard = React.memo(({
           senderUserType: currentUserType
         };
 
-        messageData.negotiationId = jobId; // Only negotiationId
+        messageData.negotiationId = jobId; 
 
         tempMessageId = `temp-${Date.now()}`;
         const optimisticMessage = {
             id: tempMessageId,
             sender_id: currentUserId,
             receiver_id: otherPartyId,
-            negotiation_id: jobId, // Only negotiation_id
+            negotiation_id: jobId, 
             content: messageData.messageText,
             timestamp: formatDisplayTimestamp(new Date().toISOString()),
             sender_name: currentUserType === 'client' ? user.full_name : otherPartyName,
@@ -380,10 +372,10 @@ const NegotiationCard = React.memo(({
     fileInputRef.current.click();
   };
 
-  // Condition for displaying chat
+  // Condition for displaying chat - Only for negotiation jobs
   const shouldDisplayChat = (
     (currentUserType === 'client' && (job.status === 'hired' || job.status === 'in_progress' || job.status === 'completed')) ||
-    (currentUserType === 'transcriber' && (job.status === 'hired' || job.status === 'taken' || job.status === 'in_progress'))
+    (currentUserType === 'transcriber' && (job.status === 'hired' || job.status === 'in_progress')) // Removed 'taken' as it's not a negotiation status for chat
   );
 
 
@@ -455,7 +447,7 @@ const NegotiationCard = React.memo(({
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  onDownloadFile(jobId, job.negotiation_files, jobType); 
+                  onDownloadFile(jobId, job.negotiation_files, 'negotiation'); // Explicitly pass 'negotiation' jobType
                 }}
                 className="file-link-button"
                 type="button"
@@ -466,6 +458,7 @@ const NegotiationCard = React.memo(({
           </div>
         )}
         <div className="detail-row">
+          {/* UPDATED: Label for price is now always 'Agreed Price' */}
           <span className="label">Agreed Price:</span>
           <span className="value price">USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> 
         </div>
@@ -653,7 +646,7 @@ const NegotiationCard = React.memo(({
               <div className="pending-actions">
                 <span className="waiting-text">⏳ Waiting for transcriber response...</span>
                 {onDelete && <button
-                  onClick={() => onDelete(jobId, jobType)} 
+                  onClick={() => onDelete(jobId, 'negotiation')} // Explicitly pass 'negotiation' jobType
                   className="cancel-negotiation-btn"
                 >
                   Cancel Negotiation
@@ -710,7 +703,7 @@ const NegotiationCard = React.memo(({
             {(job.status === 'rejected' || job.status === 'cancelled' || job.status === 'client_completed') && (
                 <div className="closed-actions">
                     {onDelete && <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(jobId, jobType); }} 
+                        onClick={(e) => { e.stopPropagation(); onDelete(jobId, 'negotiation'); }} // Explicitly pass 'negotiation' jobType
                         className="action-btn delete-closed-btn"
                     >
                         Delete from List
@@ -751,7 +744,6 @@ const NegotiationCard = React.memo(({
             {(job.status === 'hired' || job.status === 'in_progress') && ( 
                 <div className="transcriber-active-actions">
                     <span className="success-text">✅ Job Active!</span>
-                    {/* NEW: Conditional button for transcriber to complete negotiation jobs */}
                     {(job.status === 'hired' || job.status === 'in_progress') && openCompleteJobModal && (
                         <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(jobId); }} className="action-btn submit-job-btn">
                             Mark as Complete

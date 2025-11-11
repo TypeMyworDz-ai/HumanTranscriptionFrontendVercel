@@ -3,12 +3,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
-import Modal from './Modal'; // Assuming you have a Modal component
+import Modal from './Modal';
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket } from './ChatService';
-import './TranscriberOtherJobs.css'; // You'll need to create this CSS file
+import './TranscriberOtherJobs.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+// Helper function to format timestamp robustly for display (ensuring consistency across components)
+const formatDisplayTimestamp = (isoTimestamp) => {
+    if (!isoTimestamp) return 'N/A';
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+        return 'Invalid Date';
+    }
+};
 
 const TranscriberOtherJobs = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
@@ -20,7 +35,6 @@ const TranscriberOtherJobs = () => {
 
     // State for Modals
     const [showTakeJobModal, setShowTakeJobModal] = useState(false);
-    // Removed showCompleteJobModal as it's not used here
     const [selectedJobId, setSelectedJobId] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
 
@@ -144,8 +158,6 @@ const TranscriberOtherJobs = () => {
         setModalLoading(false);
     }, []);
 
-    // Removed openCompleteJobModal and closeCompleteJobModal as they are not used here
-
 
     // --- API Actions ---
     const confirmTakeJob = useCallback(async () => {
@@ -176,8 +188,6 @@ const TranscriberOtherJobs = () => {
         }
     }, [selectedJobId, logout, navigate, showToast, closeTakeJobModal, fetchAvailableJobs]);
 
-    // Removed confirmCompleteJob as it's not used here
-
     // Helper function to format status text for display
     const formatStatusText = (status) => {
         if (status === 'available_for_transcriber') {
@@ -201,7 +211,7 @@ const TranscriberOtherJobs = () => {
                 <div className="header-content">
                     <h1>Available DU Jobs</h1>
                     <div className="user-profile-actions">
-                        <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
+                        <span>Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">
                             Logout
                         </button>
@@ -227,18 +237,18 @@ const TranscriberOtherJobs = () => {
                         <div className="jobs-table-container">
                             <table className="jobs-table">
                                 <colgroup>
-                                    <col style={{ width: '6%' }} /> {/* Job ID */}
-                                    <col style={{ width: '8%' }} /> {/* Client */}
-                                    <col style={{ width: '12%' }} /> {/* File Name */}
-                                    <col style={{ width: '7%' }} /> {/* Audio Length */}
-                                    <col style={{ width: '12%' }} /> {/* Instructions */}
-                                    <col style={{ width: '12%' }} /> {/* Additional Files */}
-                                    <col style={{ width: '8%' }} /> {/* Your Pay */}
-                                    <col style={{ width: '6%' }} /> {/* TAT (hrs) */}
-                                    <col style={{ width: '6%' }} /> {/* Quality */}
-                                    <col style={{ width: 8 }} /> {/* Requirements */}
-                                    <col style={{ width: '10%' }} /> {/* Status */}
-                                    <col style={{ width: '10%' }} /> {/* Actions */}
+                                    <col style={{ width: '6%' }} />
+                                    <col style={{ width: '8%' }} />
+                                    <col style={{ width: '12%' }} />
+                                    <col style={{ width: '7%' }} />
+                                    <col style={{ width: '12%' }} />
+                                    <col style={{ width: '12%' }} />
+                                    <col style={{ width: '8%' }} />
+                                    <col style={{ width: '6%' }} />
+                                    <col style={{ width: '6%' }} />
+                                    <col style={{ width: 8 }} />
+                                    <col style={{ width: '10%' }} />
+                                    <col style={{ width: '10%' }} />
                                 </colgroup>
                                 <thead>
                                     <tr>
@@ -253,6 +263,7 @@ const TranscriberOtherJobs = () => {
                                         <th>Quality</th>
                                         <th>Requirements</th>
                                         <th>Status</th>
+                                        <th>Created At</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -282,6 +293,7 @@ const TranscriberOtherJobs = () => {
                                             <td>{job.audio_quality_param}</td>
                                             <td>{job.special_requirements?.length > 0 ? job.special_requirements.join(', ') : 'None'}</td>
                                             <td><span className={`status-badge ${job.status}`}>{formatStatusText(job.status)}</span></td>
+                                            <td>{formatDisplayTimestamp(job.created_at)}</td>
                                             <td>
                                                 <div className="job-actions">
                                                     {job.status === 'available_for_transcriber' && (
@@ -312,21 +324,6 @@ const TranscriberOtherJobs = () => {
                     <p>You will be assigned this job and will not be able to take other jobs until it is completed.</p>
                 </Modal>
             )}
-
-            {/* Removed Complete Job Modal as it's not used here */}
-            {/* {showCompleteJobModal && (
-                <Modal
-                    show={showCompleteJobModal}
-                    title="Confirm Job Completion"
-                    onClose={closeCompleteJobModal}
-                    onSubmit={confirmCompleteJob}
-                    submitText="Confirm Complete"
-                    loading={modalLoading}
-                >
-                    <p>Are you sure you want to mark this job as complete?</p>
-                    <p>The client will be notified, and you will become available for new jobs.</p>
-                </Modal>
-            )} */}
 
             <Toast
                 message={toast.message}

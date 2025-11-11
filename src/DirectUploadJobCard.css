@@ -1,0 +1,133 @@
+/* src/DirectUploadJobCard.css */
+
+.direct-upload-job-card {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Spacing between sections */
+}
+
+.job-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.job-card-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+    color: #333333;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #ffffff;
+    text-transform: capitalize;
+}
+
+.job-card-body p {
+    margin: 5px 0;
+    font-size: 0.95em;
+    color: #555555;
+}
+
+.job-card-body p strong {
+    color: #333333;
+}
+
+.last-message-preview {
+    font-style: italic;
+    font-size: 0.85em;
+    color: #777777;
+    border-top: 1px dashed #e0e0e0;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.job-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.action-btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+}
+
+.action-btn.chat-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.action-btn.chat-btn:hover {
+    background-color: #0056b3;
+}
+
+.action-btn.accept-btn {
+    background-color: #28a745;
+    color: white;
+}
+
+.action-btn.accept-btn:hover {
+    background-color: #218838;
+}
+
+.action-btn.submit-btn {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.action-btn.submit-btn:hover {
+    background-color: #138496;
+}
+
+.action-btn.complete-btn {
+    background-color: #6f42c1; /* Purple */
+    color: white;
+}
+
+.action-btn.complete-btn:hover {
+    background-color: #5a359e;
+}
+
+.action-btn.download-btn {
+    background-color: #6c757d; /* Gray */
+    color: white;
+}
+
+.action-btn.download-btn:hover {
+    background-color: #5a6268;
+}
+
+.action-btn.delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.action-btn.delete-btn:hover {
+    background-color: #c82333;
+}

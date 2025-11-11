@@ -1,10 +1,10 @@
 // src/TranscriberDirectUploadJobs.js - Handles ONLY Direct Upload Jobs for Transcribers
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Removed Fragment import
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Toast from './Toast';
 import Modal from './Modal';
-import NegotiationCard from './NegotiationCard'; // Re-using NegotiationCard for consistent job display
-import './TranscriberDirectUploadJobs.css'; // You'll need to create/update this CSS file
+import DirectUploadJobCard from './DirectUploadJobCard';
+import './TranscriberDirectUploadJobs.css';
 
 import { connectSocket, disconnectSocket } from './ChatService';
 import { useAuth } from './contexts/AuthContext';
@@ -47,9 +47,6 @@ const TranscriberDirectUploadJobs = () => {
     const [selectedJobId, setSelectedJobId] = useState(null); // The ID of the job to be submitted
     const [modalLoading, setModalLoading] = useState(false);
 
-    // REMOVED: transcriberCurrentJobId state is not used in this component
-    // const [transcriberCurrentJobId, setTranscriberCurrentJobId] = useState(null);
-
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -65,31 +62,6 @@ const TranscriberDirectUploadJobs = () => {
             isVisible: false
         }));
     }, []);
-
-    // REMOVED: fetchTranscriberDetailedStatus is not used in this component
-    // const fetchTranscriberDetailedStatus = useCallback(async () => {
-    //     const token = localStorage.getItem('token');
-    //     if (!token || !user?.id) {
-    //         setTranscriberCurrentJobId(null);
-    //         return;
-    //     }
-
-    //     try {
-    //         const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, {
-    //             headers: { 'Authorization': `Bearer ${token}` }
-    //         });
-    //         const data = await response.json();
-    //         if (response.ok && data.user) {
-    //             setTranscriberCurrentJobId(data.user.current_job_id || null);
-    //         } else {
-    //             console.error('Failed to fetch transcriber detailed status:', data.error);
-    //             setTranscriberCurrentJobId(null);
-    //         }
-    //     } catch (error) {
-    //         console.error('Network error fetching transcriber detailed status:', error);
-    //         setTranscriberCurrentJobId(null);
-    //     }
-    // }, [user?.id, setTranscriberCurrentJobId]);
 
 
     // Fetch ONLY direct upload jobs for the current transcriber
@@ -118,7 +90,7 @@ const TranscriberDirectUploadJobs = () => {
                 jobType: 'direct_upload',
                 client_name: job.client?.full_name || 'Unknown Client',
                 client_average_rating: job.client?.client_average_rating || 0, 
-                agreed_price_usd: job.quote_amount,
+                agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
                 deadline_hours: job.agreed_deadline_hours,
                 file_name: job.file_name,
                 completed_on: job.completed_at || job.client_completed_at, 
@@ -177,18 +149,14 @@ const TranscriberDirectUploadJobs = () => {
         }
 
         fetchDirectUploadJobs(); 
-        // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
-        // fetchTranscriberDetailedStatus();
-    }, [isAuthenticated, authLoading, user, navigate, fetchDirectUploadJobs, logout]); // Removed fetchTranscriberDetailedStatus from dependencies
+    }, [isAuthenticated, authLoading, user, navigate, fetchDirectUploadJobs, logout]);
 
     const handleJobUpdate = useCallback((data) => {
         console.log('TranscriberDirectUploadJobs Real-time: Job update received! Triggering re-fetch for list cleanup.', data);
         const jobId = data.jobId; 
         showToast(`Direct upload job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
         fetchDirectUploadJobs(); 
-        // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
-        // fetchTranscriberDetailedStatus();
-    }, [showToast, fetchDirectUploadJobs]); // Removed fetchTranscriberDetailedStatus from dependencies
+    }, [showToast, fetchDirectUploadJobs]);
 
     const handleNewChatMessageForDirectUploadJobs = useCallback((data) => {
         console.log('TranscriberDirectUploadJobs Real-time: New chat message received!', data);
@@ -249,7 +217,7 @@ const TranscriberDirectUploadJobs = () => {
     }, [user?.id, isAuthenticated, handleJobUpdate, handleNewChatMessageForDirectUploadJobs]);
 
 
-    // Utility functions for NegotiationCard (can be shared or defined here)
+    // Utility functions (can be shared or defined here)
     const getStatusColor = useCallback((status) => { 
         const colors = {
             'available_for_transcriber': '#17a2b8', 
@@ -303,15 +271,13 @@ const TranscriberDirectUploadJobs = () => {
             if (response.ok) {
                 showToast('Direct upload job deleted successfully!', 'success');
                 fetchDirectUploadJobs(); 
-                // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
-                // fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to delete direct upload job', 'error');
             }
         } catch (error) {
             showToast('Network error. Please try again.', 'error');
         }
-    }, [showToast, fetchDirectUploadJobs, logout]); // Removed fetchTranscriberDetailedStatus from dependencies
+    }, [showToast, fetchDirectUploadJobs, logout]);
 
     const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { 
         const token = localStorage.getItem('token');
@@ -397,8 +363,6 @@ const TranscriberDirectUploadJobs = () => {
                 showToast(data.message || 'Direct upload job submitted successfully!', 'success');
                 closeSubmitDirectJobModal();
                 fetchDirectUploadJobs(); 
-                // REMOVED: fetchTranscriberDetailedStatus() call is not needed here
-                // fetchTranscriberDetailedStatus();
             } else {
                 showToast(data.error || 'Failed to submit direct upload job.', 'error');
             }
@@ -408,7 +372,7 @@ const TranscriberDirectUploadJobs = () => {
         } finally {
             setModalLoading(false);
         }
-    }, [selectedJobId, submitDirectJobComment, submitDirectJobConfirmation, logout, showToast, closeSubmitDirectJobModal, fetchDirectUploadJobs]); // Removed fetchTranscriberDetailedStatus from dependencies
+    }, [selectedJobId, submitDirectJobComment, submitDirectJobConfirmation, logout, showToast, closeSubmitDirectJobModal, fetchDirectUploadJobs]);
 
 
     if (authLoading || !isAuthenticated || !user) {
@@ -420,9 +384,6 @@ const TranscriberDirectUploadJobs = () => {
             <div className="loading-container">Loading jobs...</div>
         );
     }
-
-    // REMOVED: canTranscriberAccept as it's not used in this component
-    // const canTranscriberAccept = user?.is_online && !transcriberCurrentJobId; 
 
     const query = new URLSearchParams(location.search);
     const statusFilter = query.get('status');
@@ -449,8 +410,8 @@ const TranscriberDirectUploadJobs = () => {
         pageDescription = "Review your finished direct upload transcription projects and earnings.";
         listSubtitle = "Completed Direct Upload Jobs";
         emptyMessage = "No completed direct upload jobs yet.";
-    } else { // Default to showing all direct upload jobs (or 'taken' if you prefer)
-        displayedJobs = directUploadJobs; // Show all direct upload jobs by default
+    } else { 
+        displayedJobs = directUploadJobs; 
         pageTitle = "All Direct Upload Jobs";
         pageDescription = "View all direct upload jobs you have interacted with.";
         listSubtitle = "All Direct Upload Jobs";
@@ -476,7 +437,7 @@ const TranscriberDirectUploadJobs = () => {
                 <div className="transcriber-direct-upload-jobs-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>{pageTitle}</h2>
+                            <h2 dangerouslySetInnerHTML={{ __html: pageTitle }}></h2>
                             <p>{pageDescription}</p>
                         </div>
                         <Link to="/transcriber-dashboard" className="back-to-dashboard-btn">
@@ -495,7 +456,7 @@ const TranscriberDirectUploadJobs = () => {
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Client</th>
-                                            <th>Agreed Price</th>
+                                            <th>Quote Amount</th>
                                             <th>Deadline</th>
                                             <th>Status</th>
                                             <th>Completed On</th>
@@ -531,108 +492,102 @@ const TranscriberDirectUploadJobs = () => {
                                                         <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
                                                             ({'★'.repeat(job.client_feedback_rating)})
                                                         </span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    {job.file_name && (
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {job.file_name && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDownloadFile(job.id, job.file_name, job.jobType);
+                                                                }}
+                                                                className="action-btn download-btn"
+                                                                title="Download File"
+                                                            >
+                                                                ⬇️
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleDownloadFile(job.id, job.file_name, job.jobType);
+                                                                handleDeleteJob(job.id, job.jobType);
                                                             }}
-                                                            className="action-btn download-btn"
-                                                            title="Download File"
+                                                            className="action-btn delete-btn"
+                                                            title="Delete Job"
                                                         >
-                                                            ⬇️
+                                                            🗑️
                                                         </button>
-                                                    )}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteJob(job.id, job.jobType);
-                                                        }}
-                                                        className="action-btn delete-btn"
-                                                        title="Delete Job"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    ) : ( 
-                        <div className="direct-upload-jobs-list">
-                            {displayedJobs.length === 0 ? (
-                                <p>{emptyMessage}</p>
-                            ) : (
-                                displayedJobs.map(job => (
-                                    <NegotiationCard // Using NegotiationCard for rendering consistency
-                                        key={job.id}
-                                        job={job}
-                                        jobType={job.jobType}
-                                        onDelete={handleDeleteJob}
-                                        onPayment={null} 
-                                        onLogout={logout}
-                                        getStatusColor={getStatusColor}
-                                        getStatusText={getStatusText}
-                                        showToast={showToast}
-                                        currentUserId={user.id}
-                                        currentUserType={user.user_type}
-                                        // Specific to Direct Upload Jobs
-                                        openSubmitDirectJobModal={openSubmitDirectJobModal}
-                                        canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
-                                        onDownloadFile={handleDownloadFile}
-                                        clientCompletedJobs={job.client?.client_completed_jobs || 0}
-                                        clientAverageRating={parseFloat(job.client?.client_average_rating) || 0}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    )}
-                </div>
-            </main>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        ) : ( 
+                            <div className="direct-upload-jobs-list">
+                                {displayedJobs.length === 0 ? (
+                                    <p>{emptyMessage}</p>
+                                ) : (
+                                    displayedJobs.map(job => (
+                                        <DirectUploadJobCard
+                                            key={job.id}
+                                            job={job}
+                                            onDelete={handleDeleteJob}
+                                            onDownloadFile={handleDownloadFile}
+                                            openSubmitDirectJobModal={openSubmitDirectJobModal}
+                                            canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
+                                            getStatusColor={getStatusColor}
+                                            getStatusText={getStatusText}
+                                            showToast={showToast}
+                                            currentUserId={user.id}
+                                            currentUserType={user.user_type}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </main>
 
-            {/* Modal for Submitting Direct Upload Job (Transcriber's action) */}
-            {showSubmitDirectJobModal && (
-                <Modal
-                    show={showSubmitDirectJobModal}
-                    title="Submit Direct Upload Job"
-                    onClose={closeSubmitDirectJobModal}
-                    onSubmit={confirmSubmitDirectJob}
-                    submitText="Submit Job"
-                    loading={modalLoading}
-                >
-                    <p>Please provide any final comments for the client and confirm job completion.</p>
-                    <textarea
-                        value={submitDirectJobComment}
-                        onChange={(e) => setSubmitDirectJobComment(e.target.value)}
-                        placeholder="Optional: Add a comment for the client..."
-                        rows="4"
-                        style={{ width: '100%', padding: '8px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    ></textarea>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                            type="checkbox"
-                            checked={submitDirectJobConfirmation}
-                            onChange={(e) => setSubmitDirectJobConfirmation(e.target.checked)}
-                        />
-                        I confirm that this direct upload job is complete and ready for client review.
-                    </label>
-                </Modal>
-            )}
+                {/* Modal for Submitting Direct Upload Job (Transcriber's action) */}
+                {showSubmitDirectJobModal && (
+                    <Modal
+                        show={showSubmitDirectJobModal}
+                        title="Submit Direct Upload Job"
+                        onClose={closeSubmitDirectJobModal}
+                        onSubmit={confirmSubmitDirectJob}
+                        submitText="Submit Job"
+                        loading={modalLoading}
+                    >
+                        <p>Please provide any final comments for the client and confirm job completion.</p>
+                        <textarea
+                            value={submitDirectJobComment}
+                            onChange={(e) => setSubmitDirectJobComment(e.target.value)}
+                            placeholder="Optional: Add a comment for the client..."
+                            rows="4"
+                            style={{ width: '100%', padding: '8px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        ></textarea>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                                type="checkbox"
+                                checked={submitDirectJobConfirmation}
+                                onChange={(e) => setSubmitDirectJobConfirmation(e.target.checked)}
+                            />
+                            I confirm that this direct upload job is complete and ready for client review.
+                        </label>
+                    </Modal>
+                )}
 
-            <Toast
-                message={toast.message}
-                type={toast.type}
-                isVisible={toast.isVisible}
-                onClose={hideToast}
-                duration={toast.type === 'error' ? 4000 : 3000}
-            />
-        </div>
-    );
-};
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    isVisible={toast.isVisible}
+                    onClose={hideToast}
+                    duration={toast.type === 'error' ? 4000 : 3000}
+                />
+            </div>
+        );
+    };
 
 export default TranscriberDirectUploadJobs;
