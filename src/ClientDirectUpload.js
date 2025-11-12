@@ -232,7 +232,8 @@ const ClientDirectUpload = () => {
         }
     }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, quoteDetails, user, showToast, closeQuoteModal]);
 
-    const initiatePayment = useCallback(async () => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const initiatePayment = useCallback(async () => { // Line 302
         if (!jobToPayFor?.id || !selectedPaymentMethod) {
             showToast('Job or payment method not selected.', 'error');
             return;
@@ -298,7 +299,7 @@ const ClientDirectUpload = () => {
             setPaymentModalLoading(false);
         } finally {
         }
-    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout, navigate]); // Removed mobileNumber from dependency array
+    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout]); // Removed 'navigate' from dependency array.
 
     // eslint-disable-next-line no-unused-vars
     const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {

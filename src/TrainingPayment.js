@@ -8,7 +8,7 @@ const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5
 const TRAINING_FEE_USD = 2.00;
 
 const TrainingPayment = () => {
-    const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
+    const { user, isAuthenticated, authLoading, logout } = useAuth(); // Removed updateUser, checkAuth
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -44,6 +44,7 @@ const TrainingPayment = () => {
     }, [isAuthenticated, authLoading, user, navigate, showToast]);
 
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleInitiatePayment = useCallback(async () => {
         if (!user?.email || paymentInitiated) {
             showToast('User email is missing or payment already initiated.', 'error');
@@ -116,7 +117,7 @@ const TrainingPayment = () => {
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, showToast, navigate, updateUser, checkAuth]); // Removed mobileNumber from dependency array
+    }, [user, paymentInitiated, selectedPaymentMethod, showToast]);
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
@@ -154,7 +155,7 @@ const TrainingPayment = () => {
                         <h2>Unlock Your Training Dashboard</h2>
                         <p className="intro-text">
                             Welcome to your journey to becoming a TypeMyworDz-approved transcriber!
-                            After successful completion of training, you have a chance of joining 
+                            After successful completion of training, you have a chance of joining
                             our active transcribers pool and start earning!
                             To gain full access to the Training Room and Training Materials,
                             a one-time payment of **USD {TRAINING_FEE_USD.toFixed(2)}** is required.
@@ -182,7 +183,7 @@ const TrainingPayment = () => {
                             </div>
 
                             {/* REMOVED: Mobile Number Input for KoraPay */}
-                            
+
 
                             <button
                                 onClick={handleInitiatePayment}
