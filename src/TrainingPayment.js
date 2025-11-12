@@ -13,8 +13,8 @@ const TrainingPayment = () => {
 
     const [loading, setLoading] = useState(false);
     const [paymentInitiated, setPaymentInitiated] = useState(false);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('korapay');
-    const [mobileNumber, setMobileNumber] = useState('');
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // UPDATED: Default to Paystack
+    // REMOVED: mobileNumber state
     const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
 
     const showToast = useCallback((message, type = 'success') => {
@@ -40,29 +40,8 @@ const TrainingPayment = () => {
             return;
         }
 
-        // Dynamically load KoraPay script if selected and not already loaded
-        if (selectedPaymentMethod === 'korapay' && !window.Korapay) {
-            const script = document.createElement('script');
-            script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
-            script.async = true;
-            document.body.appendChild(script);
-
-            script.onload = () => {
-                console.log("KoraPay script loaded successfully.");
-            };
-            script.onerror = (error) => {
-                console.error("Failed to load KoraPay script:", error);
-                showToast("Failed to load KoraPay payment gateway. Please try again.", "error");
-            };
-
-            return () => {
-                // Cleanup: remove the script when component unmounts or method changes away from korapay
-                if (document.body.contains(script)) {
-                    document.body.removeChild(script);
-                }
-            };
-        }
-    }, [isAuthenticated, authLoading, user, navigate, selectedPaymentMethod, showToast]);
+        // REMOVED: KoraPay dynamic script loading useEffect as KoraPay is no longer an option.
+    }, [isAuthenticated, authLoading, user, navigate, showToast]);
 
 
     const handleInitiatePayment = useCallback(async () => {
@@ -74,10 +53,7 @@ const TrainingPayment = () => {
             showToast('Please select a payment method.', 'error');
             return;
         }
-        if (selectedPaymentMethod === 'korapay' && !mobileNumber) {
-            showToast('Please enter your mobile number for KoraPay.', 'error');
-            return;
-        }
+        // REMOVED: KoraPay mobileNumber validation
 
 
         setLoading(true);
@@ -92,13 +68,11 @@ const TrainingPayment = () => {
             const payload = {
                 amount: TRAINING_FEE_USD,
                 email: user.email,
-                paymentMethod: selectedPaymentMethod,
+                paymentMethod: 'paystack', // UPDATED: Always send 'paystack'
                 fullName: user.full_name,
             };
 
-            if (selectedPaymentMethod === 'korapay') {
-                payload.mobileNumber = mobileNumber;
-            }
+            // REMOVED: KoraPay mobileNumber inclusion in payload
 
             const response = await fetch(paymentApiUrl, {
                 method: 'POST',
@@ -120,6 +94,7 @@ const TrainingPayment = () => {
 
             const data = await response.json();
 
+            // Only Paystack logic remains
             if (selectedPaymentMethod === 'paystack') {
                 if (data.data?.authorization_url) {
                     showToast('Redirecting to payment gateway...', 'info');
@@ -129,78 +104,10 @@ const TrainingPayment = () => {
                     setLoading(false);
                     setPaymentInitiated(false);
                 }
-            } else if (selectedPaymentMethod === 'korapay') {
-                if (data.korapayData && window.Korapay) {
-                    const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
-
-                    window.Korapay.initialize({
-                        key: key,
-                        reference: reference,
-                        amount: amount,
-                        currency: currency || "NGN",
-                        customer: customer,
-                        notification_url: notification_url,
-                        onClose: () => {
-                            console.log("KoraPay modal closed.");
-                            showToast("Payment cancelled by user.", "info");
-                            setLoading(false);
-                            setPaymentInitiated(false);
-                        },
-                        onSuccess: async (korapayResponse) => {
-                            console.log("KoraPay payment successful:", korapayResponse);
-                            showToast("Payment successful! Verifying...", "success");
-                            
-                            try {
-                                // MODIFIED: Updated to new dedicated KoraPay verification endpoint for training
-                                const verifyResponse = await fetch(`${BACKEND_API_URL}/api/training/payment/verify-korapay`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({ reference: korapayResponse.reference })
-                                });
-
-                                if (!verifyResponse.ok) {
-                                    const errorText = await verifyResponse.text();
-                                    console.error('[TrainingPayment] KoraPay verification failed:', verifyResponse.status, errorText);
-                                    showToast(`Payment verification failed: ${verifyResponse.statusText}. Please contact support.`, 'error');
-                                    setLoading(false);
-                                    setPaymentInitiated(false);
-                                    return;
-                                }
-
-                                const verifyData = await verifyResponse.json();
-                                if (verifyData.success) {
-                                    await updateUser();
-                                    await checkAuth();
-                                    showToast("Payment successfully verified. Redirecting to dashboard!", "success");
-                                    navigate('/trainee-dashboard');
-                                } else {
-                                    showToast(verifyData.error || "Payment verification failed. Please contact support.", "error");
-                                    setLoading(false);
-                                    setPaymentInitiated(false);
-                                }
-
-                            } catch (verifyError) {
-                                console.error('Error during KoraPay verification:', verifyError);
-                                showToast('Network error during payment verification. Please contact support.', 'error');
-                                setLoading(false);
-                                setPaymentInitiated(false);
-                            }
-                        },
-                        onFailed: (korapayResponse) => {
-                            console.error("KoraPay payment failed:", korapayResponse);
-                            showToast("Payment failed. Please try again.", "error");
-                            setLoading(false);
-                            setPaymentInitiated(false);
-                        }
-                    });
-                } else {
-                    showToast(data.error || 'Failed to initialize KoraPay. Missing data or script not loaded.', 'error');
-                    setLoading(false);
-                    setPaymentInitiated(false);
-                }
+            } else { // Fallback if selectedPaymentMethod is not 'paystack' (shouldn't happen now)
+                showToast('Unknown payment method selected. Please try again.', 'error');
+                setLoading(false);
+                setPaymentInitiated(false);
             }
 
         } catch (error) {
@@ -209,7 +116,7 @@ const TrainingPayment = () => {
             setLoading(false);
             setPaymentInitiated(false);
         }
-    }, [user, paymentInitiated, selectedPaymentMethod, mobileNumber, showToast, navigate, updateUser, checkAuth]);
+    }, [user, paymentInitiated, selectedPaymentMethod, showToast, navigate, updateUser, checkAuth]); // Removed mobileNumber from dependency array
 
 
     if (authLoading || !isAuthenticated || !user || user.user_type !== 'trainee') {
@@ -233,7 +140,7 @@ const TrainingPayment = () => {
                 <div className="header-content">
                     <h1>Training Access Payment</h1>
                     <div className="user-profile-actions">
-                        <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
+                        <span>Welcome, {user.full_name}!</span>
                         <button onClick={logout} className="logout-btn">
                             Logout
                         </button>
@@ -271,38 +178,16 @@ const TrainingPayment = () => {
                                     />
                                     Paystack (Card, Mobile Money, Bank Transfer, Pesalink)
                                 </label>
-                                <label className="radio-label">
-                                    <input
-                                        type="radio"
-                                        value="korapay"
-                                        checked={selectedPaymentMethod === 'korapay'}
-                                        onChange={() => setSelectedPaymentMethod('korapay')}
-                                        disabled={loading || paymentInitiated}
-                                    />
-                                    KoraPay (Card, Bank Transfer, Mobile Money)
-                                </label>
+                                {/* REMOVED: KoraPay radio button option */}
                             </div>
 
-                            {/* Mobile Number Input for KoraPay */}
-                            {selectedPaymentMethod === 'korapay' && (
-                                <div className="mobile-number-input">
-                                    <label htmlFor="mobileNumber">Mobile Number for KoraPay:</label>
-                                    <input
-                                        type="text"
-                                        id="mobileNumber"
-                                        value={mobileNumber}
-                                        onChange={(e) => setMobileNumber(e.target.value)}
-                                        placeholder="e.g., 2547XXXXXXXX"
-                                        disabled={loading || paymentInitiated}
-                                        className="text-input-field"
-                                    />
-                                </div>
-                            )}
+                            {/* REMOVED: Mobile Number Input for KoraPay */}
+                            
 
                             <button
                                 onClick={handleInitiatePayment}
                                 className="pay-now-btn"
-                                disabled={loading || paymentInitiated || !selectedPaymentMethod || (selectedPaymentMethod === 'korapay' && !mobileNumber)}
+                                disabled={loading || paymentInitiated || !selectedPaymentMethod} // UPDATED: Removed mobileNumber check
                             >
                                 {loading ? 'Processing...' : `Pay Now (USD ${TRAINING_FEE_USD.toFixed(2)})`}
                             </button>

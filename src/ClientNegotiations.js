@@ -105,11 +105,11 @@ const ClientNegotiations = () => {
             })));
 
             if (typedNegotiations.length === 0) {
-                showToast('No negotiations found.ᐟ', 'info');
+                showToast('No negotiations found.', 'info'); // Removed ᐟ
             }
         } catch (error) {
             console.error("Network error while fetching client negotiations:", error);
-            showToast('Network error while fetching negotiations.ᐟ', 'error');
+            showToast('Network error while fetching negotiations.', 'error'); // Removed ᐟ
         } finally {
             setLoading(false);
         }
@@ -129,7 +129,7 @@ const ClientNegotiations = () => {
     }, [isAuthenticated, authLoading, user, navigate, fetchNegotiationJobs]);
 
     const handleNegotiationUpdate = useCallback((data) => {
-        console.log('ClientNegotiations Real-time: Negotiation status update received! Triggering re-fetch for list cleanup.ᐟ', data);
+        console.log('ClientNegotiations Real-time: Negotiation status update received! Triggering re-fetch for list cleanup.', data); // Removed ᐟ
         const negotiationId = data.negotiationId;
         showToast(`Negotiation status updated for ID: ${negotiationId?.substring(0, 8)}.`, 'info');
         fetchNegotiationJobs();
@@ -237,15 +237,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer accepted! Proceed to payment.ᐟ', 'success');
+                showToast(data.message || 'Counter-offer accepted! Proceed to payment.', 'success'); // Removed ᐟ
                 closeAcceptCounterModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to accept counter-offer.ᐟ', 'error');
+                showToast(data.error || 'Failed to accept counter-offer.', 'error'); // Removed ᐟ
             }
         } catch (error) {
             console.error('Error accepting counter-offer:', error);
-            showToast('Network error while accepting counter-offer.ᐟ', 'error');
+            showToast('Network error while accepting counter-offer.', 'error'); // Removed ᐟ
         } finally {
             setModalLoading(false);
         }
@@ -267,15 +267,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer rejected!ᐟ', 'success');
+                showToast(data.message || 'Counter-offer rejected!', 'success'); // Removed ᐟ
                 closeRejectCounterModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to reject counter-offer.ᐟ', 'error');
+                showToast(data.error || 'Failed to reject counter-offer.', 'error'); // Removed ᐟ
             }
         } catch (error) {
             console.error('Error rejecting counter-offer:', error);
-            showToast('Network error while rejecting counter-offer.ᐟ', 'error');
+            showToast('Network error while rejecting counter-offer.', 'error'); // Removed ᐟ
         } finally {
             setModalLoading(false);
         }
@@ -284,7 +284,7 @@ const ClientNegotiations = () => {
     const confirmCounterBack = useCallback(async () => {
         setModalLoading(true);
         if (!counterOfferData.proposedPrice) {
-            showToast('Please provide a proposed price for your counter-offer.ᐟ', 'error');
+            showToast('Please provide a proposed price for your counter-offer.', 'error'); // Removed ᐟ
             setModalLoading(false);
             return;
         }
@@ -306,15 +306,15 @@ const ClientNegotiations = () => {
             });
             const data = await response.json();
             if (response.ok) {
-                showToast(data.message || 'Counter-offer sent successfully!ᐟ', 'success');
+                showToast(data.message || 'Counter-offer sent successfully!', 'success'); // Removed ᐟ
                 closeCounterBackModal();
                 fetchNegotiationJobs();
             } else {
-                showToast(data.error || 'Failed to send counter-offer.ᐟ', 'error');
+                showToast(data.error || 'Failed to send counter-offer.', 'error'); // Removed ᐟ
             }
         } catch (error) {
             console.error('Error sending counter-offer back:', error);
-            showToast('Network error while sending counter-offer.ᐟ', 'error');
+            showToast('Network error while sending counter-offer.', 'error'); // Removed ᐟ
         } finally {
             setModalLoading(false);
         }
@@ -322,7 +322,7 @@ const ClientNegotiations = () => {
 
     const handleProceedToPayment = useCallback(async (negotiation) => {
         if (!user?.email || !negotiation?.id || !negotiation?.agreed_price_usd) {
-            showToast('Missing client email, negotiation ID, or agreed price for payment.ᐟ', 'error');
+            showToast('Missing client email, negotiation ID, or agreed price for payment.', 'error'); // Removed ᐟ
             return;
         }
 
@@ -333,7 +333,7 @@ const ClientNegotiations = () => {
 
     const initiatePayment = useCallback(async () => {
         if (!negotiationToPayFor?.id || !selectedPaymentMethod) {
-            showToast('Negotiation or payment method not selected.ᐟ', 'error');
+            showToast('Negotiation or payment method not selected.', 'error'); // Removed ᐟ
             return;
         }
 
@@ -372,15 +372,8 @@ const ClientNegotiations = () => {
                     console.log('KoraPay Data from Backend:', data.korapayData);
 
                     // Ensure KoraPay script is loaded before initializing
-                    if (!window.Korapay) {
-                        const script = document.createElement('script');
-                        script.src = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
-                        script.async = true;
-                        document.body.appendChild(script);
-                        await new Promise(resolve => script.onload = resolve);
-                    }
-
-                    if (window.Korapay) {
+                    // Removed redundant script loading check here, as it's handled in the main useEffect
+                    if (window.Korapay) { // Only proceed if window.Korapay is available
                         const { key, reference, amount, currency, customer, notification_url } = data.korapayData;
 
                         const finalCustomer = {
@@ -406,7 +399,7 @@ const ClientNegotiations = () => {
                                     }
                                 }
                                 setTimeout(() => { // Add a slight delay before closing React modal
-                                    showToast("Payment cancelled by user.ᐟ", "info");
+                                    showToast("Payment cancelled by user.", "info"); // Removed ᐟ
                                     setModalLoading(false);
                                     setShowPaymentSelectionModal(false);
                                     fetchNegotiationJobs();
@@ -416,7 +409,7 @@ const ClientNegotiations = () => {
                                 console.log("KoraPay payment successful for negotiation:", korapayResponse);
                                 console.log("Verifying with backend. Negotiation ID:", negotiationToPayFor?.id, "Reference:", korapayResponse?.reference);
 
-                                showToast("Payment successful! Verifying...ᐟ", "success");
+                                showToast("Payment successful! Verifying...", "success"); // Removed ᐟ
                                 // Safely close KoraPay modal immediately
                                 if (window.Korapay && typeof window.Korapay.close === 'function') {
                                     try {
@@ -436,19 +429,19 @@ const ClientNegotiations = () => {
                                         const verifyData = await verifyResponse.json();
 
                                         if (verifyResponse.ok) {
-                                            showToast("Payment successfully verified. Redirecting to dashboard!ᐟ", "success");
+                                            showToast("Payment successfully verified. Redirecting to dashboard!", "success"); // Removed ᐟ
                                             setShowPaymentSelectionModal(false);
                                             fetchNegotiationJobs();
                                             navigate('/client-dashboard');
                                         } else {
                                             console.error("KoraPay verification failed with backend:", verifyData.error);
-                                            showToast(verifyData.error || "Payment verification failed. Please contact support.ᐟ", "error");
+                                            showToast(verifyData.error || "Payment verification failed. Please contact support.", "error"); // Removed ᐟ
                                             setModalLoading(false);
                                             setShowPaymentSelectionModal(false);
                                         }
                                     } catch (verifyError) {
                                         console.error('Error during KoraPay verification for negotiation:', verifyError);
-                                        showToast('Network error during payment verification. Please contact support.ᐟ', 'error');
+                                        showToast('Network error during payment verification. Please contact support.', 'error'); // Removed ᐟ
                                         setModalLoading(false);
                                         setShowPaymentSelectionModal(false);
                                     }
@@ -456,28 +449,28 @@ const ClientNegotiations = () => {
                             },
                             onFailed: (korapayResponse) => {
                                 console.error("KoraPay payment failed for negotiation:", korapayResponse);
-                                showToast("Payment failed. Please try again.ᐟ", "error");
+                                showToast("Payment failed. Please try again.", "error"); // Removed ᐟ
                                 setModalLoading(false);
                                 setShowPaymentSelectionModal(false);
                                 fetchNegotiationJobs();
                             }
                         });
                     } else {
-                        showToast('Failed to load KoraPay script. Please try again or contact support.ᐟ', 'error');
+                        showToast('Failed to load KoraPay script. Please try again or contact support.', 'error'); // Removed ᐟ
                         setModalLoading(false);
                         setShowPaymentSelectionModal(false);
                     }
                 } else {
-                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data from server.ᐟ', 'error');
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data from server.', 'error'); // Removed ᐟ
                 }
                 setModalLoading(false);
             } else {
-                showToast(data.error || 'Failed to initiate payment. Please try again.ᐟ', 'error');
+                showToast(data.error || 'Failed to initiate payment. Please try again.', 'error'); // Removed ᐟ
                 setModalLoading(false);
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
-            showToast('Network error while initiating payment. Please try again.ᐟ', 'error');
+            showToast('Network error while initiating payment. Please try again.', 'error'); // Removed ᐟ
             setModalLoading(false);
         } finally {
             // Handled within callbacks
@@ -487,10 +480,10 @@ const ClientNegotiations = () => {
 
     const handleDeleteJob = useCallback(async (jobId, jobType) => {
         if (jobType !== 'negotiation') {
-            showToast('This action is only for negotiation jobs.ᐟ', 'error');
+            showToast('This action is only for negotiation jobs.', 'error'); // Removed ᐟ
             return;
         }
-        if (!window.confirm('Are you sure you want to cancel/delete this negotiation? This action cannot be undone.ᐟ')) {
+        if (!window.confirm('Are you sure you want to cancel/delete this negotiation? This action cannot be undone.')) { // Removed ᐟ
             return;
         }
 
@@ -512,24 +505,24 @@ const ClientNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Negotiation cancelled/deleted successfully!ᐟ', 'success');
+                showToast('Negotiation cancelled/deleted successfully!', 'success'); // Removed ᐟ
                 fetchNegotiationJobs();
             } else {
                 showToast(data.error || 'Failed to cancel/delete negotiation', 'error');
             }
         } catch (error) {
-            showToast('Network error. Please try again.ᐟ', 'error');
+            showToast('Network error. Please try again.', 'error'); // Removed ᐟ
         }
     }, [showToast, fetchNegotiationJobs, logout]);
 
     const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {
         if (jobType !== 'negotiation') {
-            showToast('This action is only for negotiation files.ᐟ', 'error');
+            showToast('This action is only for negotiation files.', 'error'); // Removed ᐟ
             return;
         }
         const token = localStorage.getItem('token');
         if (!token) {
-            showToast('Authentication token missing. Please log in again.ᐟ', 'error');
+            showToast('Authentication token missing. Please log in again.', 'error'); // Removed ᐟ
             logout();
             return;
         }
@@ -604,7 +597,7 @@ const ClientNegotiations = () => {
             setClientFeedbackRating(5);
             setShowCompleteJobModal(true);
         } else {
-            showToast('This job cannot be marked complete at this time.ᐟ', 'info');
+            showToast('This job cannot be marked complete at this time.', 'info'); // Removed ᐟ
         }
     }, [showToast]);
 
@@ -630,7 +623,7 @@ const ClientNegotiations = () => {
     // NEW: Submit Mark Job Complete
     const submitMarkJobComplete = useCallback(async () => {
         if (!jobToComplete?.id) {
-            showToast('No job selected for completion!ᐟ', 'error');
+            showToast('No job selected for completion!', 'error'); // Removed ᐟ
             return;
         }
 
@@ -658,15 +651,15 @@ const ClientNegotiations = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Job marked as complete successfully! Thank you for your feedback.ᐟ', 'success');
+                showToast('Job marked as complete successfully! Thank you for your feedback.', 'success'); // Removed ᐟ
                 closeMarkJobCompleteModal();
                 fetchNegotiationJobs(); // Re-fetch negotiations to update status
             } else {
-                showToast(data.error || 'Failed to mark job as complete.ᐟ', 'error');
+                showToast(data.error || 'Failed to mark job as complete.', 'error'); // Removed ᐟ
             }
         } catch (error) {
             console.error('Network error marking job as complete: ', error);
-            showToast('Network error while marking job as complete. Please try again.ᐟ', 'error');
+            showToast('Network error while marking job as complete. Please try again.', 'error'); // Removed ᐟ
         } finally {
             setCompleteJobModalLoading(false);
         }
