@@ -38,9 +38,24 @@ const PaymentCallback = () => {
         const jobType = searchParams.get('jobType'); // Our custom type (e.g., 'negotiation', 'training', 'direct_upload')
         const paymentMethod = searchParams.get('paymentMethod') || 'paystack'; // NEW: Get paymentMethod, default to paystack
 
-        if (!reference || !relatedJobId || !jobType) {
+        // Handle payment cancellation explicitly
+        if (!reference) {
             setPaymentStatus('failed');
-            setMessage('Invalid payment callback. Missing transaction reference, job ID, or job type.');
+            setMessage('Payment was cancelled or not completed. Redirecting...');
+            showToast('Payment cancelled or not completed.', 'error');
+
+            // Redirect based on jobType
+            if (jobType === 'training') {
+                setTimeout(() => navigate('/training-payment'), 3000); // Redirect to training payment page
+            } else {
+                setTimeout(() => navigate('/client-dashboard'), 3000); // Redirect to client dashboard for other job types
+            }
+            return; // Stop further execution in this useEffect
+        }
+
+        if (!relatedJobId || !jobType) {
+            setPaymentStatus('failed');
+            setMessage('Invalid payment callback. Missing job ID or job type.');
             showToast('Invalid payment callback.', 'error');
             return;
         }
@@ -90,14 +105,14 @@ const PaymentCallback = () => {
 
                 if (response.ok) {
                     setPaymentStatus('success');
-                    
+
                     if (jobType === 'training') {
                         const successMessage = 'Training payment successful! You will now be logged out and redirected to login to access your training dashboard.';
                         setMessage(successMessage);
                         showToast(successMessage, 'success');
-                        
+
                         console.log("Payment successful. Refreshing user data and redirecting to login...");
-                        
+
                         setTimeout(() => {
                             console.log("Logging out and redirecting to login page...");
                             logout();
@@ -157,7 +172,7 @@ const PaymentCallback = () => {
                                 <button onClick={logout} className="logout-btn">Logout</button>
                             </>
                         )}
-                        {!isAuthenticated && !authLoading && ( 
+                        {!isAuthenticated && !authLoading && (
                             <Link to="/login" className="back-to-dashboard-btn">Login</Link>
                         )}
                     </div>
@@ -173,16 +188,21 @@ const PaymentCallback = () => {
                         <p>If you believe this is an error, please contact support.</p>
                     )}
                     {showLogoutAndLoginButton && (
-                        <button 
+                        <button
                             onClick={() => { logout(); navigate('/login'); }}
                             className="back-to-dashboard-btn"
                         >
                             Go to Login
                         </button>
                     )}
-                    {paymentStatus === 'failed' && (
+                    {paymentStatus === 'failed' && relatedJobType === 'training' && ( // Only show "Try Again" for training payment failures
                         <Link to="/training-payment" className="back-to-dashboard-btn">
                             Try Again
+                        </Link>
+                    )}
+                    {paymentStatus === 'failed' && relatedJobType !== 'training' && ( // For other job types, go to client dashboard
+                        <Link to="/client-dashboard" className="back-to-dashboard-btn">
+                            Go to Dashboard
                         </Link>
                     )}
                 </div>
