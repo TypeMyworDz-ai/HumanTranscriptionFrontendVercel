@@ -1,22 +1,17 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
-// FIXED: TypeError: Cannot read properties of undefined (reading 'join')
-// FIXED: ESLint warning: 'PAYSTACK_PUBLIC_KEY' is assigned a value but never used
-// UPDATED: Re-introduced mobileNumber input and state to match training payment logic.
-// FIXED: ESLint warning: 'handleDownloadFile' is assigned a value but never used
-// UPDATED: Removed KoraPay as a payment option. Only Paystack remains.
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import { useAuth } from './contexts/AuthContext';
 import Modal from './Modal';
-import './ClientDirectUpload.css';
+import './ClientDirectUpload.css'; // Assuming you have a CSS file for styling
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 // eslint-disable-next-line no-unused-vars
 const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
 
 const ClientDirectUpload = () => {
-    const { user, isAuthenticated, authLoading, logout } = useAuth();
+    const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -39,7 +34,8 @@ const ClientDirectUpload = () => {
     const [jobToPayFor, setJobToPayFor] = useState(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('paystack'); // Default to Paystack
     const [paymentModalLoading, setPaymentModalLoading] = useState(false);
-    // REMOVED: mobileNumber state as KoraPay is removed
+    const [mobileNumber, setMobileNumber] = useState(''); // Re-introduced mobileNumber state for KoraPay
+    const [korapayScriptLoaded, setKorapayScriptLoaded] = useState(false); // Re-introduced KoraPay script loading state
 
 
     const showToast = useCallback((message, type = 'success') => {
@@ -50,6 +46,36 @@ const ClientDirectUpload = () => {
         setToast((prev) => ({ ...prev, isVisible: false }));
     }, []);
 
+    // Load KoraPay SDK dynamically
+    useEffect(() => {
+        const existingScript = document.getElementById('korapay-sdk');
+        if (existingScript) {
+            setKorapayScriptLoaded(true);
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'korapay-sdk';
+        script.src = 'https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js';
+        script.async = true;
+        script.onload = () => {
+            console.log('[ClientDirectUpload] KoraPay SDK loaded successfully');
+            setKorapayScriptLoaded(true);
+        };
+        script.onerror = () => {
+            console.error('[ClientDirectUpload] Failed to load KoraPay SDK');
+            showToast('Failed to load KoraPay payment system. Please refresh the page.', 'error');
+        };
+        document.body.appendChild(script);
+
+        return () => {
+            const scriptToRemove = document.getElementById('korapay-sdk');
+            if (scriptToRemove) {
+                document.body.removeChild(scriptToRemove);
+            }
+        };
+    }, [showToast]);
+
     useEffect(() => {
         if (authLoading) return;
 
@@ -58,9 +84,7 @@ const ClientDirectUpload = () => {
             navigate('/');
             return;
         }
-
-        // REMOVED: KoraPay dynamic script loading useEffect as KoraPay is no longer an option.
-    }, [isAuthenticated, authLoading, user, navigate, showToast]);
+    }, [isAuthenticated, authLoading, user, navigate]);
 
 
     const handleAudioVideoFileChange = useCallback((e) => {
@@ -117,6 +141,7 @@ const ClientDirectUpload = () => {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('Authentication token missing. Please log in again.', 'error');
+            logout(); // Redirect to login if token is missing
             return;
         }
 
@@ -153,13 +178,84 @@ const ClientDirectUpload = () => {
         } finally {
             setQuoteLoading(false);
         }
-    }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, showToast]);
+    }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, showToast, logout]);
 
 
     const closeQuoteModal = useCallback(() => {
         setShowQuoteModal(false);
         setQuoteDetails(null);
     }, []);
+
+
+    // KoraPay Payment Handler
+    const handleKorapayPayment = useCallback(async (korapayData, jobId) => {
+        if (!window.Korapay) {
+            showToast('KoraPay is not loaded. Please refresh the page and try again.', 'error');
+            setPaymentModalLoading(false);
+            setShowPaymentSelectionModal(false);
+            return;
+        }
+
+        try {
+            window.Korapay.initialize({
+                ...korapayData,
+                onClose: function () {
+                    console.log('[ClientDirectUpload] KoraPay modal closed by user');
+                    showToast('Payment cancelled. You can try again when ready.', 'info');
+                    setPaymentModalLoading(false);
+                    setShowPaymentSelectionModal(false);
+                },
+                onSuccess: async function (data) {
+                    console.log('[ClientDirectUpload] KoraPay payment successful:', data);
+                    showToast('Payment successful! Verifying...', 'success');
+
+                    try {
+                        const token = localStorage.getItem('token');
+                        const verifyResponse = await fetch(
+                            `${BACKEND_API_URL}/api/direct-uploads/${jobId}/payment/verify/${data.reference}?paymentMethod=korapay`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            }
+                        );
+
+                        const verifyData = await verifyResponse.json();
+
+                        if (verifyResponse.ok && verifyData.message.includes('Payment verified')) {
+                            showToast('Payment verified! Your job is now active.', 'success');
+                            await updateUser(); // Update AuthContext user state
+                            await checkAuth(); // Re-fetch auth status
+                            setTimeout(() => {
+                                navigate('/client-dashboard'); // Redirect to dashboard
+                            }, 2000);
+                        } else {
+                            showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
+                            setPaymentModalLoading(false);
+                            setShowPaymentSelectionModal(false);
+                        }
+                    } catch (verifyError) {
+                        console.error('[ClientDirectUpload] Error verifying KoraPay payment:', verifyError);
+                        showToast('Error verifying payment. Please contact support with your transaction reference.', 'error');
+                        setPaymentModalLoading(false);
+                        setShowPaymentSelectionModal(false);
+                    }
+                },
+                onFailed: function (data) {
+                    console.error('[ClientDirectUpload] KoraPay payment failed:', data);
+                    showToast('Payment failed. Please try again or contact support.', 'error');
+                    setPaymentModalLoading(false);
+                    setShowPaymentSelectionModal(false);
+                }
+            });
+        } catch (error) {
+            console.error('[ClientDirectUpload] Error initializing KoraPay:', error);
+            showToast('Failed to initialize payment. Please try again.', 'error');
+            setPaymentModalLoading(false);
+            setShowPaymentSelectionModal(false);
+        }
+    }, [showToast, navigate, updateUser, checkAuth]);
 
 
     const createAndPayForJob = useCallback(async () => {
@@ -217,28 +313,31 @@ const ClientDirectUpload = () => {
                 id: jobId,
                 jobType: 'direct_upload',
                 quote_amount: quoteDetails.quote_amount,
-                agreed_price_usd: quoteDetails.quote_amount
+                agreed_price_usd: quoteDetails.quote_amount // Use quote_amount for direct upload agreed price
             });
-            setSelectedPaymentMethod('paystack'); // Always set to Paystack
+            setSelectedPaymentMethod('paystack'); // Default to Paystack for the modal
             setShowPaymentSelectionModal(true);
             closeQuoteModal();
-            setLoading(false);
+            setLoading(false); // Set loading to false after job creation, payment handled by modal
+            showToast('Job created successfully! Please select a payment method.', 'success');
+
 
         } catch (error) {
             console.error('Error creating job or initiating payment:', error);
             showToast('Network error creating job or initiating payment. Please try again.', 'error');
             setLoading(false);
-        } finally {
         }
     }, [audioVideoFile, clientInstructions, audioQualityParam, deadlineTypeParam, specialRequirements, instructionFiles, quoteDetails, user, showToast, closeQuoteModal]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const initiatePayment = useCallback(async () => { // Line 302
+    const initiatePayment = useCallback(async () => {
         if (!jobToPayFor?.id || !selectedPaymentMethod) {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
-        // REMOVED: Frontend validation that made mobile number required for KoraPay.
+        if (selectedPaymentMethod === 'korapay' && !mobileNumber.trim()) {
+            showToast('Please enter your mobile number for KoraPay payment.', 'error');
+            return;
+        }
 
         setPaymentModalLoading(true);
         const token = localStorage.getItem('token');
@@ -250,7 +349,7 @@ const ClientDirectUpload = () => {
         let paymentApiUrl;
         let amountToSend;
 
-        if (jobToPayFor.jobType === 'negotiation') {
+        if (jobToPayFor.jobType === 'negotiation') { // This component is for direct upload, but keeping negotiation logic for robustness
             paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToPayFor.id}/payment/initialize`;
             amountToSend = jobToPayFor.agreed_price_usd;
         } else if (jobToPayFor.jobType === 'direct_upload') {
@@ -267,9 +366,12 @@ const ClientDirectUpload = () => {
                 jobId: jobToPayFor.id,
                 amount: amountToSend,
                 email: user.email,
-                paymentMethod: 'paystack', // Always send 'paystack'
+                paymentMethod: selectedPaymentMethod, // Use selected method
+                fullName: user.full_name, // Include full name
             };
-            // REMOVED: mobileNumber from payload as KoraPay is removed
+            if (selectedPaymentMethod === 'korapay' && mobileNumber.trim()) {
+                payload.mobileNumber = mobileNumber.trim();
+            }
 
             const response = await fetch(paymentApiUrl, {
                 method: 'POST',
@@ -282,13 +384,16 @@ const ClientDirectUpload = () => {
             const data = await response.json();
 
             if (response.ok) {
-                if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) { // Only Paystack logic remains
+                if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
                     showToast('Redirecting to Paystack...', 'info');
                     window.location.href = data.data.authorization_url;
-                } else { // Fallback if something unexpected happens, though it should always be Paystack now
+                } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
+                    showToast('Opening KoraPay payment modal...', 'info');
+                    await handleKorapayPayment(data.korapayData, jobToPayFor.id); // Pass job ID for verification
+                } else {
                     showToast(data.error || 'Failed to initiate payment. Unknown payment method or missing data.', 'error');
+                    setPaymentModalLoading(false);
                 }
-                setPaymentModalLoading(false);
             } else {
                 showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
                 setPaymentModalLoading(false);
@@ -298,8 +403,10 @@ const ClientDirectUpload = () => {
             showToast('Network error while initiating payment. Please try again.', 'error');
             setPaymentModalLoading(false);
         } finally {
+            // No need to setPaymentModalLoading(false) here, as it's handled by callbacks or redirects
         }
-    }, [jobToPayFor, selectedPaymentMethod, user, showToast, logout]); // Removed 'navigate' from dependency array.
+    }, [jobToPayFor, selectedPaymentMethod, mobileNumber, user, showToast, logout, handleKorapayPayment]);
+
 
     // eslint-disable-next-line no-unused-vars
     const handleDownloadFile = useCallback(async (jobId, jobType, fileName) => {
@@ -365,9 +472,9 @@ const ClientDirectUpload = () => {
         <div className="client-direct-upload-container">
             <header className="client-direct-upload-header">
                 <div className="header-content">
-                    <h1>Direct Upload & Quote</h1>
+                    <h1>⬆️ Direct Upload & Quote</h1>
                     <div className="user-profile-actions">
-                        <span>Welcome, {user.full_name}!</span>
+                        <span className="welcome-text">Welcome, <strong>{user.full_name}</strong>!</span>
                         <button onClick={logout} className="logout-btn">
                             Logout
                         </button>
@@ -380,7 +487,7 @@ const ClientDirectUpload = () => {
                     <div className="page-header">
                         <div className="header-text">
                             <h2>Get an Instant Quote & Upload</h2>
-                            <p>Upload your audio/video files for transcription and get an an immediate quote.</p>
+                            <p>Upload your audio/video files for transcription and get an immediate quote.</p>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
                             ← Back to Dashboard
@@ -548,27 +655,73 @@ const ClientDirectUpload = () => {
                 <Modal
                     show={showPaymentSelectionModal}
                     title={`Choose Payment Method for Job: ${jobToPayFor.id?.substring(0, 8)}...`}
-                    onClose={() => setShowPaymentSelectionModal(false)}
+                    onClose={() => {setShowPaymentSelectionModal(false); setPaymentModalLoading(false);}}
                     onSubmit={initiatePayment}
-                    submitText={`Pay Now (USD ${((jobToPayFor.jobType === 'negotiation' ? jobToPayFor.agreed_price_usd : jobToPayFor.quote_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                    submitText={paymentModalLoading ? 'Processing...' : `Pay Now (USD ${((jobToPayFor.jobType === 'negotiation' ? jobToPayFor.agreed_price_usd : jobToPayFor.quote_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     loading={paymentModalLoading}
                 >
-                    <p>Select your preferred payment method:</p>
-                    <div className="payment-method-selection">
-                        <label className="radio-label">
-                            <input
-                                type="radio"
-                                value="paystack"
-                                checked={selectedPaymentMethod === 'paystack'}
-                                onChange={() => setSelectedPaymentMethod('paystack')}
-                                disabled={paymentModalLoading}
-                            />
-                            Paystack (Card, Mobile Money, Bank Transfer, Pesalink)
-                        </label>
-                        {/* REMOVED: KoraPay radio button option */}
+                    <p className="modal-intro-text">Select your preferred payment method to complete your order securely.</p>
+                    <div className="payment-method-selection-modal">
+                        <div className="payment-options">
+                            <label className={`payment-option ${selectedPaymentMethod === 'paystack' ? 'selected' : ''}`}>
+                                <input
+                                    type="radio"
+                                    value="paystack"
+                                    checked={selectedPaymentMethod === 'paystack'}
+                                    onChange={() => setSelectedPaymentMethod('paystack')}
+                                    disabled={paymentModalLoading}
+                                />
+                                <div className="option-content">
+                                    <div className="option-header">
+                                        <span className="option-icon">💳</span>
+                                        <span className="option-name">Paystack</span>
+                                    </div>
+                                    <span className="option-description">
+                                        Card, Mobile Money, Bank Transfer, Pesalink
+                                    </span>
+                                </div>
+                            </label>
+                            <label className={`payment-option ${selectedPaymentMethod === 'korapay' ? 'selected' : ''}`}>
+                                <input
+                                    type="radio"
+                                    value="korapay"
+                                    checked={selectedPaymentMethod === 'korapay'}
+                                    onChange={() => setSelectedPaymentMethod('korapay')}
+                                    disabled={paymentModalLoading || !korapayScriptLoaded}
+                                />
+                                <div className="option-content">
+                                    <div className="option-header">
+                                        <span className="option-icon">📱</span>
+                                        <span className="option-name">KoraPay</span>
+                                    </div>
+                                    <span className="option-description">
+                                        Mobile Money, Card, Bank Transfer
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
-                    {/* REMOVED: Mobile Number Input for KoraPay */}
+                    {/* Mobile Number Input for KoraPay */}
+                    {selectedPaymentMethod === 'korapay' && (
+                        <div className="mobile-input-section-modal">
+                            <label htmlFor="mobileNumberModal" className="input-label">
+                                📱 Mobile Number (Optional for KoraPay)
+                            </label>
+                            <input
+                                type="tel"
+                                id="mobileNumberModal"
+                                className="mobile-input"
+                                placeholder="e.g., +254712345678"
+                                value={mobileNumber}
+                                onChange={(e) => setMobileNumber(e.target.value)}
+                                disabled={paymentModalLoading}
+                            />
+                            <small className="input-hint">
+                                Enter your mobile number for faster mobile money payments
+                            </small>
+                        </div>
+                    )}
                 </Modal>
             )}
 
