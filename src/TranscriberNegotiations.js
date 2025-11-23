@@ -128,7 +128,8 @@ const TranscriberNegotiations = () => {
                 completed_on: job.completed_at,
                 transcriber_comment: job.transcriber_response, 
                 client_feedback_comment: job.client_feedback_comment,
-                client_feedback_rating: job.client_feedback_rating
+                client_feedback_rating: job.client_feedback_rating,
+                transcriber_earning: job.transcriber_earning // ADDED: Transcriber's actual earning
             }));
 
             setNegotiationJobs(typedNegotiations); // Update state for negotiation jobs only
@@ -140,6 +141,7 @@ const TranscriberNegotiations = () => {
                 clientName: j.client_name,
                 clientRating: j.client_average_rating,
                 agreedPrice: j.agreed_price_usd,
+                earning: j.transcriber_earning, // ADDED: Log earning
                 deadline: j.deadline_hours,
                 completedOn: j.completed_on,
                 transcriberComment: j.transcriber_comment, 
@@ -575,13 +577,13 @@ const TranscriberNegotiations = () => {
                 <div className="header-content">
                     <h1>{pageTitle}</h1>
                     <div className="user-profile-actions">
-                        <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
+                        <span className="welcome-text-badge">Welcome, <strong>{user.full_name}</strong>!</span>
                         <button onClick={logout} className="logout-btn">
                             Logout
                         </button>
                     </div>
-                </div >
-            </header >
+                </div> 
+            </header>
 
             <main className="transcriber-negotiations-main">
                 <div className="transcriber-negotiations-content">
@@ -606,7 +608,7 @@ const TranscriberNegotiations = () => {
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Client</th>
-                                            <th>Agreed Price</th>
+                                            <th>Your Pay (USD)</th> {/* UPDATED: Column heading */}
                                             <th>Deadline</th>
                                             <th>Status</th>
                                             <th>Completed On</th>
@@ -627,7 +629,7 @@ const TranscriberNegotiations = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                <td>USD {job.transcriber_earning?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: Display transcriber_earning */}
                                                 <td>{job.deadline_hours} hours</td>
                                                 <td>
                                                     <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>

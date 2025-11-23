@@ -677,6 +677,14 @@ const NegotiationCard = React.memo(({
               </div>
             )}
 
+            {/* NEW: Client can mark negotiation jobs complete when status is 'hired' */}
+            {job.status === 'hired' && openCompleteJobModal && ( 
+                <div className="hired-actions">
+                    <span className="info-text">Job is Active.</span> 
+                    <button onClick={(e) => { e.stopPropagation(); openCompleteJobModal(job); }} className="action-btn complete-job-btn">Mark as Complete</button>
+                </div>
+            )}
+
             {/* Client can mark negotiation jobs complete if transcriber has completed it */}
             {job.status === 'completed' && openCompleteJobModal && ( 
                 <div className="hired-actions">

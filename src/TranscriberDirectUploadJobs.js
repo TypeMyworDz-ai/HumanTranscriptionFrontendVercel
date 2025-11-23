@@ -85,19 +85,28 @@ const TranscriberDirectUploadJobs = () => {
 
             const fetchedDirectUploadJobs = directUploadData.jobs || [];
             
-            const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => ({
-                ...job,
-                jobType: 'direct_upload',
-                client_name: job.client?.full_name || 'Unknown Client',
-                client_average_rating: job.client?.client_average_rating || 0, 
-                agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
-                deadline_hours: job.agreed_deadline_hours,
-                file_name: job.file_name,
-                completed_on: job.completed_at || job.client_completed_at, 
-                transcriber_comment: job.transcriber_comment, 
-                client_feedback_comment: job.client_feedback_comment,
-                client_feedback_rating: job.client_feedback_rating
-            }));
+            // The transcriber_earning will now be provided directly by the backend
+            const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => {
+                // The transcriber_earning is expected to be part of the 'job' object from the backend now.
+                const transcriberEarning = job.transcriber_earning || 0; 
+                console.log(`[TranscriberDirectUploadJobs] Job ${job.id}: quote_amount=${job.quote_amount}, transcriber_earning=${transcriberEarning}`);
+
+                return {
+                    ...job,
+                    jobType: 'direct_upload',
+                    client_name: job.client?.full_name || 'Unknown Client',
+                    client_average_rating: job.client?.client_average_rating || 0, 
+                    agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
+                    deadline_hours: job.agreed_deadline_hours,
+                    file_name: job.file_name,
+                    completed_on: job.completed_at || job.client_completed_at, 
+                    transcriber_comment: job.transcriber_comment, 
+                    client_feedback_comment: job.client_feedback_comment,
+                    client_feedback_rating: job.client_feedback_rating,
+                    transcriber_earning: transcriberEarning // EXPECTED: Transcriber's actual earning from backend
+                };
+            });
+
 
             setDirectUploadJobs(typedDirectUploadJobs); 
 
@@ -108,6 +117,7 @@ const TranscriberDirectUploadJobs = () => {
                 clientName: j.client_name,
                 clientRating: j.client_average_rating,
                 agreedPrice: j.agreed_price_usd,
+                earning: j.transcriber_earning, // Log earning
                 deadline: j.deadline_hours,
                 completedOn: j.completed_on,
                 transcriberComment: j.transcriber_comment, 
@@ -425,7 +435,7 @@ const TranscriberDirectUploadJobs = () => {
                 <div className="header-content">
                     <h1>{pageTitle}</h1>
                     <div className="user-profile-actions">
-                        <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
+                        <span className="welcome-text-badge">Welcome, <strong>{user.full_name}</strong>!</span>
                         <button onClick={logout} className="logout-btn">
                             Logout
                         </button>
@@ -456,7 +466,7 @@ const TranscriberDirectUploadJobs = () => {
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Client</th>
-                                            <th>Quote Amount</th>
+                                            <th>Your Pay (USD)</th> {/* UPDATED: Column heading */}
                                             <th>Deadline</th>
                                             <th>Status</th>
                                             <th>Completed On</th>
@@ -477,7 +487,7 @@ const TranscriberDirectUploadJobs = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>USD {job.agreed_price_usd?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                <td>USD {job.transcriber_earning?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: Display job.transcriber_earning */}
                                                 <td>{job.deadline_hours} hours</td>
                                                 <td>
                                                     <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
