@@ -19,7 +19,8 @@ const AdminPaymentHistory = () => {
         const summary = {};
 
         paymentsData.forEach(payment => {
-            if (payment.payout_status === 'awaiting_completion' && payment.transcriber_id && payment.transcriber_earning) {
+            // UPDATED: Filter for 'pending' payout_status instead of 'awaiting_completion'
+            if (payment.payout_status === 'pending' && payment.transcriber_id && payment.transcriber_earning) {
                 if (!summary[payment.transcriber_id]) {
                     summary[payment.transcriber_id] = {
                         id: payment.transcriber_id,

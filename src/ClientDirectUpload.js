@@ -1,6 +1,6 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'; // Added useSearchParams
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Toast from './Toast';
 import { useAuth } from './contexts/AuthContext';
 import Modal from './Modal';
@@ -13,7 +13,7 @@ const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
 const ClientDirectUpload = () => {
     const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams(); // Added useSearchParams
+    const [searchParams] = useSearchParams();
 
     const [loading, setLoading] = useState(false);
     const [quoteLoading, setQuoteLoading] = useState(false);
@@ -39,13 +39,8 @@ const ClientDirectUpload = () => {
     const [korapayScriptLoaded, setKorapayScriptLoaded] = useState(false); // Re-introduced KoraPay script loading state
 
 
-    const showToast = useCallback((message, type = 'success') => {
-        setToast({ isVisible: true, message, type });
-    }, []);
-
-    const hideToast = useCallback(() => {
-        setToast((prev) => ({ ...prev, isVisible: false }));
-    }, []);
+    const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
+    const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
 
     // Load KoraPay SDK dynamically
     useEffect(() => {
@@ -124,7 +119,7 @@ const ClientDirectUpload = () => {
     }, [showToast]);
 
     const handleInstructionFilesChange = useCallback((e) => {
-        const files = Array.from(e.files);
+        const files = Array.from(e.target.files); // Corrected from e.files
         const validFiles = files.filter(file => {
             if (file.size > 10 * 1024 * 1024) {
                 showToast(`Instruction file ${file.name} is too large (max 10MB).`, 'error');
@@ -359,6 +354,7 @@ const ClientDirectUpload = () => {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
+        // Validate mobile number if KoraPay is selected
         if (selectedPaymentMethod === 'korapay' && !mobileNumber.trim()) {
             showToast('Please enter your mobile number for KoraPay payment.', 'error');
             return;
@@ -367,17 +363,19 @@ const ClientDirectUpload = () => {
         setPaymentModalLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error'); // Corrected typo
             logout();
             return;
         }
 
         let paymentApiUrl;
         let amountToSend;
+        const jobType = jobToPayFor.jobType; // Use the explicitly set jobType
 
-        if (jobToPayFor.jobType === 'negotiation') { // This component is for direct upload, but keeping negotiation logic for robustness
+        if (jobType === 'negotiation') {
             paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToPayFor.id}/payment/initialize`;
             amountToSend = jobToPayFor.agreed_price_usd;
-        } else if (jobToPayFor.jobType === 'direct_upload') {
+        } else if (jobType === 'direct_upload') {
             paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${jobToPayFor.id}/payment/initialize`;
             amountToSend = jobToPayFor.quote_amount;
         } else {
@@ -391,9 +389,10 @@ const ClientDirectUpload = () => {
                 jobId: jobToPayFor.id,
                 amount: amountToSend,
                 email: user.email,
-                paymentMethod: selectedPaymentMethod, // Use selected method
+                paymentMethod: selectedPaymentMethod,
                 fullName: user.full_name, // Include full name
             };
+            // Conditionally add mobileNumber to payload for KoraPay
             if (selectedPaymentMethod === 'korapay' && mobileNumber.trim()) {
                 payload.mobileNumber = mobileNumber.trim();
             }
@@ -416,12 +415,11 @@ const ClientDirectUpload = () => {
                     showToast('Opening KoraPay payment modal...', 'info');
                     await handleKorapayPayment(data.korapayData, jobToPayFor.id); // Pass job ID for verification
                 } else {
-                    showToast(data.error || 'Failed to initiate payment. Unknown payment method or missing data.', 'error');
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.', 'error');
                     setPaymentModalLoading(false);
                 }
             } else {
                 showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
-                setPaymentModalLoading(false);
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
@@ -447,7 +445,15 @@ const ClientDirectUpload = () => {
         }
 
         try {
-            const downloadUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`;
+            let downloadUrl;
+            if (jobType === 'negotiation') {
+                downloadUrl = `${BACKEND_API_URL}/api/negotiations/${jobId}/download/${fileName}`;
+            } else if (jobType === 'direct_upload') {
+                downloadUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`;
+            } else {
+                showToast('Unknown job type for download.', 'error');
+                return;
+            }
 
             const response = await fetch(downloadUrl, {
                 method: 'GET',
@@ -478,7 +484,7 @@ const ClientDirectUpload = () => {
     }, [showToast, logout]);
 
 
-    if (authLoading || !isAuthenticated || !user) {
+    if (authLoading || !isAuthenticated || !user || loading) {
         return (
             <div className="client-direct-upload-container">
                 <div className="loading-spinner">Loading authentication...</div>
@@ -722,33 +728,33 @@ const ClientDirectUpload = () => {
                                     <span className="option-description">
                                         Mobile Money, Card, Bank Transfer
                                     </span>
-                                </div>
-                            </label>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Mobile Number Input for KoraPay */}
-                    {selectedPaymentMethod === 'korapay' && (
-                        <div className="mobile-input-section-modal">
-                            <label htmlFor="mobileNumberModal" className="input-label">
-                                📱 Mobile Number (Optional for KoraPay)
-                            </label>
-                            <input
-                                type="tel"
-                                id="mobileNumberModal"
-                                className="mobile-input"
-                                placeholder="e.g., +254712345678"
-                                value={mobileNumber}
-                                onChange={(e) => setMobileNumber(e.target.value)}
-                                disabled={paymentModalLoading}
-                            />
-                            <small className="input-hint">
-                                Enter your mobile number for faster mobile money payments
-                            </small>
-                        </div>
-                    )}
-                </Modal>
-            )}
+                        {/* Mobile Number Input for KoraPay */}
+                        {selectedPaymentMethod === 'korapay' && (
+                            <div className="mobile-input-section-modal">
+                                <label htmlFor="mobileNumberModal" className="input-label">
+                                    📱 Mobile Number (Optional for KoraPay)
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="mobileNumberModal"
+                                    className="mobile-input"
+                                    placeholder="e.g., +254712345678"
+                                    value={mobileNumber}
+                                    onChange={(e) => setMobileNumber(e.target.value)}
+                                    disabled={paymentModalLoading}
+                                />
+                                <small className="input-hint">
+                                    Enter your mobile number for faster mobile money payments
+                                </small>
+                            </div>
+                        )}
+                    </Modal>
+                )}
 
             <Toast
                 message={toast.message}

@@ -147,7 +147,7 @@ const ClientJobs = () => {
                     d.status === 'available_for_transcriber' ||
                     d.status === 'taken' ||
                     d.status === 'in_progress' ||
-                    d.status === 'completed'
+                    d.status === 'completed' // This status is included in active jobs
                 );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeDirectUploadJobs];
             } else {
@@ -334,16 +334,19 @@ const ClientJobs = () => {
 
 
     const openMarkJobCompleteModal = useCallback((job) => {
-        const isNegotiationJob = job.jobType === 'negotiation';
-        const isDirectUploadJob = job.jobType === 'direct_upload';
+        // Infer jobType from the job object itself
+        const inferredJobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown');
+
+        const isNegotiationJob = inferredJobType === 'negotiation';
+        const isDirectUploadJob = inferredJobType === 'direct_upload';
 
         if (isNegotiationJob && job.status === 'hired') {
-            setJobToComplete(job);
+            setJobToComplete({ ...job, jobType: inferredJobType }); // Ensure jobType is explicitly set
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
             setShowCompleteJobModal(true);
         } else if (isDirectUploadJob && job.status === 'completed') {
-            setJobToComplete(job);
+            setJobToComplete({ ...job, jobType: inferredJobType }); // Ensure jobType is explicitly set
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
             setShowCompleteJobModal(true);
@@ -371,7 +374,7 @@ const ClientJobs = () => {
 
     const submitMarkJobComplete = useCallback(async () => {
         if (!jobToComplete?.id) {
-            showToast('No job selected for completion!', 'error');
+            showToast('No job selected for completion!!', 'error');
             return;
         }
 
@@ -384,6 +387,7 @@ const ClientJobs = () => {
 
         try {
             let apiUrl;
+            // Use jobToComplete.jobType which is now explicitly set in openMarkJobCompleteModal
             if (jobToComplete.jobType === 'negotiation') {
                 apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
             } else if (jobToComplete.jobType === 'direct_upload') {
@@ -447,10 +451,35 @@ const ClientJobs = () => {
                     try {
                         const token = localStorage.getItem('token');
                         let verifyEndpoint;
+                        // UPDATED: Use POST method for KoraPay direct upload verification
                         if (jobType === 'negotiation') {
                             verifyEndpoint = `${BACKEND_API_URL}/api/negotiations/${jobId}/payment/verify/${data.reference}?paymentMethod=korapay`;
                         } else if (jobType === 'direct_upload') {
-                            verifyEndpoint = `${BACKEND_API_URL}/api/direct-uploads/${jobId}/payment/verify/${data.reference}?paymentMethod=korapay`;
+                            // This endpoint expects a POST request
+                            const verifyResponse = await fetch(`${BACKEND_API_URL}/api/direct-uploads/payment/verify-korapay`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ reference: data.reference, relatedJobId: jobId, paymentMethod: 'korapay' })
+                            });
+
+                            const verifyData = await verifyResponse.json();
+
+                            if (verifyResponse.ok && verifyData.message && verifyData.message.includes('Payment verified')) {
+                                showToast('Payment verified! Your job is now active.', 'success');
+                                await updateUser(); // Update AuthContext user state
+                                await checkAuth(); // Re-fetch auth status
+                                setTimeout(() => {
+                                    navigate('/client-dashboard'); // Redirect to dashboard
+                                }, 2000);
+                            } else {
+                                showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
+                                setModalLoading(false);
+                                setShowPaymentSelectionModal(false);
+                            }
+                            return; // Exit here if direct_upload KoraPay is handled
                         } else {
                             showToast('Unknown job type for KoraPay verification.', 'error');
                             setModalLoading(false);
@@ -458,6 +487,7 @@ const ClientJobs = () => {
                             return;
                         }
 
+                        // Fallback for negotiation KoraPay verification (if still GET)
                         const verifyResponse = await fetch(verifyEndpoint, {
                             method: 'GET',
                             headers: {
@@ -508,9 +538,10 @@ const ClientJobs = () => {
             return;
         }
 
-        const jobType = job.jobType || (job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown'));
+        // Infer jobType from the job object itself
+        const jobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown');
 
-        setJobToPayFor({ ...job, jobType: jobType });
+        setJobToPayFor({ ...job, jobType: jobType }); // Explicitly set jobType
         setSelectedPaymentMethod('paystack'); // Default to Paystack for the modal
         setMobileNumber(''); // Clear mobile number
         setShowPaymentSelectionModal(true);
@@ -536,7 +567,7 @@ const ClientJobs = () => {
 
         let paymentApiUrl;
         let amountToSend;
-        const jobType = jobToPayFor.jobType;
+        const jobType = jobToPayFor.jobType; // Use the explicitly set jobType
 
         if (jobType === 'negotiation') {
             paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToPayFor.id}/payment/initialize`;
@@ -644,8 +675,8 @@ const ClientJobs = () => {
                                 <p className="no-data-message">You currently have no active jobs.</p>
                             ) : (
                                 activeJobs.map((job) => {
-                                    const jobType = job.jobType || (job.negotiation_id ? 'negotiation' : (job.file_name ? 'direct_upload' : 'unknown'));
-
+                                    const jobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown'); // Infer jobType here
+                                    
                                     if (jobType === 'direct_upload') {
                                         console.log(`ClientJobs: Full Direct Upload Job Object for ${job.id}:`, job);
                                         if (!job.transcriber_id && !job.transcriber?.id) {
@@ -660,7 +691,7 @@ const ClientJobs = () => {
                                             <NegotiationCard
                                                 key={job.id}
                                                 job={job}
-                                                jobType={jobType}
+                                                jobType={jobType} // Pass jobType explicitly
                                                 onDelete={handleDeleteJob}
                                                 onPayment={handleProceedToPayment}
                                                 onLogout={logout}
@@ -680,6 +711,7 @@ const ClientJobs = () => {
                                             <DirectUploadJobCard
                                                 key={job.id}
                                                 job={job}
+                                                jobType={jobType} // Pass jobType explicitly
                                                 onDelete={handleDeleteJob}
                                                 onPayment={handleProceedToPayment}
                                                 onLogout={logout}

@@ -87,8 +87,8 @@ const TranscriberDirectUploadJobs = () => {
             
             // The transcriber_earning will now be provided directly by the backend
             const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => {
-                // The transcriber_earning is expected to be part of the 'job' object from the backend now.
-                const transcriberEarning = job.transcriber_earning || 0; 
+                // Ensure transcriber_earning is parsed as a float
+                const transcriberEarning = parseFloat(job.transcriber_earning) || 0; 
                 console.log(`[TranscriberDirectUploadJobs] Job ${job.id}: quote_amount=${job.quote_amount}, transcriber_earning=${transcriberEarning}`);
 
                 return {
