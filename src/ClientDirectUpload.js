@@ -1,6 +1,6 @@
 // src/ClientDirectUpload.js - FINALIZED for Dynamic Pricing Rules, Audio Quality, Deadline Values, and USD Currency
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'; // Added useSearchParams
 import Toast from './Toast';
 import { useAuth } from './contexts/AuthContext';
 import Modal from './Modal';
@@ -13,6 +13,7 @@ const PAYSTACK_PUBLIC_KEY = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
 const ClientDirectUpload = () => {
     const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams(); // Added useSearchParams
 
     const [loading, setLoading] = useState(false);
     const [quoteLoading, setQuoteLoading] = useState(false);
@@ -86,6 +87,26 @@ const ClientDirectUpload = () => {
         }
     }, [isAuthenticated, authLoading, user, navigate]);
 
+    // NEW: Handle URL parameters for payment status after redirect from PaymentCallback
+    useEffect(() => {
+        const paymentStatusParam = searchParams.get('paymentStatus');
+        const paymentMessageParam = searchParams.get('message');
+        const paymentTypeParam = searchParams.get('type'); // 'success' or 'error'
+
+        if (paymentStatusParam || paymentMessageParam || paymentTypeParam) {
+            if (paymentStatusParam === 'success' || paymentTypeParam === 'success') {
+                showToast(paymentMessageParam || 'Payment was successful!', 'success');
+            } else if (paymentStatusParam === 'failed' || paymentTypeParam === 'error') {
+                showToast(paymentMessageParam || 'Payment verification failed. Please contact support.', 'error');
+            }
+
+            // Clear the URL parameters to prevent the toast from reappearing on refresh
+            // Use navigate with replace: true to remove the params from history
+            const currentPath = window.location.pathname;
+            navigate(currentPath, { replace: true });
+        }
+    }, [searchParams, navigate, showToast]);
+
 
     const handleAudioVideoFileChange = useCallback((e) => {
         const file = e.target.files[0];
@@ -103,7 +124,7 @@ const ClientDirectUpload = () => {
     }, [showToast]);
 
     const handleInstructionFilesChange = useCallback((e) => {
-        const files = Array.from(e.target.files);
+        const files = Array.from(e.files);
         const validFiles = files.filter(file => {
             if (file.size > 10 * 1024 * 1024) {
                 showToast(`Instruction file ${file.name} is too large (max 10MB).`, 'error');
@@ -211,19 +232,23 @@ const ClientDirectUpload = () => {
 
                     try {
                         const token = localStorage.getItem('token');
+                        
+                        // UPDATED: Use POST method and body for KoraPay direct upload verification
                         const verifyResponse = await fetch(
-                            `${BACKEND_API_URL}/api/direct-uploads/${jobId}/payment/verify/${data.reference}?paymentMethod=korapay`,
+                            `${BACKEND_API_URL}/api/direct-uploads/payment/verify-korapay`, // Dedicated POST endpoint
                             {
-                                method: 'GET',
+                                method: 'POST',
                                 headers: {
+                                    'Content-Type': 'application/json',
                                     'Authorization': `Bearer ${token}`
-                                }
+                                },
+                                body: JSON.stringify({ reference: data.reference, relatedJobId: jobId, paymentMethod: 'korapay' })
                             }
                         );
 
                         const verifyData = await verifyResponse.json();
 
-                        if (verifyResponse.ok && verifyData.message.includes('Payment verified')) {
+                        if (verifyResponse.ok && verifyData.message && verifyData.message.includes('Payment verified')) {
                             showToast('Payment verified! Your job is now active.', 'success');
                             await updateUser(); // Update AuthContext user state
                             await checkAuth(); // Re-fetch auth status
