@@ -84,8 +84,15 @@ const PaymentCallback = () => {
                 // Backend's verifyNegotiationPayment expects GET with reference in params
                 verificationApiUrl = `${BACKEND_API_URL}/api/negotiations/${relatedJobId}/payment/verify/${reference}?paymentMethod=${paymentMethod}`;
             } else if (jobType === 'direct_upload') {
-                // Backend's verifyDirectUploadPayment expects GET with reference in params
-                verificationApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${relatedJobId}/payment/verify/${reference}?paymentMethod=${paymentMethod}`;
+                if (paymentMethod === 'korapay') {
+                    // KoraPay direct upload verification should use POST and a dedicated endpoint or handle POST at unified endpoint
+                    // Assuming a similar pattern to training payment verification for KoraPay
+                    verificationApiUrl = `${BACKEND_API_URL}/api/direct-uploads/payment/verify-korapay`;
+                    method = 'POST';
+                    body = JSON.stringify({ reference: reference, relatedJobId: relatedJobId }); // Include relatedJobId in body for KoraPay POST
+                } else { // Assume Paystack for direct upload, which expects GET
+                    verificationApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${relatedJobId}/payment/verify/${reference}?paymentMethod=${paymentMethod}`;
+                }
             } else {
                 setPaymentStatus('failed');
                 setMessage('Unknown job type for payment verification. Redirecting...');
