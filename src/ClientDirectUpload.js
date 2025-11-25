@@ -38,6 +38,9 @@ const ClientDirectUpload = () => {
     const [mobileNumber, setMobileNumber] = useState(''); // Re-introduced mobileNumber state for KoraPay
     const [korapayScriptLoaded, setKorapayScriptLoaded] = useState(false); // Re-introduced KoraPay script loading state
 
+    // NEW REF: To prevent multiple KoraPay verification calls from onSuccess
+    const korapayVerificationInitiated = useRef(false);
+
 
     const showToast = useCallback((message, type = 'success') => setToast({ isVisible: true, message, type }), []);
     const hideToast = useCallback(() => setToast((prev) => ({ ...prev, isVisible: false })), []);
@@ -220,8 +223,16 @@ const ClientDirectUpload = () => {
                     showToast('Payment cancelled. You can try again when ready.', 'info');
                     setPaymentModalLoading(false);
                     setShowPaymentSelectionModal(false);
+                    korapayVerificationInitiated.current = false; // Reset flag on close
                 },
                 onSuccess: async function (data) {
+                    // Prevent duplicate verification calls from onSuccess
+                    if (korapayVerificationInitiated.current) {
+                        console.warn('[ClientDirectUpload] KoraPay onSuccess triggered multiple times. Ignoring duplicate verification attempt.');
+                        return; 
+                    }
+                    korapayVerificationInitiated.current = true; // Set flag to true
+
                     console.log('[ClientDirectUpload] KoraPay payment successful:', data);
                     showToast('Payment successful! Verifying...', 'success');
 
@@ -247,6 +258,7 @@ const ClientDirectUpload = () => {
                             showToast('Payment verified! Your job is now active.', 'success');
                             await updateUser(); // Update AuthContext user state
                             await checkAuth(); // Re-fetch auth status
+                            korapayVerificationInitiated.current = false; // Reset flag after successful verification
                             setTimeout(() => {
                                 navigate('/client-dashboard'); // Redirect to dashboard
                             }, 2000);
@@ -254,12 +266,14 @@ const ClientDirectUpload = () => {
                             showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
                             setPaymentModalLoading(false);
                             setShowPaymentSelectionModal(false);
+                            korapayVerificationInitiated.current = false; // Reset flag on verification failure
                         }
                     } catch (verifyError) {
                         console.error('[ClientDirectUpload] Error verifying KoraPay payment:', verifyError);
                         showToast('Error verifying payment. Please contact support with your transaction reference.', 'error');
                         setPaymentModalLoading(false);
                         setShowPaymentSelectionModal(false);
+                        korapayVerificationInitiated.current = false; // Reset flag on error
                     }
                 },
                 onFailed: function (data) {
@@ -267,6 +281,7 @@ const ClientDirectUpload = () => {
                     showToast('Payment failed. Please try again or contact support.', 'error');
                     setPaymentModalLoading(false);
                     setShowPaymentSelectionModal(false);
+                    korapayVerificationInitiated.current = false; // Reset flag on failure
                 }
             });
         } catch (error) {
@@ -274,6 +289,7 @@ const ClientDirectUpload = () => {
             showToast('Failed to initialize payment. Please try again.', 'error');
             setPaymentModalLoading(false);
             setShowPaymentSelectionModal(false);
+            korapayVerificationInitiated.current = false; // Reset flag on error
         }
     }, [showToast, navigate, updateUser, checkAuth]);
 
