@@ -196,7 +196,7 @@ const ClientJobs = () => {
                 if (job.id === relatedJobId) {
                     return {
                         ...job,
-                        last_message_text: data.message || 'New file uploaded.',
+                        last_message_text: data.message || 'New Message from Transcriber', // Changed text here
                         last_message_timestamp: new Date().toISOString(),
                     };
                 }

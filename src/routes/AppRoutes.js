@@ -1,4 +1,4 @@
-// frontend/client/src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, Profile Routes, and Direct Upload Routes
+// src/routes/AppRoutes.js - COMPLETE AND UPDATED with Client Payment History, Client Jobs, Profile Routes, and Direct Upload Routes
 // NEW: Route for AdminTranscriberPayouts
 
 import React from 'react';
@@ -46,8 +46,10 @@ import TranscriberProfile from '../TranscriberProfile';
 import ClientDirectUpload from '../ClientDirectUpload'; 
 import TranscriberOtherJobs from '../TranscriberOtherJobs'; 
 
-// NEW: Import the new TranscriberDirectUploadJobs component
+// NEW: Import the new TranscriberDirectUploadJobs component (now for active jobs)
 import TranscriberDirectUploadJobs from '../TranscriberDirectUploadJobs'; 
+// NEW: Import the new TranscriberCompletedDirectUploadJobs component
+import TranscriberCompletedDirectUploadJobs from '../TranscriberCompletedDirectUploadJobs';
 
 // NEW: Import Admin Oversight components
 import AdminPaymentHistory from '../AdminPaymentHistory'; 
@@ -121,9 +123,12 @@ const AppRoutes = () => {
                     <Route path="/transcriber-payments" element={<TranscriberPaymentHistory />} />
                     <Route path="/transcriber-profile/:transcriberId" element={<TranscriberProfile />} />
                     <Route path="/transcriber-other-jobs" element={<TranscriberOtherJobs />} /> 
-                    {/* NEW: Routes for TranscriberDirectUploadJobs */}
+                    {/* UPDATED: Route for TranscriberDirectUploadJobs (now for active jobs) */}
                     <Route path="/transcriber-direct-upload-jobs" element={<TranscriberDirectUploadJobs />} />
-                    <Route path="/transcriber-direct-upload-jobs/:status" element={<TranscriberDirectUploadJobs />} />
+                    {/* REMOVED: Redundant route with :status parameter, as TranscriberDirectUploadJobs now implicitly handles active */}
+                    {/* <Route path="/transcriber-direct-upload-jobs/:status" element={<TranscriberDirectUploadJobs />} /> */}
+                    {/* NEW: Route for TranscriberCompletedDirectUploadJobs */}
+                    <Route path="/transcriber-completed-direct-upload-jobs" element={<TranscriberCompletedDirectUploadJobs />} />
                     {/* NEW: Specific Chat Route for Direct Upload Jobs (Transcriber Side) */}
                     <Route path="/chat/direct-upload/:jobId" element={<UserChat />} />
 

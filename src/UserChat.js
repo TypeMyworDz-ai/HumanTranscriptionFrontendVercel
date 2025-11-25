@@ -460,7 +460,7 @@ const UserChat = () => {
     }
 
     // UPDATED: Dynamic back link and title
-    const backLinkPath = user.user_type === 'client' ? '/client-jobs' : '/transcriber-direct-upload-jobs'; // Go back to job list, not dashboard
+    const backLinkPath = user.user_type === 'client' ? '/client-jobs' : '/transcriber-direct-upload-jobs'; // Corrected path for transcriber
     const chatTitle = isJobChat ? `Chat for Direct Upload Job #${jobDetails?.id?.substring(0, 8)}...` : `Chat with ${chatPartner?.full_name || 'Partner'}`;
 
 

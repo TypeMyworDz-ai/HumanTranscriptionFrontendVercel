@@ -1,6 +1,6 @@
 // src/TranscriberDirectUploadJobs.js - Handles ONLY Direct Upload Jobs for Transcribers
-import React, { useState, useEffect, useCallback } from 'react'; // Removed Fragment import
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom'; // Removed useLocation import
 import Toast from './Toast';
 import Modal from './Modal';
 import DirectUploadJobCard from './DirectUploadJobCard';
@@ -11,29 +11,9 @@ import { useAuth } from './contexts/AuthContext';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-/*
-// REMOVED: Helper function to format timestamp robustly for display
-// It is no longer used within this component's JSX after table column removals.
-// If DirectUploadJobCard needs it, it should define its own or import from a shared utility.
-const formatDisplayTimestamp = (isoTimestamp) => {
-    if (!isoTimestamp) return 'N/A';
-    try {
-        const date = new Date(isoTimestamp);
-        if (isNaN(date.getTime())) {
-            return 'Invalid Date';
-        }
-        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
-        return 'Invalid Date';
-    }
-};
-*/
-
 // --- Component Definition ---
 const TranscriberDirectUploadJobs = () => {
     const { user, isAuthenticated, authLoading, logout } = useAuth();
-    const location = useLocation();
     const navigate = useNavigate();
 
     const [directUploadJobs, setDirectUploadJobs] = useState([]);
@@ -85,50 +65,45 @@ const TranscriberDirectUploadJobs = () => {
 
         setLoading(true);
         try {
-            const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/all`, { 
+            // UPDATED: Call the new endpoint for a single active job
+            const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/active`, { 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            // FIX: Correctly define directUploadData before using it
-            let directUploadData = { jobs: [] };
+            let directUploadData = { job: null }; // Expect a single job or null
             if (directUploadResponse.ok) {
                 directUploadData = await directUploadResponse.json();
             }
 
-            const fetchedDirectUploadJobs = directUploadData.jobs || [];
+            const fetchedDirectUploadJob = directUploadData.job; // Get the single job
             
-            // The transcriber_earning will now be provided directly by the backend
-            const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => {
-                // Log raw job object before mapping to debug missing fields
-                console.log(`[TranscriberDirectUploadJobs] Raw job data from backend for ID ${job.id}:`, job);
+            let typedDirectUploadJobs = [];
+            if (fetchedDirectUploadJob) {
+                console.log(`[TranscriberDirectUploadJobs] Raw job data from backend for ID ${fetchedDirectUploadJob.id}:`, fetchedDirectUploadJob);
 
-                // Ensure transcriber_earning is parsed as a float
-                const transcriberEarning = parseFloat(job.transcriber_earning) || 0; 
-                console.log(`[TranscriberDirectUploadJobs] Job ${job.id}: quote_amount=${job.quote_amount}, raw transcriber_earning=${job.transcriber_earning}, parsed transcriber_earning=${transcriberEarning}`);
+                const transcriberEarning = parseFloat(fetchedDirectUploadJob.transcriber_earning) || 0; 
+                console.log(`[TranscriberDirectUploadJobs] Job ${fetchedDirectUploadJob.id}: quote_amount=${fetchedDirectUploadJob.quote_amount}, raw transcriber_earning=${fetchedDirectUploadJob.transcriber_earning}, parsed transcriber_earning=${transcriberEarning}`);
 
                 const mappedJob = {
-                    ...job,
+                    ...fetchedDirectUploadJob,
                     jobType: 'direct_upload',
-                    client_name: job.client?.full_name || 'Unknown Client',
-                    client_average_rating: job.client?.client_average_rating || 0, 
-                    agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
-                    deadline_hours: job.agreed_deadline_hours,
-                    file_name: job.file_name,
-                    // Ensure these are explicitly mapped from backend response
-                    completed_on: job.completed_at || job.client_completed_at, 
-                    transcriber_comment: job.transcriber_comment, 
-                    client_feedback_comment: job.client_feedback_comment,
-                    client_feedback_rating: job.client_feedback_rating,
-                    transcriber_earning: transcriberEarning // EXPECTED: Transcriber's actual earning from backend
+                    client_name: fetchedDirectUploadJob.client?.full_name || 'Unknown Client',
+                    client_average_rating: fetchedDirectUploadJob.client?.client_average_rating || 0, 
+                    agreed_price_usd: fetchedDirectUploadJob.quote_amount, // Mapped from quote_amount for display consistency
+                    deadline_hours: fetchedDirectUploadJob.agreed_deadline_hours,
+                    file_name: fetchedDirectUploadJob.file_name,
+                    completed_on: fetchedDirectUploadJob.completed_at || fetchedDirectUploadJob.client_completed_at, 
+                    transcriber_comment: fetchedDirectUploadJob.transcriber_comment, 
+                    client_feedback_comment: fetchedDirectUploadJob.client_feedback_comment,
+                    client_feedback_rating: fetchedDirectUploadJob.client_feedback_rating,
+                    transcriber_earning: transcriberEarning 
                 };
-                console.log(`[TranscriberDirectUploadJobs] Mapped job data for ID ${job.id}:`, mappedJob);
-                return mappedJob;
-            });
-
+                console.log(`[TranscriberDirectUploadJobs] Mapped job data for ID ${fetchedDirectUploadJob.id}:`, mappedJob);
+                typedDirectUploadJobs = [mappedJob]; // Wrap the single job in an array
+            }
 
             setDirectUploadJobs(typedDirectUploadJobs); 
 
-            // Consolidated logging for overall fetched jobs
             console.log("TranscriberDirectUploadJobs: Fetched Direct Upload Jobs (summary):", typedDirectUploadJobs.map(j => ({
                 id: j.id,
                 status: j.status,
@@ -140,11 +115,11 @@ const TranscriberDirectUploadJobs = () => {
             })));
 
             if (typedDirectUploadJobs.length === 0) {
-                showToast('No direct upload jobs found.ᐟ', 'info');
+                showToast('No active direct upload job assigned to you.', 'info'); // UPDATED message
             }
         } catch (error) {
             console.error("Network error while fetching direct upload jobs:", error);
-            showToast('Network error while fetching direct upload jobs.ᐟ', 'error');
+            showToast('Network error while fetching direct upload job.ᐟ', 'error'); // UPDATED message
         } finally {
             setLoading(false);
         }
@@ -195,7 +170,7 @@ const TranscriberDirectUploadJobs = () => {
                 if (job.id === relatedJobId) {
                     return {
                         ...job,
-                        last_message_text: data.message || 'New Message, Check.', // MODIFIED: Changed default message
+                        last_message_text: data.message || 'New Message, Check.',
                         last_message_timestamp: new Date().toISOString(),
                     };
                 }
@@ -453,39 +428,14 @@ const TranscriberDirectUploadJobs = () => {
         );
     }
 
-    const query = new URLSearchParams(location.search);
-    const statusFilter = query.get('status');
+    // Hardcode values for "My Active DU Jobs"
+    const pageTitle = "My Active DU Job"; // UPDATED: singular
+    const pageDescription = "Track the progress of your assigned direct upload transcription job and communicate with the client."; // UPDATED: singular
+    const listSubtitle = "Currently Assigned Direct Upload Job"; // UPDATED: singular
+    const emptyMessage = "No active direct upload job assigned to you.ᐟ"; // UPDATED: singular
 
-    let displayedJobs = [];
-    let pageTitle = "My Direct Upload Jobs";
-    let pageDescription = "Manage your assigned direct upload transcription projects.";
-    let listSubtitle = "All Direct Upload Jobs";
-    let emptyMessage = "No direct upload jobs found.ᐟ";
-
-    if (statusFilter === 'active') {
-        displayedJobs = directUploadJobs.filter(job =>
-            job.status === 'taken' || job.status === 'in_progress'
-        );
-        pageTitle = "My DU Jobs";
-        pageDescription = "Track the progress of your assigned direct upload transcription jobs and communicate with clients.";
-        listSubtitle = "Currently Assigned Direct Upload Jobs";
-        emptyMessage = "No active direct upload jobs assigned to you.ᐟ";
-    } else if (statusFilter === 'completed') {
-        displayedJobs = directUploadJobs.filter(job =>
-            job.status === 'completed' || job.status === 'client_completed'
-        );
-        pageTitle = "My Completed DU Jobs"; // UPDATED: Page Title
-        pageDescription = "Review your finished direct upload transcription projects and earnings.";
-        listSubtitle = "Completed Direct Upload Jobs";
-        emptyMessage = "No completed direct upload jobs yet.ᐟ";
-    } else { 
-        displayedJobs = directUploadJobs; 
-        pageTitle = "All Direct Upload Jobs";
-        pageDescription = "View all direct upload jobs you have interacted with.";
-        listSubtitle = "All Direct Upload Jobs";
-        emptyMessage = "No direct upload jobs found.ᐟ";
-    }
-
+    // Display jobs directly from state, as backend now filters for active jobs
+    const displayedJobs = directUploadJobs; 
 
     return (
         <div className="transcriber-direct-upload-jobs-container">
@@ -514,127 +464,87 @@ const TranscriberDirectUploadJobs = () => {
                     </div>
 
                     <h3 className="direct-upload-jobs-subtitle">{listSubtitle}</h3>
-                    {statusFilter === 'completed' ? ( 
-                        <div className="completed-jobs-list-table">
-                            {displayedJobs.length === 0 ? (
-                                <p className="no-data-message">{emptyMessage}</p>
-                            ) : (
-                                <table className="completed-jobs-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Job ID</th>
-                                            <th>Client</th>
-                                            <th>Deadline</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {displayedJobs.map(job => (
-                                            <tr key={job.id}>
-                                                <td>{job.id?.substring(0, 8)}...</td>
-                                                <td>
-                                                    {job.client_name || 'N/A'}
-                                                    {job.client_average_rating > 0 && (
-                                                        <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                            {'★'.repeat(Math.floor(job.client_average_rating))} {(job.client_average_rating).toFixed(1)})
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td>{job.deadline_hours} hours</td>
-                                                <td>
-                                                    <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
-                                                        {getStatusText(job.status)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                    <div className="direct-upload-jobs-list">
+                        {displayedJobs.length === 0 ? (
+                            <p>{emptyMessage}</p>
                         ) : (
-                            <div className="direct-upload-jobs-list">
-                                {displayedJobs.length === 0 ? (
-                                    <p>{emptyMessage}</p>
-                                ) : (
-                                    displayedJobs.map(job => (
-                                        <DirectUploadJobCard
-                                            key={job.id}
-                                            job={job}
-                                            onDelete={handleDeleteJob}
-                                            onDownloadFile={handleDownloadFile}
-                                            openSubmitDirectJobModal={openSubmitDirectJobModal}
-                                            canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
-                                            openCancelJobModal={openCancelJobModal}
-                                            canCancelDirectJob={job.status === 'taken' || job.status === 'in_progress'}
-                                            getStatusColor={getStatusColor}
-                                            getStatusText={getStatusText}
-                                            showToast={showToast}
-                                            currentUserId={user.id}
-                                            currentUserType={user.user_type}
-                                        />
-                                    ))
-                                )}
-                            </div>
+                            displayedJobs.map(job => (
+                                <DirectUploadJobCard
+                                    key={job.id}
+                                    job={job}
+                                    onDelete={handleDeleteJob}
+                                    onDownloadFile={handleDownloadFile}
+                                    openSubmitDirectJobModal={openSubmitDirectJobModal}
+                                    canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
+                                    openCancelJobModal={openCancelJobModal}
+                                    canCancelDirectJob={job.status === 'taken' || job.status === 'in_progress'}
+                                    getStatusColor={getStatusColor}
+                                    getStatusText={getStatusText}
+                                    showToast={showToast}
+                                    currentUserId={user.id}
+                                    currentUserType={user.user_type}
+                                />
+                            ))
                         )}
                     </div>
-                </main>
+                </div>
+            </main>
 
-                {/* Modal for Submitting Direct Upload Job (Transcriber's action) */}
-                {showSubmitDirectJobModal && (
-                    <Modal
-                        show={showSubmitDirectJobModal}
-                        title="Submit Direct Upload Job"
-                        onClose={closeSubmitDirectJobModal}
-                        onSubmit={confirmSubmitDirectJob}
-                        submitText="Submit Job"
-                        loading={modalLoading}
-                    >
-                        <p>Please provide any final comments for the client and confirm job completion.</p>
-                        <textarea
-                            value={submitDirectJobComment}
-                            onChange={(e) => setSubmitDirectJobComment(e.target.value)}
-                            placeholder="Optional: Add a comment for the client..."
-                            rows="4"
-                            style={{ width: '100%', padding: '8px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ccc' }}
-                        ></textarea>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                                type="checkbox"
-                                checked={submitDirectJobConfirmation}
-                                onChange={(e) => setSubmitDirectJobConfirmation(e.target.checked)}
-                            />
-                            I confirm that this direct upload job is complete and ready for client review.
-                        </label>
-                    </Modal>
-                )}
+            {/* Modal for Submitting Direct Upload Job (Transcriber's action) */}
+            {showSubmitDirectJobModal && (
+                <Modal
+                    show={showSubmitDirectJobModal}
+                    title="Submit Direct Upload Job"
+                    onClose={closeSubmitDirectJobModal}
+                    onSubmit={confirmSubmitDirectJob}
+                    submitText="Submit Job"
+                    loading={modalLoading}
+                >
+                    <p>Please provide any final comments for the client and confirm job completion.</p>
+                    <textarea
+                        value={submitDirectJobComment}
+                        onChange={(e) => setSubmitDirectJobComment(e.target.value)}
+                        placeholder="Optional: Add a comment for the client..."
+                        rows="4"
+                        style={{ width: '100%', padding: '8px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    ></textarea>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                            type="checkbox"
+                            checked={submitDirectJobConfirmation}
+                            onChange={(e) => setSubmitDirectJobConfirmation(e.target.checked)}
+                        />
+                        I confirm that this direct upload job is complete and ready for client review.
+                    </label>
+                </Modal>
+            )}
 
-                {/* NEW: Modal for Cancelling Direct Upload Job */}
-                {showCancelJobModal && (
-                    <Modal
-                        show={showCancelJobModal}
-                        title="Confirm Job Cancellation"
-                        onClose={closeCancelJobModal}
-                        onSubmit={confirmCancelDirectJob}
-                        submitText="Confirm Cancellation"
-                        loading={modalLoading}
-                        isDestructive={true} // Style as a destructive action
-                    >
-                        <p>Are you sure you want to cancel this job?</p>
-                        <p>This action will unassign the job from you and make it available for other transcribers to take.</p>
-                        <p className="modal-note" style={{ color: 'red' }}>This action cannot be undone for this job.</p>
-                    </Modal>
-                )}
+            {/* NEW: Modal for Cancelling Direct Upload Job */}
+            {showCancelJobModal && (
+                <Modal
+                    show={showCancelJobModal}
+                    title="Confirm Job Cancellation"
+                    onClose={closeCancelJobModal}
+                    onSubmit={confirmCancelDirectJob}
+                    submitText="Confirm Cancellation"
+                    loading={modalLoading}
+                    isDestructive={true} // Style as a destructive action
+                >
+                    <p>Are you sure you want to cancel this job?</p>
+                    <p>This action will unassign the job from you and make it available for other transcribers to take.</p>
+                    <p className="modal-note" style={{ color: 'red' }}>This action cannot be undone for this job.</p>
+                </Modal>
+            )}
 
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    isVisible={toast.isVisible}
-                    onClose={hideToast}
-                    duration={toast.type === 'error' ? 4000 : 3000}
-                />
-            </div> 
-        );
-    };
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={hideToast}
+                duration={toast.type === 'error' ? 4000 : 3000}
+            />
+        </div> 
+    );
+};
 
 export default TranscriberDirectUploadJobs;

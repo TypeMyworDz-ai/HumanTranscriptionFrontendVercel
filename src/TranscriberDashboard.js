@@ -12,10 +12,11 @@ const TranscriberDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [negotiations, setNegotiations] = useState([]); 
-  const [directUploadJobs, setDirectUploadJobs] = useState([]); 
+  // const [directUploadJobs, setDirectUploadJobs] = useState([]); // No longer needed as separate state
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [availableDirectJobsCount, setAvailableDirectJobsCount] = useState(0);
   const [activeDirectUploadJobsCount, setActiveDirectUploadJobsCount] = useState(0);
+  const [completedDirectUploadJobsCount, setCompletedDirectUploadJobsCount] = useState(0); // NEW: State for completed DU jobs count
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
@@ -103,7 +104,8 @@ const TranscriberDashboard = () => {
         fetch(`${BACKEND_API_URL}/api/transcriber/negotiations`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/all`, { 
+        // UPDATED: Call the history endpoint to get all direct upload jobs
+        fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/history`, { 
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -112,7 +114,15 @@ const TranscriberDashboard = () => {
       const directUploadData = await (directUploadResponse.ok ? directUploadResponse.json() : Promise.resolve({ jobs: [] }));
 
       setNegotiations(negotiationData.negotiations || []);
-      setDirectUploadJobs(directUploadData.jobs || []); 
+      // setDirectUploadJobs(directUploadData.jobs || []); // No longer needed as separate state
+
+      // NEW: Calculate active and completed direct upload jobs from the fetched history
+      const fetchedDirectUploadJobs = directUploadData.jobs || [];
+      const activeJobs = fetchedDirectUploadJobs.filter(job => job.status === 'taken' || job.status === 'in_progress');
+      const completedJobs = fetchedDirectUploadJobs.filter(job => job.status === 'completed' || job.status === 'client_completed');
+      
+      setActiveDirectUploadJobsCount(activeJobs.length);
+      setCompletedDirectUploadJobsCount(completedJobs.length);
 
     } catch (error) {
       console.error('Network error while fetching all transcriber jobs for counts:', error);
@@ -164,26 +174,7 @@ const TranscriberDashboard = () => {
     }
   }, [user?.id, setAvailableDirectJobsCount]);
 
-  const fetchActiveDirectUploadJobsCount = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token || !user?.id) return;
-
-    try {
-        const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs`, { 
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok && data.jobs) {
-            setActiveDirectUploadJobsCount(data.jobs.length);
-        } else {
-            console.error('TranscriberDashboard: Failed to fetch active direct upload jobs count:', data.error);
-            setActiveDirectUploadJobsCount(0);
-        }
-    } catch (error) {
-        console.error('Network error fetching active direct upload jobs count:', error);
-        setActiveDirectUploadJobsCount(0);
-    }
-  }, [user?.id, setActiveDirectUploadJobsCount]);
+  // REMOVED: fetchActiveDirectUploadJobsCount as it's now handled by fetchAllTranscriberJobsForCounts
 
 
   const handleSocketConnect = useCallback(async (socketInstance) => {
@@ -192,11 +183,11 @@ const TranscriberDashboard = () => {
         console.log(`TranscriberDashboard: Sent joinUserRoom event for userId: ${user.id}`);
         
         fetchAvailableDirectJobsCount();
-        fetchActiveDirectUploadJobsCount();
+        // fetchActiveDirectUploadJobsCount(); // REMOVED
     } else {
         console.warn('TranscriberDashboard: userId not provided in activeSocketState, cannot join user room.');
     }
-  }, [user?.id, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+  }, [user?.id, fetchAvailableDirectJobsCount]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
 
   const handleNegotiationUpdate = useCallback((data) => {
@@ -206,8 +197,8 @@ const TranscriberDashboard = () => {
     fetchTranscriberStatus();
     fetchTranscriberPaymentHistory();
     fetchAvailableDirectJobsCount();
-    fetchActiveDirectUploadJobsCount();
-  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+    // fetchActiveDirectUploadJobsCount(); // REMOVED
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
 
   const handleUnreadMessageCountUpdate = useCallback((data) => {
@@ -237,8 +228,8 @@ const TranscriberDashboard = () => {
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
       fetchAvailableDirectJobsCount();
-      fetchActiveDirectUploadJobsCount();
-  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+      // fetchActiveDirectUploadJobsCount(); // REMOVED
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
   const handleJobHired = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Job hired! (Negotiation)', data); 
@@ -247,16 +238,16 @@ const TranscriberDashboard = () => {
       fetchTranscriberStatus();
       fetchTranscriberPaymentHistory();
       fetchAvailableDirectJobsCount();
-      fetchActiveDirectUploadJobsCount();
-  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+      // fetchActiveDirectUploadJobsCount(); // REMOVED
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
   const handleNewDirectJobAvailable = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: New direct job available!!', data);
       showToast(data.message || `A new direct upload job is available!`, 'info');
       fetchAvailableDirectJobsCount();
-      fetchActiveDirectUploadJobsCount();
+      fetchAllTranscriberJobsForCounts(); // UPDATED: Call this to update active/completed counts
       playNotificationSound();
-  }, [showToast, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount, playNotificationSound]);
+  }, [showToast, fetchAvailableDirectJobsCount, fetchAllTranscriberJobsForCounts, playNotificationSound]); // UPDATED dependencies
 
   const handleDirectJobStatusUpdate = useCallback((data) => {
       console.log('TranscriberDashboard Real-time: Direct job status update! (General)', data);
@@ -264,8 +255,8 @@ const TranscriberDashboard = () => {
       fetchAvailableDirectJobsCount();
       fetchTranscriberStatus();
       fetchAllTranscriberJobsForCounts(); 
-      fetchActiveDirectUploadJobsCount();
-  }, [showToast, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchAllTranscriberJobsForCounts, fetchActiveDirectUploadJobsCount]);
+      // fetchActiveDirectUploadJobsCount(); // REMOVED
+  }, [showToast, fetchAvailableDirectJobsCount, fetchTranscriberStatus, fetchAllTranscriberJobsForCounts]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
   const handleDirectJobCompletedTranscriberSide = useCallback((data) => { 
     console.log('TranscriberDashboard Real-time: Direct job completed (Transcriber side)!', data);
@@ -274,8 +265,8 @@ const TranscriberDashboard = () => {
     fetchTranscriberStatus();
     fetchTranscriberPaymentHistory(); 
     fetchAvailableDirectJobsCount();
-    fetchActiveDirectUploadJobsCount();
-  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount]);
+    // fetchActiveDirectUploadJobsCount(); // REMOVED
+  }, [showToast, fetchAllTranscriberJobsForCounts, fetchTranscriberStatus, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount]); // REMOVED fetchActiveDirectUploadJobsCount from dependencies
 
 
   useEffect(() => {
@@ -314,7 +305,7 @@ const TranscriberDashboard = () => {
         fetchAllTranscriberJobsForCounts(), 
         fetchUnreadMessageCount().catch(e => { console.error("Error in fetchUnreadMessageCount:", e); return 0; }),
         fetchTranscriberPaymentHistory().catch(e => { console.error("Error in fetchTranscriberPaymentHistory:", e); return 0; }),
-        fetchActiveDirectUploadJobsCount().catch(e => { console.error("Error in fetchActiveDirectUploadJobsCount:", e); return 0; }),
+        // fetchActiveDirectUploadJobsCount().catch(e => { console.error("Error in fetchActiveDirectUploadJobsCount:", e); return 0; }), // REMOVED
         fetchAvailableDirectJobsCount().catch(e => { console.error("Error in fetchAvailableDirectJobsCount:", e); return 0; }),
     ];
 
@@ -359,7 +350,7 @@ const TranscriberDashboard = () => {
       socket.off('connect', onSocketConnect); 
       disconnectSocket();
     };
-  }, [isAuthReady, user?.id, navigate, logout, showToast, fetchAllTranscriberJobsForCounts, fetchUnreadMessageCount, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, fetchActiveDirectUploadJobsCount, playNotificationSound, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate, handleSocketConnect, updateUser, isAuthenticated, authLoading, user, handleDirectJobCompletedTranscriberSide]); // UPDATED: Added missing dependencies
+  }, [isAuthReady, user?.id, navigate, logout, showToast, fetchAllTranscriberJobsForCounts, fetchUnreadMessageCount, fetchTranscriberPaymentHistory, fetchAvailableDirectJobsCount, playNotificationSound, handleNegotiationUpdate, handleUnreadMessageCountUpdate, handleNewChatMessage, handleJobCompleted, handleJobHired, handleNewDirectJobAvailable, handleDirectJobStatusUpdate, handleSocketConnect, updateUser, isAuthenticated, authLoading, user, handleDirectJobCompletedTranscriberSide]); // UPDATED: Removed fetchActiveDirectUploadJobsCount from dependencies
 
 
   const handleLogout = useCallback(async () => {
@@ -389,7 +380,7 @@ const TranscriberDashboard = () => {
   const activeNegotiationCount = negotiations.filter(n => n.status === 'hired').length;
   
   const completedNegotiationJobsCount = negotiations.filter(n => n.status === 'completed').length;
-  const completedDirectUploadJobsCount = directUploadJobs.filter(d => d.status === 'completed' || d.status === 'client_completed').length;
+  // const completedDirectUploadJobsCount = directUploadJobs.filter(d => d.status === 'completed' || d.status === 'client_completed').length; // Now derived from state
   // Removed totalCompletedJobsCount and totalActiveJobsCount as they are no longer displayed in JSX
   // const totalCompletedJobsCount = completedNegotiationJobsCount + completedDirectUploadJobsCount;
   // const totalActiveJobsCount = activeNegotiationCount + activeDirectUploadJobsCount;
@@ -440,7 +431,7 @@ const TranscriberDashboard = () => {
                         </Link>
 
                         {/* NEW: Link to separate active direct upload jobs */}
-                        <Link to="/transcriber-direct-upload-jobs?status=active" className="dashboard-card">
+                        <Link to="/transcriber-direct-upload-jobs" className="dashboard-card">
                             <div className="card-icon">📝</div>
                             <h3>My DU Jobs ({activeDirectUploadJobsCount})</h3> 
                             <p>See direct upload jobs you're currently working on.</p>
@@ -454,7 +445,7 @@ const TranscriberDashboard = () => {
                         </Link>
 
                         {/* UPDATED: Link to separate completed direct upload jobs */}
-                        <Link to="/transcriber-direct-upload-jobs?status=completed" className="dashboard-card">
+                        <Link to="/transcriber-completed-direct-upload-jobs" className="dashboard-card"> {/* CORRECTED LINK */}
                             <div className="card-icon">✅</div>
                             <h3>My Completed DU Jobs ({completedDirectUploadJobsCount})</h3> 
                             <p>View your finished direct upload projects and earnings.</p>
