@@ -11,7 +11,10 @@ import { useAuth } from './contexts/AuthContext';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-// Helper function to format timestamp robustly for display
+/*
+// REMOVED: Helper function to format timestamp robustly for display
+// It is no longer used within this component's JSX after table column removals.
+// If DirectUploadJobCard needs it, it should define its own or import from a shared utility.
 const formatDisplayTimestamp = (isoTimestamp) => {
     if (!isoTimestamp) return 'N/A';
     try {
@@ -25,6 +28,7 @@ const formatDisplayTimestamp = (isoTimestamp) => {
         return 'Invalid Date';
     }
 };
+*/
 
 // --- Component Definition ---
 const TranscriberDirectUploadJobs = () => {
@@ -85,17 +89,24 @@ const TranscriberDirectUploadJobs = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            const directUploadData = await (directUploadResponse.ok ? directUploadResponse.json() : Promise.resolve({ jobs: [] }));
+            // FIX: Correctly define directUploadData before using it
+            let directUploadData = { jobs: [] };
+            if (directUploadResponse.ok) {
+                directUploadData = await directUploadResponse.json();
+            }
 
             const fetchedDirectUploadJobs = directUploadData.jobs || [];
             
             // The transcriber_earning will now be provided directly by the backend
             const typedDirectUploadJobs = fetchedDirectUploadJobs.map(job => {
+                // Log raw job object before mapping to debug missing fields
+                console.log(`[TranscriberDirectUploadJobs] Raw job data from backend for ID ${job.id}:`, job);
+
                 // Ensure transcriber_earning is parsed as a float
                 const transcriberEarning = parseFloat(job.transcriber_earning) || 0; 
-                console.log(`[TranscriberDirectUploadJobs] Job ${job.id}: quote_amount=${job.quote_amount}, transcriber_earning=${transcriberEarning}`);
+                console.log(`[TranscriberDirectUploadJobs] Job ${job.id}: quote_amount=${job.quote_amount}, raw transcriber_earning=${job.transcriber_earning}, parsed transcriber_earning=${transcriberEarning}`);
 
-                return {
+                const mappedJob = {
                     ...job,
                     jobType: 'direct_upload',
                     client_name: job.client?.full_name || 'Unknown Client',
@@ -103,38 +114,37 @@ const TranscriberDirectUploadJobs = () => {
                     agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
                     deadline_hours: job.agreed_deadline_hours,
                     file_name: job.file_name,
+                    // Ensure these are explicitly mapped from backend response
                     completed_on: job.completed_at || job.client_completed_at, 
                     transcriber_comment: job.transcriber_comment, 
                     client_feedback_comment: job.client_feedback_comment,
                     client_feedback_rating: job.client_feedback_rating,
                     transcriber_earning: transcriberEarning // EXPECTED: Transcriber's actual earning from backend
                 };
+                console.log(`[TranscriberDirectUploadJobs] Mapped job data for ID ${job.id}:`, mappedJob);
+                return mappedJob;
             });
 
 
             setDirectUploadJobs(typedDirectUploadJobs); 
 
-            console.log("TranscriberDirectUploadJobs: Fetched Direct Upload Jobs:", typedDirectUploadJobs.map(j => ({
+            // Consolidated logging for overall fetched jobs
+            console.log("TranscriberDirectUploadJobs: Fetched Direct Upload Jobs (summary):", typedDirectUploadJobs.map(j => ({
                 id: j.id,
                 status: j.status,
-                jobType: j.jobType,
-                clientName: j.client_name,
-                clientRating: j.client_average_rating,
-                agreedPrice: j.agreed_price_usd,
-                earning: j.transcriber_earning, // Log earning
-                deadline: j.deadline_hours,
+                earning: j.transcriber_earning,
                 completedOn: j.completed_on,
-                transcriberComment: j.transcriber_comment, 
-                clientFeedbackComment: j.client_feedback_comment, 
-                clientFeedbackRating: j.client_feedback_rating 
+                transcriberComment: j.transcriber_comment,
+                clientFeedbackComment: j.client_feedback_comment,
+                clientFeedbackRating: j.client_feedback_rating
             })));
 
             if (typedDirectUploadJobs.length === 0) {
-                showToast('No direct upload jobs found.', 'info');
+                showToast('No direct upload jobs found.ᐟ', 'info');
             }
         } catch (error) {
             console.error("Network error while fetching direct upload jobs:", error);
-            showToast('Network error while fetching direct upload jobs.', 'error');
+            showToast('Network error while fetching direct upload jobs.ᐟ', 'error');
         } finally {
             setLoading(false);
         }
@@ -185,7 +195,7 @@ const TranscriberDirectUploadJobs = () => {
                 if (job.id === relatedJobId) {
                     return {
                         ...job,
-                        last_message_text: data.message || 'New file uploaded.', 
+                        last_message_text: data.message || 'New Message, Check.', // MODIFIED: Changed default message
                         last_message_timestamp: new Date().toISOString(),
                     };
                 }
@@ -259,11 +269,11 @@ const TranscriberDirectUploadJobs = () => {
     }, []);
 
     const handleDeleteJob = useCallback(async (jobId, jobType) => { 
-        if (!window.confirm('Are you sure you want to delete this job from your list? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to delete this job from your list? This action cannot be undone.ᐟ')) {
             return;
         }
         if (jobType !== 'direct_upload') { 
-            showToast('Only direct upload jobs can be deleted from this view.', 'error');
+            showToast('Only direct upload jobs can be deleted from this view.ᐟ', 'error');
             return;
         }
 
@@ -285,25 +295,25 @@ const TranscriberDirectUploadJobs = () => {
 
             const data = await response.json();
             if (response.ok) {
-                showToast('Direct upload job deleted successfully!', 'success');
+                showToast('Direct upload job deleted successfully!ᐟ', 'success');
                 fetchDirectUploadJobs(); 
             } else {
-                showToast(data.error || 'Failed to delete direct upload job', 'error');
+                showToast(data.error || 'Failed to delete direct upload job.ᐟ', 'error');
             }
         } catch (error) {
-            showToast('Network error. Please try again.', 'error');
+            showToast('Network error. Please try again.ᐟ', 'error');
         }
     }, [showToast, fetchDirectUploadJobs, logout]);
 
     const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { 
         const token = localStorage.getItem('token');
         if (!token) {
-            showToast('Authentication token missing. Please log in again.', 'error');
+            showToast('Authentication token missing. Please log in again.ᐟ', 'error');
             logout();
             return;
         }
         if (jobType !== 'direct_upload') { 
-            showToast('Only direct upload job files can be downloaded from this view.', 'error');
+            showToast('Only direct upload job files can be downloaded from this view.ᐟ', 'error');
             return;
         }
 
@@ -327,14 +337,14 @@ const TranscriberDirectUploadJobs = () => {
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(url);
-                showToast(`Downloading ${fileName}...`, 'success');
+                showToast(`Downloading ${fileName}...ᐟ`, 'success');
             } else {
                 const errorData = await response.json();
-                showToast(errorData.error || `Failed to download ${fileName}.`, 'error');
+                showToast(errorData.error || `Failed to download ${fileName}.ᐟ`, 'error');
             }
         } catch (error) {
             console.error('Network error during file download:', error);
-            showToast('Network error during file download. Please try again.', 'error');
+            showToast('Network error during file download. Please try again.ᐟ', 'error');
         }
     }, [showToast, logout]);
 
@@ -381,15 +391,15 @@ const TranscriberDirectUploadJobs = () => {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(data.message || 'Job successfully cancelled and returned to available jobs.', 'success');
+                showToast(data.message || 'Job successfully cancelled and returned to available jobs.ᐟ', 'success');
                 closeCancelJobModal();
                 fetchDirectUploadJobs(); // Re-fetch to update the list
             } else {
-                showToast(data.error || 'Failed to cancel job.', 'error');
+                showToast(data.error || 'Failed to cancel job.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error cancelling direct upload job:', error);
-            showToast('Network error while cancelling direct upload job.', 'error');
+            showToast('Network error while cancelling direct upload job.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
@@ -399,7 +409,7 @@ const TranscriberDirectUploadJobs = () => {
     // --- API Action to Submit Direct Upload Job ---
     const confirmSubmitDirectJob = useCallback(async () => {
         if (!submitDirectJobConfirmation) {
-            showToast('Please confirm that you are sure the job is complete.', 'error');
+            showToast('Please confirm that you are sure the job is complete.ᐟ', 'error');
             return;
         }
         setModalLoading(true);
@@ -418,15 +428,15 @@ const TranscriberDirectUploadJobs = () => {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(data.message || 'Direct upload job submitted successfully! Waiting for client review.', 'success');
+                showToast(data.message || 'Direct upload job submitted successfully! Waiting for client review.ᐟ', 'success');
                 closeSubmitDirectJobModal();
                 fetchDirectUploadJobs(); 
             } else {
-                showToast(data.error || 'Failed to submit direct upload job.', 'error');
+                showToast(data.error || 'Failed to submit direct upload job.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error submitting direct upload job:', error);
-            showToast('Network error while submitting direct upload job.', 'error');
+            showToast('Network error while submitting direct upload job.ᐟ', 'error');
         } finally {
             setModalLoading(false);
         }
@@ -450,7 +460,7 @@ const TranscriberDirectUploadJobs = () => {
     let pageTitle = "My Direct Upload Jobs";
     let pageDescription = "Manage your assigned direct upload transcription projects.";
     let listSubtitle = "All Direct Upload Jobs";
-    let emptyMessage = "No direct upload jobs found.";
+    let emptyMessage = "No direct upload jobs found.ᐟ";
 
     if (statusFilter === 'active') {
         displayedJobs = directUploadJobs.filter(job =>
@@ -459,21 +469,21 @@ const TranscriberDirectUploadJobs = () => {
         pageTitle = "My DU Jobs";
         pageDescription = "Track the progress of your assigned direct upload transcription jobs and communicate with clients.";
         listSubtitle = "Currently Assigned Direct Upload Jobs";
-        emptyMessage = "No active direct upload jobs assigned to you.";
+        emptyMessage = "No active direct upload jobs assigned to you.ᐟ";
     } else if (statusFilter === 'completed') {
         displayedJobs = directUploadJobs.filter(job =>
             job.status === 'completed' || job.status === 'client_completed'
         );
-        pageTitle = "My Completed Direct Upload Jobs";
+        pageTitle = "My Completed DU Jobs"; // UPDATED: Page Title
         pageDescription = "Review your finished direct upload transcription projects and earnings.";
         listSubtitle = "Completed Direct Upload Jobs";
-        emptyMessage = "No completed direct upload jobs yet.";
+        emptyMessage = "No completed direct upload jobs yet.ᐟ";
     } else { 
         displayedJobs = directUploadJobs; 
         pageTitle = "All Direct Upload Jobs";
         pageDescription = "View all direct upload jobs you have interacted with.";
         listSubtitle = "All Direct Upload Jobs";
-        emptyMessage = "No direct upload jobs found.";
+        emptyMessage = "No direct upload jobs found.ᐟ";
     }
 
 
@@ -514,13 +524,8 @@ const TranscriberDirectUploadJobs = () => {
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Client</th>
-                                            <th>Your Pay (USD)</th> {/* UPDATED: Column heading */}
                                             <th>Deadline</th>
                                             <th>Status</th>
-                                            <th>Completed On</th>
-                                            <th>Your Comment</th>
-                                            <th>Client Feedback</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -535,54 +540,19 @@ const TranscriberDirectUploadJobs = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>USD {job.transcriber_earning?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: Display job.transcriber_earning */}
                                                 <td>{job.deadline_hours} hours</td>
                                                 <td>
                                                     <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
                                                         {getStatusText(job.status)}
                                                     </span>
                                                 </td>
-                                                <td>{formatDisplayTimestamp(job.completed_on)}</td>
-                                                <td>{job.transcriber_comment || 'N/A'}</td>
-                                                <td>
-                                                    {job.client_feedback_comment || 'N/A'}
-                                                    {job.client_feedback_rating > 0 && (
-                                                        <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                            {'★'.repeat(job.client_feedback_rating)})
-                                                        </span>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        {job.file_name && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDownloadFile(job.id, job.file_name, job.jobType);
-                                                                }}
-                                                                className="action-btn download-btn"
-                                                                title="Download File"
-                                                            >
-                                                                ⬇️
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteJob(job.id, job.jobType);
-                                                            }}
-                                                            className="action-btn delete-btn"
-                                                            title="Delete Job"
-                                                        >
-                                                            🗑️
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        ) : ( 
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        ) : (
                             <div className="direct-upload-jobs-list">
                                 {displayedJobs.length === 0 ? (
                                     <p>{emptyMessage}</p>
@@ -595,8 +565,8 @@ const TranscriberDirectUploadJobs = () => {
                                             onDownloadFile={handleDownloadFile}
                                             openSubmitDirectJobModal={openSubmitDirectJobModal}
                                             canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
-                                            openCancelJobModal={openCancelJobModal} // NEW: Pass openCancelJobModal
-                                            canCancelDirectJob={job.status === 'taken' || job.status === 'in_progress'} // NEW: Pass canCancelDirectJob
+                                            openCancelJobModal={openCancelJobModal}
+                                            canCancelDirectJob={job.status === 'taken' || job.status === 'in_progress'}
                                             getStatusColor={getStatusColor}
                                             getStatusText={getStatusText}
                                             showToast={showToast}
@@ -663,7 +633,7 @@ const TranscriberDirectUploadJobs = () => {
                     onClose={hideToast}
                     duration={toast.type === 'error' ? 4000 : 3000}
                 />
-            </div >
+            </div> 
         );
     };
 

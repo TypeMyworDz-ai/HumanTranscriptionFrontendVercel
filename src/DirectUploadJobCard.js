@@ -28,8 +28,8 @@ const DirectUploadJobCard = ({
   currentUserType,
   openSubmitDirectJobModal, // Specific to transcriber submitting a direct job
   canSubmitDirectJob, // Specific to transcriber submitting a direct job
-  openCancelJobModal, // NEW: Specific to transcriber cancelling a direct job
-  canCancelDirectJob, // NEW: Specific to transcriber cancelling a direct job
+  openCancelJobModal, // Specific to transcriber cancelling a direct job
+  canCancelDirectJob, // Specific to transcriber cancelling a direct job
   openCompleteJobModal, // Specific to client marking a direct job complete
   onDownloadFile,
   clientAverageRating, // Client's own average rating (for client view)
@@ -77,11 +77,13 @@ const DirectUploadJobCard = ({
   const isTranscriber = currentUserType === 'transcriber';
   const isClient = currentUserType === 'client';
 
+  // UPDATED: Chat is available if a transcriber is assigned (for client)
+  // or if the job is not 'available_for_transcriber' (for transcriber)
   const canChat = (isClient && transcriber_id) || (isTranscriber && status !== 'available_for_transcriber');
 
   const handleChatClick = () => {
     if (!canChat) {
-      showToast('Chat is not available for this job yet.', 'info');
+      showToast('Chat is not available for this job yet.ᐟ', 'info');
       return;
     }
     // Navigate to chat, assuming a route like /chat/direct-upload/:jobId
@@ -153,7 +155,7 @@ const DirectUploadJobCard = ({
         {/* Chat Button (Conditional) */}
         {canChat && (
           <button onClick={handleChatClick} className="action-btn chat-btn">
-            Chat
+            {isTranscriber ? 'Chat and Upload your Work' : 'Chat'} {/* UPDATED: Button Text */}
           </button>
         )}
 

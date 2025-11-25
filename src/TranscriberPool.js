@@ -65,14 +65,17 @@ const TranscriberPool = () => {
 
       const data = await response.json();
       if (response.ok) {
-        const validTranscribers = data.transcribers.filter(transcriber =>
-          transcriber &&
-          transcriber.users &&
-          transcriber.users.full_name &&
-          typeof transcriber.users.full_name === 'string' &&
-          transcriber.id
+        // Filter out transcribers that are not truly available based on backend logic
+        const trulyAvailableTranscribers = data.transcribers.filter(transcriber =>
+            transcriber &&
+            transcriber.users &&
+            transcriber.users.full_name &&
+            typeof transcriber.users.full_name === 'string' &&
+            transcriber.id
+            // The backend's getAvailableTranscribers function now correctly filters by is_online and current_job_id
+            // So no additional filtering is strictly needed here unless frontend specific logic is required.
         );
-        setTranscribers(validTranscribers);
+        setTranscribers(trulyAvailableTranscribers);
       } else {
         showToast(data.error || 'Failed to load transcribers', 'error');
       }
@@ -413,7 +416,7 @@ const TranscriberPool = () => {
                   placeholder="Describe your transcription project, special requirements, audio quality, etc."
                   rows="4"
                   required
-                />
+                ></textarea>
               </div>
 
               <div className="form-group">
