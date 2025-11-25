@@ -99,8 +99,8 @@ const ClientJobs = () => {
             'taken': 'Taken by Transcriber',
             'in_progress': 'In Progress',
             'cancelled': 'Cancelled',
-            'completed': 'Completed by Transcriber',
-            'client_completed': 'Completed by Client'
+            'completed': 'Submitted For Review', // Changed text for clarity
+            'client_completed': 'Completed By Client'
         };
         return texts[status] || status.replace(/_/g, ' ');
     }, []);
@@ -143,11 +143,12 @@ const ClientJobs = () => {
 
             if (directUploadJobsResponse.ok) {
                 const fetchedDirectUploadJobs = directUploadJobsData.jobs || [];
+                // UPDATED: Exclude 'client_completed' jobs from the active list
                 const activeDirectUploadJobs = fetchedDirectUploadJobs.filter(d =>
                     d.status === 'available_for_transcriber' ||
                     d.status === 'taken' ||
                     d.status === 'in_progress' ||
-                    d.status === 'completed' // This status is included in active jobs
+                    d.status === 'completed' // This status is included for client to review/mark complete
                 );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeDirectUploadJobs];
             } else {
@@ -177,7 +178,8 @@ const ClientJobs = () => {
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
         const jobId = data.negotiationId || data.jobId;
-        showToast(`Job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
+        // UPDATED: Make toast message more informative
+        showToast(data.message || `Job status updated for ID: ${jobId?.substring(0, 8)}. New status: ${data.newStatus || 'unknown'}.`, 'info');
         fetchClientJobs();
     }, [showToast, fetchClientJobs]);
 
@@ -218,12 +220,17 @@ const ClientJobs = () => {
 
         const socket = connectSocket(user.id);
         if (socket) {
-            socket.on('job_completed', handleJobUpdate);
-            socket.on('direct_job_completed', handleJobUpdate);
-            socket.on('negotiation_cancelled', handleJobUpdate);
-            socket.on('direct_job_taken', handleJobUpdate);
-            socket.on('payment_successful', handleJobUpdate);
+            socket.on('job_completed', handleJobUpdate); // For negotiation jobs completed by transcriber
+            socket.on('direct_job_completed', handleJobUpdate); // For direct upload jobs completed by transcriber
+            socket.on('negotiation_cancelled', handleJobUpdate); // For negotiation jobs cancelled
+            socket.on('direct_job_taken', handleJobUpdate); // For direct upload jobs taken by transcriber
+            socket.on('payment_successful', handleJobUpdate); // For successful payment
             socket.on('newChatMessage', handleNewChatMessageForActiveJobs);
+            // NEW: Add listeners for direct upload specific events
+            socket.on('direct_job_client_completed_client_side', handleJobUpdate); // When client marks DU job as complete
+            socket.on('direct_job_cancelled', handleJobUpdate); // When transcriber cancels a DU job
+            socket.on('direct_upload_job_available_again', handleJobUpdate); // When a DU job becomes available again after cancellation
+
 
             console.log('ClientJobs: Socket listeners attached for active jobs.');
         }
@@ -237,6 +244,10 @@ const ClientJobs = () => {
                 socket.off('direct_job_taken', handleJobUpdate);
                 socket.off('payment_successful', handleJobUpdate);
                 socket.off('newChatMessage', handleNewChatMessageForActiveJobs);
+                // NEW: Remove listeners for direct upload specific events
+                socket.off('direct_job_client_completed_client_side', handleJobUpdate);
+                socket.off('direct_job_cancelled', handleJobUpdate);
+                socket.off('direct_upload_job_available_again', handleJobUpdate);
                 disconnectSocket();
             }
         };
@@ -454,6 +465,26 @@ const ClientJobs = () => {
                         // UPDATED: Use POST method for KoraPay direct upload verification
                         if (jobType === 'negotiation') {
                             verifyEndpoint = `${BACKEND_API_URL}/api/negotiations/${jobId}/payment/verify/${data.reference}?paymentMethod=korapay`;
+                            // Fallback for negotiation KoraPay verification (if still GET)
+                            const verifyResponse = await fetch(verifyEndpoint, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+                            const verifyData = await verifyResponse.json();
+                            if (verifyResponse.ok && verifyData.message.includes('Payment verified')) {
+                                showToast('Payment verified! Your job is now active.', 'success');
+                                await updateUser(); // Update AuthContext user state
+                                await checkAuth(); // Re-fetch auth status
+                                setTimeout(() => {
+                                    navigate('/client-dashboard'); // Redirect to dashboard
+                                }, 2000);
+                            } else {
+                                showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
+                                setModalLoading(false);
+                                setShowPaymentSelectionModal(false);
+                            }
                         } else if (jobType === 'direct_upload') {
                             // This endpoint expects a POST request
                             const verifyResponse = await fetch(`${BACKEND_API_URL}/api/direct-uploads/payment/verify-korapay`, {
@@ -469,45 +500,20 @@ const ClientJobs = () => {
 
                             if (verifyResponse.ok && verifyData.message && verifyData.message.includes('Payment verified')) {
                                 showToast('Payment verified! Your job is now active.', 'success');
-                                await updateUser(); // Update AuthContext user state
-                                await checkAuth(); // Re-fetch auth status
-                                setTimeout(() => {
-                                    navigate('/client-dashboard'); // Redirect to dashboard
-                                }, 2000);
+                                // UPDATED: Instead of redirecting, just re-fetch jobs and close modal
+                                fetchClientJobs(); // Re-fetch jobs to update status on current page
+                                setModalLoading(false);
+                                setShowPaymentSelectionModal(false); // Close payment modal
                             } else {
                                 showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
                                 setModalLoading(false);
                                 setShowPaymentSelectionModal(false);
                             }
-                            return; // Exit here if direct_upload KoraPay is handled
                         } else {
                             showToast('Unknown job type for KoraPay verification.', 'error');
                             setModalLoading(false);
                             setShowPaymentSelectionModal(false);
                             return;
-                        }
-
-                        // Fallback for negotiation KoraPay verification (if still GET)
-                        const verifyResponse = await fetch(verifyEndpoint, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-
-                        const verifyData = await verifyResponse.json();
-
-                        if (verifyResponse.ok && verifyData.message.includes('Payment verified')) {
-                            showToast('Payment verified! Your job is now active.', 'success');
-                            await updateUser(); // Update AuthContext user state
-                            await checkAuth(); // Re-fetch auth status
-                            setTimeout(() => {
-                                navigate('/client-dashboard'); // Redirect to dashboard
-                            }, 2000);
-                        } else {
-                            showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
-                            setModalLoading(false);
-                            setShowPaymentSelectionModal(false);
                         }
                     } catch (verifyError) {
                         console.error('[ClientJobs] Error verifying KoraPay payment:', verifyError);
@@ -529,7 +535,7 @@ const ClientJobs = () => {
             setModalLoading(false);
             setShowPaymentSelectionModal(false);
         }
-    }, [showToast, navigate, updateUser, checkAuth]);
+    }, [showToast, navigate, updateUser, checkAuth, fetchClientJobs]); // Added fetchClientJobs to dependencies
 
 
     const handleProceedToPayment = useCallback(async (job) => {
@@ -554,7 +560,7 @@ const ClientJobs = () => {
         }
         // Validate mobile number if KoraPay is selected
         if (selectedPaymentMethod === 'korapay' && !mobileNumber.trim()) {
-            showToast('Please enter your mobile number for KoraPay payment.', 'error');
+            showToast('Please enter your mobile number for KoraPay payment.ᐟ', 'error');
             return;
         }
 
@@ -576,7 +582,7 @@ const ClientJobs = () => {
             paymentApiUrl = `${BACKEND_API_URL}/api/direct-uploads/${jobToPayFor.id}/payment/initialize`;
             amountToSend = jobToPayFor.quote_amount;
         } else {
-            showToast('Unknown job type for payment initiation.', 'error');
+            showToast('Unknown job type for payment initiation.ᐟ', 'error');
             setModalLoading(false);
             return;
         }
@@ -606,21 +612,21 @@ const ClientJobs = () => {
 
             if (response.ok) {
                 if (selectedPaymentMethod === 'paystack' && data.data?.authorization_url) {
-                    showToast('Redirecting to Paystack...', 'info');
+                    showToast('Redirecting to Paystack...ᐟ', 'info');
                     window.location.href = data.data.authorization_url;
                 } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
-                    showToast('Opening KoraPay payment modal...', 'info');
+                    showToast('Opening KoraPay payment modal...ᐟ', 'info');
                     await handleKorapayPayment(data.korapayData, jobToPayFor.id, jobType); // Pass job ID and type for verification
                 } else {
-                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.', 'error');
+                    showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.ᐟ', 'error');
                     setModalLoading(false);
                 }
             } else {
-                showToast(data.error || 'Failed to initiate payment. Please try again.', 'error');
+                showToast(data.error || 'Failed to initiate payment. Please try again.ᐟ', 'error');
             }
         } catch (error) {
             console.error('Error initiating payment:', error);
-            showToast('Network error while initiating payment. Please try again.', 'error');
+            showToast('Network error while initiating payment. Please try again.ᐟ', 'error');
             setModalLoading(false);
         } finally {
             // Handled within callbacks

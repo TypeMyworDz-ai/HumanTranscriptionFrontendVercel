@@ -134,14 +134,24 @@ const TranscriberOtherJobs = () => {
             fetchAvailableJobs(); // Refresh the list to remove the taken job
         };
 
+        // NEW: Handle when a direct upload job becomes available again (e.g., transcriber cancelled)
+        const handleDirectUploadJobAvailableAgain = (data) => {
+            console.log('TranscriberOtherJobs Real-time: Direct upload job available again!', data);
+            showToast(data.message || `Direct job ${data.jobId?.substring(0, 8)}... is available again!`, 'info');
+            fetchAvailableJobs(); // Refresh the list to include the newly available job
+        };
+
+
         socket.on('new_direct_job_available', handleNewDirectJobAvailable);
         socket.on('direct_job_status_update', handleDirectJobStatusUpdate);
         socket.on('direct_upload_job_taken', handleDirectJobTaken);
+        socket.on('direct_upload_job_available_again', handleDirectUploadJobAvailableAgain); // NEW: Listener
 
         return () => {
             socket.off('new_direct_job_available', handleNewDirectJobAvailable);
             socket.off('direct_job_status_update', handleDirectJobStatusUpdate);
             socket.off('direct_upload_job_taken', handleDirectJobTaken);
+            socket.off('direct_upload_job_available_again', handleDirectUploadJobAvailableAgain); // NEW: Cleanup
         };
     }, [user?.id, isAuthenticated, fetchAvailableJobs, showToast]);
 
@@ -286,7 +296,8 @@ const TranscriberOtherJobs = () => {
                                     <col style={{ width: '8%' }} />
                                     <col style={{ width: '6%' }} />
                                     <col style={{ width: '6%' }} />
-                                    <col style={{ width: 8 }} />
+                                    <col style={{ width: '8%' }} /> {/* Adjusted width for Requirements */}
+                                    <col style={{ width: '10%' }} />
                                     <col style={{ width: '10%' }} />
                                     <col style={{ width: '10%' }} />
                                 </colgroup>

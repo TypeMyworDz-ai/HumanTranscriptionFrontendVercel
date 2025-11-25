@@ -53,7 +53,7 @@ const ClientCompletedJobs = () => {
             });
             const negotiationData = await (negotiationResponse.ok ? negotiationResponse.json() : Promise.resolve({ negotiations: [] }));
             const fetchedNegotiations = negotiationData.negotiations || [];
-            const completedNegotiationJobs = fetchedNegotiations.filter(n => n.status === 'completed');
+            const completedNegotiationJobs = fetchedNegotiations.filter(n => n.status === 'completed' || n.status === 'client_completed'); // Include client_completed for consistency
 
             // Fetch client-completed direct upload jobs
             const directUploadResponse = await fetch(`${BACKEND_API_URL}/api/client/direct-jobs`, {
@@ -65,41 +65,57 @@ const ClientCompletedJobs = () => {
 
             // Combine and add jobType identifier
             const combinedJobs = [
-                ...completedNegotiationJobs.map(job => ({
-                    ...job,
-                    jobType: 'negotiation',
-                    transcriber_name: job.transcriber_info?.full_name || 'Unknown Transcriber',
-                    transcriber_rating: job.transcriber_info?.transcriber_average_rating || 0,
-                    agreed_price_usd: job.agreed_price_usd,
-                    deadline_hours: job.deadline_hours,
-                    requirements: job.requirements,
-                    file_name: job.negotiation_files
-                })),
-                ...clientCompletedDirectUploadJobs.map(job => ({
-                    ...job,
-                    jobType: 'direct_upload',
-                    transcriber_name: job.transcriber?.full_name || 'Unknown Transcriber',
-                    transcriber_rating: job.transcriber?.transcriber_average_rating || 0,
-                    agreed_price_usd: job.quote_amount,
-                    deadline_hours: job.agreed_deadline_hours,
-                    requirements: job.client_instructions,
-                    file_name: job.file_name
-                }))
+                ...completedNegotiationJobs.map(job => {
+                    console.log(`[ClientCompletedJobs] Raw Negotiation Job Data for ID ${job.id}:`, job);
+                    const mappedJob = {
+                        ...job,
+                        jobType: 'negotiation',
+                        transcriber_name: job.transcriber_info?.full_name || 'Unknown Transcriber',
+                        transcriber_rating: job.transcriber_info?.transcriber_average_rating || 0,
+                        agreed_price_usd: job.agreed_price_usd,
+                        deadline_hours: job.deadline_hours,
+                        requirements: job.requirements,
+                        file_name: job.negotiation_files,
+                        // Ensure completed_at and client_completed_at are correctly mapped
+                        completed_at: job.completed_at || job.client_completed_at,
+                        client_feedback_comment: job.client_feedback_comment,
+                        client_feedback_rating: job.client_feedback_rating
+                    };
+                    console.log(`[ClientCompletedJobs] Mapped Negotiation Job Data for ID ${job.id}:`, mappedJob);
+                    return mappedJob;
+                }),
+                ...clientCompletedDirectUploadJobs.map(job => {
+                    console.log(`[ClientCompletedJobs] Raw Direct Upload Job Data for ID ${job.id}:`, job);
+                    const mappedJob = {
+                        ...job,
+                        jobType: 'direct_upload',
+                        transcriber_name: job.transcriber?.full_name || 'Unknown Transcriber',
+                        transcriber_rating: job.transcriber?.transcriber_average_rating || 0,
+                        agreed_price_usd: job.quote_amount,
+                        deadline_hours: job.agreed_deadline_hours,
+                        requirements: job.client_instructions,
+                        file_name: job.file_name,
+                        // Ensure completed_at and client_completed_at are correctly mapped
+                        completed_at: job.completed_at || job.client_completed_at,
+                        client_feedback_comment: job.client_feedback_comment,
+                        client_feedback_rating: job.client_feedback_rating
+                    };
+                    console.log(`[ClientCompletedJobs] Mapped Direct Upload Job Data for ID ${job.id}:`, mappedJob);
+                    return mappedJob;
+                })
             ];
 
-            console.log("ClientCompletedJobs: Combined Completed Jobs:", combinedJobs.map(j => ({
+            // Consolidated logging for overall fetched jobs
+            console.log("ClientCompletedJobs: Combined Completed Jobs (summary):", combinedJobs.map(j => ({
                 id: j.id,
                 status: j.status,
                 jobType: j.jobType,
-                completed_at: j.completed_at || j.client_completed_at,
+                completed_at: j.completed_at, // Use the mapped completed_at directly
                 client_feedback_comment: j.client_feedback_comment,
                 client_feedback_rating: j.client_feedback_rating,
-                transcriber_name: j.transcriber_name, // Now correctly mapped
-                transcriber_rating: j.transcriber_rating, // Now correctly mapped
-                agreed_price_usd: j.agreed_price_usd,
-                deadline_hours: j.deadline_hours,
-                requirements: j.requirements,
-                file_name: j.file_name
+                transcriber_name: j.transcriber_name,
+                transcriber_rating: j.transcriber_rating,
+                agreed_price_usd: j.agreed_price_usd
             })));
 
             setCompletedJobs(prevJobs => {
@@ -292,7 +308,7 @@ const ClientCompletedJobs = () => {
                 <div className="client-completed-jobs-content">
                     <div className="page-header">
                         <div className="header-text">
-                            <h2>Your Finished Transcription Projects</h2>
+                            <h2 dangerouslySetInnerHTML={{ __html: 'Your Finished Transcription Projects' }}></h2>
                             <p>Review your completed jobs and provide valuable feedback to transcribers.</p>
                         </div>
                         <Link to="/client-dashboard" className="back-to-dashboard-btn">
@@ -327,7 +343,7 @@ const ClientCompletedJobs = () => {
                                                 {job.transcriber_name || 'N/A'} {/* Display transcriber name */}
                                                 {job.transcriber_rating > 0 && (
                                                     <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                        ({'★'.repeat(Math.floor(job.transcriber_rating))} {(job.transcriber_rating).toFixed(1)})
+                                                        {'★'.repeat(Math.floor(job.transcriber_rating))} {(job.transcriber_rating).toFixed(1)})
                                                     </span>
                                                 )}
                                             </td>
@@ -338,12 +354,12 @@ const ClientCompletedJobs = () => {
                                                     {getStatusText(job.status)}
                                                 </span>
                                             </td>
-                                            <td>{formatDisplayTimestamp(job.completed_at || job.client_completed_at)}</td>
+                                            <td>{formatDisplayTimestamp(job.completed_at)}</td> {/* Use job.completed_at directly */}
                                             <td>
                                                 {job.client_feedback_comment || 'N/A'}
                                                 {job.client_feedback_rating > 0 && (
                                                     <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                        ({'★'.repeat(job.client_feedback_rating)})
+                                                        {'★'.repeat(job.client_feedback_rating)})
                                                     </span>
                                                 )}
                                             </td>

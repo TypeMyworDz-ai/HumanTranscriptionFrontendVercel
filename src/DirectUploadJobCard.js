@@ -28,6 +28,8 @@ const DirectUploadJobCard = ({
   currentUserType,
   openSubmitDirectJobModal, // Specific to transcriber submitting a direct job
   canSubmitDirectJob, // Specific to transcriber submitting a direct job
+  openCancelJobModal, // NEW: Specific to transcriber cancelling a direct job
+  canCancelDirectJob, // NEW: Specific to transcriber cancelling a direct job
   openCompleteJobModal, // Specific to client marking a direct job complete
   onDownloadFile,
   clientAverageRating, // Client's own average rating (for client view)
@@ -201,6 +203,17 @@ const DirectUploadJobCard = ({
             className="action-btn submit-btn"
           >
             Submit Work
+          </button>
+        )}
+
+        {/* NEW: Transcriber Cancel Job Button */}
+        {isTranscriber && (job.status === 'taken' || job.status === 'in_progress') && canCancelDirectJob && (
+          <button
+            onClick={() => openCancelJobModal(id)}
+            className="action-btn cancel-btn"
+            title="Cancel Job"
+          >
+            Cancel Job
           </button>
         )}
 

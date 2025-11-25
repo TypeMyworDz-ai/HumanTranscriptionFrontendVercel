@@ -47,6 +47,10 @@ const TranscriberDirectUploadJobs = () => {
     const [selectedJobId, setSelectedJobId] = useState(null); // The ID of the job to be submitted
     const [modalLoading, setModalLoading] = useState(false);
 
+    // NEW: State for Cancel Job Modal
+    const [showCancelJobModal, setShowCancelJobModal] = useState(false);
+    const [jobToCancelId, setJobToCancelId] = useState(null);
+
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({
@@ -164,7 +168,7 @@ const TranscriberDirectUploadJobs = () => {
     const handleJobUpdate = useCallback((data) => {
         console.log('TranscriberDirectUploadJobs Real-time: Job update received! Triggering re-fetch for list cleanup.', data);
         const jobId = data.jobId; 
-        showToast(`Direct upload job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
+        showToast(data.message || `Direct upload job status updated for ID: ${jobId?.substring(0, 8)}.`, 'info');
         fetchDirectUploadJobs(); 
     }, [showToast, fetchDirectUploadJobs]);
 
@@ -208,6 +212,7 @@ const TranscriberDirectUploadJobs = () => {
             socket.on('direct_job_client_completed', handleJobUpdate);
             socket.on('direct_job_completed_transcriber_side', handleJobUpdate); 
             socket.on('newChatMessage', handleNewChatMessageForDirectUploadJobs);
+            socket.on('direct_job_cancelled', handleJobUpdate); // NEW: Listen for transcriber cancellation event
 
             console.log('TranscriberDirectUploadJobs: Socket listeners attached.');
         }
@@ -221,6 +226,7 @@ const TranscriberDirectUploadJobs = () => {
                 socket.off('direct_job_client_completed', handleJobUpdate);
                 socket.off('direct_job_completed_transcriber_side', handleJobUpdate); 
                 socket.off('newChatMessage', handleNewChatMessageForDirectUploadJobs);
+                socket.off('direct_job_cancelled', handleJobUpdate); // NEW: Cleanup listener
                 disconnectSocket();
             }
         };
@@ -348,6 +354,48 @@ const TranscriberDirectUploadJobs = () => {
         setSubmitDirectJobConfirmation(false);
     }, []);
 
+    // NEW: Open Cancel Job Modal
+    const openCancelJobModal = useCallback((jobId) => {
+        setJobToCancelId(jobId);
+        setShowCancelJobModal(true);
+    }, []);
+
+    // NEW: Close Cancel Job Modal
+    const closeCancelJobModal = useCallback(() => {
+        setShowCancelJobModal(false);
+        setJobToCancelId(null);
+        setModalLoading(false);
+    }, []);
+
+    // NEW: Handle Cancel Job API Call
+    const confirmCancelDirectJob = useCallback(async () => {
+        setModalLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) { logout(); return; }
+
+        try {
+            const response = await fetch(`${BACKEND_API_URL}/api/transcriber/direct-jobs/${jobToCancelId}/cancel`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast(data.message || 'Job successfully cancelled and returned to available jobs.', 'success');
+                closeCancelJobModal();
+                fetchDirectUploadJobs(); // Re-fetch to update the list
+            } else {
+                showToast(data.error || 'Failed to cancel job.', 'error');
+            }
+        } catch (error) {
+            console.error('Error cancelling direct upload job:', error);
+            showToast('Network error while cancelling direct upload job.', 'error');
+        } finally {
+            setModalLoading(false);
+        }
+    }, [jobToCancelId, logout, showToast, closeCancelJobModal, fetchDirectUploadJobs]);
+
+
     // --- API Action to Submit Direct Upload Job ---
     const confirmSubmitDirectJob = useCallback(async () => {
         if (!submitDirectJobConfirmation) {
@@ -370,7 +418,7 @@ const TranscriberDirectUploadJobs = () => {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(data.message || 'Direct upload job submitted successfully!', 'success');
+                showToast(data.message || 'Direct upload job submitted successfully! Waiting for client review.', 'success');
                 closeSubmitDirectJobModal();
                 fetchDirectUploadJobs(); 
             } else {
@@ -483,7 +531,7 @@ const TranscriberDirectUploadJobs = () => {
                                                     {job.client_name || 'N/A'}
                                                     {job.client_average_rating > 0 && (
                                                         <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                            ({'★'.repeat(Math.floor(job.client_average_rating))} {(job.client_average_rating).toFixed(1)})
+                                                            {'★'.repeat(Math.floor(job.client_average_rating))} {(job.client_average_rating).toFixed(1)})
                                                         </span>
                                                     )}
                                                 </td>
@@ -500,7 +548,7 @@ const TranscriberDirectUploadJobs = () => {
                                                     {job.client_feedback_comment || 'N/A'}
                                                     {job.client_feedback_rating > 0 && (
                                                         <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
-                                                            ({'★'.repeat(job.client_feedback_rating)})
+                                                            {'★'.repeat(job.client_feedback_rating)})
                                                         </span>
                                                         )}
                                                     </td>
@@ -547,6 +595,8 @@ const TranscriberDirectUploadJobs = () => {
                                             onDownloadFile={handleDownloadFile}
                                             openSubmitDirectJobModal={openSubmitDirectJobModal}
                                             canSubmitDirectJob={job.status === 'taken' || job.status === 'in_progress'}
+                                            openCancelJobModal={openCancelJobModal} // NEW: Pass openCancelJobModal
+                                            canCancelDirectJob={job.status === 'taken' || job.status === 'in_progress'} // NEW: Pass canCancelDirectJob
                                             getStatusColor={getStatusColor}
                                             getStatusText={getStatusText}
                                             showToast={showToast}
@@ -589,6 +639,23 @@ const TranscriberDirectUploadJobs = () => {
                     </Modal>
                 )}
 
+                {/* NEW: Modal for Cancelling Direct Upload Job */}
+                {showCancelJobModal && (
+                    <Modal
+                        show={showCancelJobModal}
+                        title="Confirm Job Cancellation"
+                        onClose={closeCancelJobModal}
+                        onSubmit={confirmCancelDirectJob}
+                        submitText="Confirm Cancellation"
+                        loading={modalLoading}
+                        isDestructive={true} // Style as a destructive action
+                    >
+                        <p>Are you sure you want to cancel this job?</p>
+                        <p>This action will unassign the job from you and make it available for other transcribers to take.</p>
+                        <p className="modal-note" style={{ color: 'red' }}>This action cannot be undone for this job.</p>
+                    </Modal>
+                )}
+
                 <Toast
                     message={toast.message}
                     type={toast.type}
@@ -596,7 +663,7 @@ const TranscriberDirectUploadJobs = () => {
                     onClose={hideToast}
                     duration={toast.type === 'error' ? 4000 : 3000}
                 />
-            </div>
+            </div >
         );
     };
 

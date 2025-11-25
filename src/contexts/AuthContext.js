@@ -60,8 +60,9 @@ export const AuthProvider = ({ children }) => {
         const parsedUser = JSON.parse(userData);
         if (parsedUser.id && parsedUser.user_type) {
             // CRITICAL FIX: Filter out 'is_available' here as well, if it exists in localStorage
-            const { is_available, ...userWithoutIsAvailable } = parsedUser;
-            currentUser = userWithoutIsAvailable;
+            // Also, ensure the user object in localStorage is kept clean of transient states
+            const { is_available, ...userWithoutTransientStates } = parsedUser;
+            currentUser = userWithoutTransientStates;
             currentIsAuthenticated = true;
             console.log('checkAuth: Found valid user data. User=', currentUser); // Log the filtered user
         } else {
@@ -107,7 +108,13 @@ export const AuthProvider = ({ children }) => {
     } else { // Otherwise, fetch fresh data from the server
         try {
             console.log('updateUser: Fetching fresh user data from server');
-            const response = await fetch(`${BACKEND_API_URL}/api/users/${user?.id}`, { // Use current user ID if available
+            // Ensure user?.id is available before making the request
+            if (!user?.id) {
+                console.warn('updateUser: User ID is not available in context. Cannot fetch fresh data.');
+                console.groupEnd();
+                return;
+            }
+            const response = await fetch(`${BACKEND_API_URL}/api/users/${user.id}`, { // Use current user ID if available
                 method: 'GET',
                 headers: {
                 'Authorization': `Bearer ${token}`
@@ -129,16 +136,58 @@ export const AuthProvider = ({ children }) => {
 
     if (fetchedUser) {
         // CRITICAL FIX: Filter out 'is_available' before setting user state
-        const { is_available, ...userWithoutIsAvailable } = fetchedUser;
-        localStorage.setItem('user', JSON.stringify(userWithoutIsAvailable));
-        setUserRef.current(userWithoutIsAvailable);
-        console.log('updateUser: Updated user state with fresh data. New transcriber_status =', userWithoutIsAvailable.transcriber_status);
+        // The is_online status will be explicitly managed by setTranscriberOnlineStatusBackend
+        const { is_available, ...userWithoutTransientStates } = fetchedUser;
+        localStorage.setItem('user', JSON.stringify(userWithoutTransientStates));
+        setUserRef.current(userWithoutTransientStates);
+        console.log('updateUser: Updated user state with fresh data. New transcriber_status =', userWithoutTransientStates.transcriber_status, 'is_online =', userWithoutTransientStates.is_online);
     } else {
         console.warn('updateUser: No user data available to update.');
     }
     
     console.groupEnd();
   }, [user?.id]); // Dependency on user.id to refetch if the user changes
+
+  // NEW HELPER: Function to call the backend to set transcriber online status
+  const callSetTranscriberOnlineStatusBackend = useCallback(async (isOnlineStatus) => {
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id || user?.user_type !== 'transcriber') {
+        console.log(`callSetTranscriberOnlineStatusBackend: Not a transcriber, no token, or no user ID. Skipping status update to backend.`);
+        return;
+    }
+
+    try {
+        console.log(`callSetTranscriberOnlineStatusBackend: Attempting to set transcriber ${user.id} to is_online: ${isOnlineStatus}`);
+        const response = await fetch(`${BACKEND_API_URL}/api/transcriber/set-online-status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ isOnline: isOnlineStatus })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log(`callSetTranscriberOnlineStatusBackend: Backend responded: ${data.message}`);
+            // If the backend forces offline (e.g., due to active job), update frontend user state
+            if (data.isOnline !== isOnlineStatus) {
+                console.warn(`callSetTranscriberOnlineStatusBackend: Backend set status to ${data.isOnline} (expected ${isOnlineStatus}). Refreshing user data.`);
+                await updateUser(); // Force a refresh to get the actual status from DB
+            } else {
+                // If backend confirms the requested status, update local user state
+                setUserRef.current(prevUser => ({ ...prevUser, is_online: data.isOnline }));
+            }
+        } else {
+            console.error(`callSetTranscriberOnlineStatusBackend: Failed to update online status: ${data.error}`);
+            // Even if failed, try to update local user state to reflect potential backend change
+            await updateUser();
+        }
+    } catch (error) {
+        console.error('callSetTranscriberOnlineStatusBackend: Network error or unexpected error:', error);
+    }
+  }, [user, updateUser]); // Added updateUser to dependencies
 
 
   useEffect(() => {
@@ -171,22 +220,33 @@ export const AuthProvider = ({ children }) => {
 
     localStorage.setItem('token', token);
     // CRITICAL FIX: Filter out 'is_available' before storing in localStorage during login
-    const { is_available, ...userWithoutIsAvailable } = userData;
-    localStorage.setItem('user', JSON.stringify(userWithoutIsAvailable));
+    // The is_online status will be explicitly managed by setTranscriberOnlineStatusBackend
+    const { is_available, ...userWithoutTransientStates } = userData;
+    localStorage.setItem('user', JSON.stringify(userWithoutTransientStates));
     console.log('login: localStorage updated immediately with filtered user data.');
 
-    await updateUser(userWithoutIsAvailable); // Update user state directly with filtered data
+    await updateUser(userWithoutTransientStates); // Update user state directly with filtered data
     setIsAuthenticatedRef.current(true); // Explicitly set isAuthenticated to true
     setAuthLoadingRef.current(false); // Explicitly set authLoading to false
     setIsAuthReadyRef.current(true); // Explicitly set isAuthReady to true
 
+    // NEW: If the user is a transcriber, explicitly set them online via backend
+    if (userWithoutTransientStates.user_type === 'transcriber') {
+        await callSetTranscriberOnlineStatusBackend(true);
+    }
+
     console.log('login: User state updated and authentication flags set. (END)');
     console.groupEnd();
-  }, [updateUser]);
+  }, [updateUser, callSetTranscriberOnlineStatusBackend]); // Added callSetTranscriberOnlineStatusBackend to dependencies
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => { // Made async to await backend call
     console.groupCollapsed('AuthContext: logout triggered (START)');
     console.log('logout: Clearing authentication data. User:', user?.full_name);
+
+    // NEW: If the user was a transcriber, explicitly set them offline via backend
+    if (user?.user_type === 'transcriber') {
+        await callSetTranscriberOnlineStatusBackend(false);
+    }
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -200,7 +260,7 @@ export const AuthProvider = ({ children }) => {
 
     console.log('logout: User state reset and authentication flags set. (END)');
     console.groupEnd();
-  }, [user]); // Added user to dependency to log current user before clearing
+  }, [user, callSetTranscriberOnlineStatusBackend]); // Added user and callSetTranscriberOnlineStatusBackend to dependency
 
 
   const authContextValue = {
