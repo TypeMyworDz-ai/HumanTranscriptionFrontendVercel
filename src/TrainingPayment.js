@@ -5,7 +5,7 @@ import { useAuth } from './contexts/AuthContext';
 import './TrainingPayment.css';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-const TRAINING_FEE_USD = 2.00;
+const TRAINING_FEE_USD = 50.00;
 
 const TrainingPayment = () => {
     const { user, isAuthenticated, authLoading, logout, updateUser, checkAuth } = useAuth();
@@ -292,7 +292,7 @@ const TrainingPayment = () => {
                         <div className="payment-details">
                             <div className="fee-display">
                                 <span className="fee-label">One-time Training Fee:</span>
-                                <span className="fee-amount">USD {TRAINING_FEE_USD.toFixed(2)}</span>
+                                <span className="fee-amount">USD {TRAINING_FEE_USD.toFixed(50)}</span>
                             </div>
 
                             {/* Payment Method Selection */}
@@ -373,7 +373,7 @@ const TrainingPayment = () => {
                                 ) : (
                                     <>
                                         <span className="btn-icon">🔒</span>
-                                        Pay Now - USD {TRAINING_FEE_USD.toFixed(2)}
+                                        Pay Now - USD {TRAINING_FEE_USD.toFixed(50)}
                                     </>
                                 )}
                             </button>
