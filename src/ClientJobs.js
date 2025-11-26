@@ -134,7 +134,10 @@ const ClientJobs = () => {
 
             if (negotiationsResponse.ok) {
                 const fetchedNegotiations = negotiationsData.negotiations || [];
-                const activeNegotiations = fetchedNegotiations.filter(n => n.status === 'hired');
+                // UPDATED: Include all relevant active negotiation statuses for the client
+                const activeNegotiations = fetchedNegotiations.filter(n => 
+                    ['pending', 'transcriber_counter', 'client_counter', 'accepted_awaiting_payment', 'hired', 'completed'].includes(n.status)
+                );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeNegotiations];
             } else {
                 console.error('Failed to fetch negotiations:', negotiationsData.error);
@@ -346,7 +349,7 @@ const ClientJobs = () => {
 
     const openMarkJobCompleteModal = useCallback((job) => {
         // Infer jobType from the job object itself
-        const inferredJobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown');
+        const inferredJobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
 
         const isNegotiationJob = inferredJobType === 'negotiation';
         const isDirectUploadJob = inferredJobType === 'direct_upload';
@@ -545,7 +548,7 @@ const ClientJobs = () => {
         }
 
         // Infer jobType from the job object itself
-        const jobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown');
+        const jobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
 
         setJobToPayFor({ ...job, jobType: jobType }); // Explicitly set jobType
         setSelectedPaymentMethod('paystack'); // Default to Paystack for the modal
@@ -647,7 +650,7 @@ const ClientJobs = () => {
             <Fragment>
                 <header className="client-jobs-header">
                     <div className="header-content">
-                        <h1>💼 My Active Jobs</h1>
+                        <h1 className="my-active-jobs-title">💼 My Active Jobs</h1>
                         <div className="user-profile-actions">
                             <span className="welcome-text-badge">Welcome, <strong>{user.full_name}</strong>!</span>
                             <button onClick={logout} className="logout-btn">
@@ -681,7 +684,8 @@ const ClientJobs = () => {
                                 <p className="no-data-message">You currently have no active jobs.</p>
                             ) : (
                                 activeJobs.map((job) => {
-                                    const jobType = job.file_name ? 'direct_upload' : (job.negotiation_id ? 'negotiation' : 'unknown'); // Infer jobType here
+                                    // UPDATED: More robust jobType inference
+                                    const jobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
                                     
                                     if (jobType === 'direct_upload') {
                                         console.log(`ClientJobs: Full Direct Upload Job Object for ${job.id}:`, job);

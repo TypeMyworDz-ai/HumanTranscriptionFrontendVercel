@@ -428,7 +428,7 @@ const TranscriberDirectUploadJobs = () => {
         );
     }
 
-    // Hardcode values for "My Active DU Jobs"
+    // Hardcode values for "DU In Progress"
     const pageTitle = "DU In Progress"; // UPDATED: singular
     const pageDescription = "Track the progress of your assigned direct upload transcription job and communicate with the client."; // UPDATED: singular
     const listSubtitle = "Currently Assigned Direct Upload Job"; // UPDATED: singular
