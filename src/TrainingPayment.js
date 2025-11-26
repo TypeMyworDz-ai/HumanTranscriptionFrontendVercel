@@ -292,7 +292,7 @@ const TrainingPayment = () => {
                         <div className="payment-details">
                             <div className="fee-display">
                                 <span className="fee-label">One-time Training Fee:</span>
-                                <span className="fee-amount">USD {TRAINING_FEE_USD.toFixed(50)}</span>
+                                <span className="fee-amount">USD {TRAINING_FEE_USD.toFixed(2)}</span>
                             </div>
 
                             {/* Payment Method Selection */}
@@ -373,7 +373,7 @@ const TrainingPayment = () => {
                                 ) : (
                                     <>
                                         <span className="btn-icon">🔒</span>
-                                        Pay Now - USD {TRAINING_FEE_USD.toFixed(50)}
+                                        Pay Now - USD {TRAINING_FEE_USD.toFixed(2)}
                                     </>
                                 )}
                             </button>
