@@ -432,7 +432,7 @@ const TranscriberNegotiations = () => {
             'hired': 'Job Hired',
             'taken': 'Job Taken',
             'cancelled': 'Cancelled',
-            'completed': 'Completed', // Reverted to original 'completed' status text
+            'completed': 'Completed by Client', // Updated to reflect client completion
             'client_completed': 'Completed by Client'
         };
         return texts[status] || status;
@@ -608,13 +608,13 @@ const TranscriberNegotiations = () => {
                                         <tr>
                                             <th>Job ID</th>
                                             <th>Client</th>
-                                            <th>Your Pay (USD)</th> {/* UPDATED: Column heading */}
+                                            {/* Removed 'Your Pay (USD)' column */}
                                             <th>Deadline</th>
                                             <th>Status</th>
                                             <th>Completed On</th>
                                             <th>Your Comment</th>
                                             <th>Client Feedback</th>
-                                            <th>Actions</th>
+                                            {/* Removed 'Actions' column */}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -629,7 +629,7 @@ const TranscriberNegotiations = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>USD {job.transcriber_earning?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td> {/* UPDATED: Display transcriber_earning */}
+                                                {/* Removed 'Your Pay (USD)' data cell */}
                                                 <td>{job.deadline_hours} hours</td>
                                                 <td>
                                                     <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
@@ -646,30 +646,7 @@ const TranscriberNegotiations = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>
-                                                    {job.file_name && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDownloadFile(job.id, job.file_name, job.jobType);
-                                                            }}
-                                                            className="action-btn download-btn"
-                                                            title="Download File"
-                                                        >
-                                                            ⬇️
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteJob(job.id, job.jobType);
-                                                        }}
-                                                        className="action-btn delete-btn"
-                                                        title="Delete Job"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </td>
+                                                {/* Removed 'Actions' data cell */}
                                             </tr>
                                         ))}
                                     </tbody>

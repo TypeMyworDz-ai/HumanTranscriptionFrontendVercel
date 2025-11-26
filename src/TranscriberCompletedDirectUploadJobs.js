@@ -1,13 +1,36 @@
 // src/TranscriberCompletedDirectUploadJobs.js - Handles ONLY Completed Direct Upload Jobs for Transcribers
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Removed Fragment from import
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
-import './TranscriberDirectUploadJobs.css'; // Reusing the CSS for consistency
-import DirectUploadJobCard from './DirectUploadJobCard'; // Reusing the job card component
+// Removed: import './TranscriberDirectUploadJobs.css'; // Reusing the CSS for consistency, but not directly importing here if it's generic
+// Removed: import DirectUploadJobCard from './DirectUploadJobCard'; // No longer using card component
 
 import { connectSocket, disconnectSocket } from './ChatService';
 import { useAuth } from './contexts/AuthContext';
 import { BACKEND_API_URL } from './config';
+
+// Helper function to format timestamp robustly for display
+const formatDisplayTimestamp = (isoTimestamp) => {
+    if (!isoTimestamp) return 'N/A';
+    try {
+        const date = new Date(isoTimestamp);
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+        return date.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        console.error(`Error formatting timestamp ${isoTimestamp}:`, e);
+        return 'Invalid Date';
+    }
+};
+
+// Helper function for star rating display
+const getStarRating = (rating) => {
+    if (typeof rating !== 'number' || isNaN(rating)) return 'N/A';
+    const fullStars = '⭐'.repeat(Math.floor(rating));
+    const emptyStars = '☆'.repeat(5 - Math.floor(rating));
+    return `${fullStars}${emptyStars} (${rating.toFixed(1)})`;
+};
 
 // --- Component Definition ---
 const TranscriberCompletedDirectUploadJobs = () => {
@@ -74,7 +97,7 @@ const TranscriberCompletedDirectUploadJobs = () => {
                     jobType: 'direct_upload',
                     client_name: job.client?.full_name || 'Unknown Client',
                     client_average_rating: job.client?.client_average_rating || 0, 
-                    agreed_price_usd: job.quote_amount, // Mapped from quote_amount for display consistency
+                    // Removed: agreed_price_usd mapping from quote_amount as per request
                     deadline_hours: job.agreed_deadline_hours,
                     file_name: job.file_name,
                     completed_on: job.completed_at || job.client_completed_at, 
@@ -201,8 +224,50 @@ const TranscriberCompletedDirectUploadJobs = () => {
         return texts[status] || status;
     }, []);
 
-    // These handlers are not needed for a completed jobs page, but passed to DirectUploadJobCard
-    const noOp = useCallback(() => {}, []); 
+    const handleDownloadFile = useCallback(async (jobId, fileName, jobType) => { 
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Authentication token missing. Please log in again.', 'error');
+            logout();
+            return;
+        }
+        // Direct Upload jobs will have jobType 'direct_upload'
+        if (jobType !== 'direct_upload') { 
+            showToast('Only direct upload job files can be downloaded from this view.', 'error');
+            return;
+        }
+
+        try {
+            const downloadUrl = `${BACKEND_API_URL}/api/direct-jobs/${jobId}/download/${fileName}`;
+            
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast(`Downloading ${fileName}...`, 'success');
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.error || `Failed to download ${fileName}.`, 'error');
+            }
+        } catch (error) {
+            console.error('Network error during file download:', error);
+            showToast('Network error during file download. Please try again.', 'error');
+        }
+    }, [showToast, logout]);
+
 
     if (authLoading || !isAuthenticated || !user) {
         return <div className="loading-container">Loading authentication...</div>;
@@ -246,27 +311,76 @@ const TranscriberCompletedDirectUploadJobs = () => {
                     </div>
 
                     <h3 className="direct-upload-jobs-subtitle">{listSubtitle}</h3>
-                    <div className="direct-upload-jobs-list">
+                    <div className="completed-jobs-list-table"> {/* Using a generic table container class */}
                         {completedDirectUploadJobs.length === 0 ? (
-                            <p>{emptyMessage}</p>
+                            <p className="no-data-message">{emptyMessage}</p>
                         ) : (
-                            completedDirectUploadJobs.map(job => (
-                                <DirectUploadJobCard
-                                    key={job.id}
-                                    job={job}
-                                    onDelete={noOp} // No delete for completed jobs from this view
-                                    onDownloadFile={noOp} // Can still download, but not explicitly handled here
-                                    openSubmitDirectJobModal={noOp} // Not applicable for completed jobs
-                                    canSubmitDirectJob={false}
-                                    openCancelJobModal={noOp} // Not applicable for completed jobs
-                                    canCancelDirectJob={false}
-                                    getStatusColor={getStatusColor}
-                                    getStatusText={getStatusText}
-                                    showToast={showToast}
-                                    currentUserId={user.id}
-                                    currentUserType={user.user_type}
-                                />
-                            ))
+                            <table className="completed-jobs-table"> {/* Using a generic table class */}
+                                <thead>
+                                    <tr>
+                                        <th>Job ID</th>
+                                        <th>Client</th>
+                                        <th>Your Pay (USD)</th> 
+                                        <th>Deadline</th>
+                                        <th>Status</th>
+                                        <th>Completed On</th>
+                                        <th>Your Comment</th>
+                                        <th>Client Feedback</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {completedDirectUploadJobs.map(job => (
+                                        <tr key={job.id}>
+                                            <td>{job.id?.substring(0, 8)}...</td>
+                                            <td>
+                                                {job.client_name || 'N/A'}
+                                                {job.client_average_rating > 0 && (
+                                                    <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
+                                                        ({'★'.repeat(Math.floor(job.client_average_rating))} {(job.client_average_rating).toFixed(1)})
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {job.transcriber_earning !== undefined && job.transcriber_earning !== null
+                                                    ? `USD ${job.transcriber_earning.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                    : 'N/A'}
+                                            </td>
+                                            <td>{job.deadline_hours ? `${job.deadline_hours} hours` : 'N/A'}</td>
+                                            <td>
+                                                <span className="status-badge" style={{ backgroundColor: getStatusColor(job.status) }}>
+                                                    {getStatusText(job.status)}
+                                                </span>
+                                            </td>
+                                            <td>{formatDisplayTimestamp(job.completed_on)}</td>
+                                            <td>{job.transcriber_comment || 'N/A'}</td>
+                                            <td>
+                                                {job.client_feedback_comment || 'N/A'}
+                                                {job.client_feedback_rating > 0 && (
+                                                    <span style={{ marginLeft: '5px', fontSize: '0.9em', color: '#555' }}>
+                                                        ({getStarRating(job.client_feedback_rating)})
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {job.file_name && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDownloadFile(job.id, job.file_name, job.jobType);
+                                                        }}
+                                                        className="action-btn download-btn"
+                                                        title="Download File"
+                                                    >
+                                                        ⬇️
+                                                    </button>
+                                                )}
+                                                {/* No delete button for completed Direct Upload jobs from transcriber side */}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         )}
                     </div>
                 </div>

@@ -433,14 +433,14 @@ const TranscriberDashboard = () => {
                         {/* NEW: Link to separate active direct upload jobs */}
                         <Link to="/transcriber-direct-upload-jobs" className="dashboard-card">
                             <div className="card-icon">📝</div>
-                            <h3>My DU Jobs ({activeDirectUploadJobsCount})</h3> 
+                            <h3>DU In Progress ({activeDirectUploadJobsCount})</h3> 
                             <p>See direct upload jobs you're currently working on.</p>
                         </Link>
 
                         {/* UPDATED: Link to active negotiation jobs */}
                         <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
                             <div className="card-icon">📝</div>
-                            <h3>My Negotiation Jobs ({activeNegotiationCount})</h3> 
+                            <h3>Negotiation Job In Progress ({activeNegotiationCount})</h3> 
                             <p>See negotiation jobs you're currently working on.</p>
                         </Link>
 
@@ -473,7 +473,7 @@ const TranscriberDashboard = () => {
                         {transcriberRating >= 4 && (
                             <Link to="/transcriber-other-jobs" className="dashboard-card">
                             <div className="card-icon">💼</div>
-                            <h3>DU Jobs ({availableDirectJobsCount})</h3>
+                            <h3>DU Jobs Available ({availableDirectJobsCount})</h3>
                             <p>Browse and take direct upload jobs from clients.</p>
                             </Link>
                         )}

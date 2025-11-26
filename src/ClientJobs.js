@@ -98,7 +98,7 @@ const ClientJobs = () => {
             'taken': 'Taken by Transcriber',
             'in_progress': 'In Progress',
             'cancelled': 'Cancelled',
-            'completed': 'Client Reviewed & Completed', // Changed text for clarity
+            'completed': 'Client Reviewed & Completed', // Corrected text for clarity for negotiation jobs
             'client_completed': 'Completed By Client'
         };
         return texts[status] || status.replace(/_/g, ' ');
@@ -133,9 +133,9 @@ const ClientJobs = () => {
 
             if (negotiationsResponse.ok) {
                 const fetchedNegotiations = negotiationsData.negotiations || [];
-                // UPDATED: Include all relevant active negotiation statuses for the client
+                // UPDATED: Exclude 'completed' status from active negotiations
                 const activeNegotiations = fetchedNegotiations.filter(n => 
-                    ['pending', 'transcriber_counter', 'client_counter', 'accepted_awaiting_payment', 'hired', 'completed'].includes(n.status)
+                    ['pending', 'transcriber_counter', 'client_counter', 'accepted_awaiting_payment', 'hired'].includes(n.status)
                 );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeNegotiations];
             } else {
@@ -145,12 +145,12 @@ const ClientJobs = () => {
 
             if (directUploadJobsResponse.ok) {
                 const fetchedDirectUploadJobs = directUploadJobsData.jobs || [];
-                // UPDATED: Exclude 'client_completed' jobs from the active list
+                // Exclude 'client_completed' jobs from the active list
                 const activeDirectUploadJobs = fetchedDirectUploadJobs.filter(d =>
                     d.status === 'available_for_transcriber' ||
                     d.status === 'taken' ||
                     d.status === 'in_progress' ||
-                    d.status === 'completed' // This status is included for client to review/mark complete
+                    d.status === 'completed' 
                 );
                 combinedActiveJobs = [...combinedActiveJobs, ...activeDirectUploadJobs];
             } else {
@@ -180,7 +180,6 @@ const ClientJobs = () => {
     const handleJobUpdate = useCallback((data) => {
         console.log('ClientJobs: Job status update received via Socket. Triggering re-fetch for list cleanup.', data);
         const jobId = data.negotiationId || data.jobId;
-        // UPDATED: Make toast message more informative
         showToast(data.message || `Job status updated for ID: ${jobId?.substring(0, 8)}. New status: ${data.newStatus || 'unknown'}.`, 'info');
         fetchClientJobs();
     }, [showToast, fetchClientJobs]);
@@ -198,7 +197,7 @@ const ClientJobs = () => {
                 if (job.id === relatedJobId) {
                     return {
                         ...job,
-                        last_message_text: data.message || 'New Message from Transcriber', // Changed text here
+                        last_message_text: data.message || 'New Message from Transcriber',
                         last_message_timestamp: new Date().toISOString(),
                     };
                 }
@@ -222,16 +221,15 @@ const ClientJobs = () => {
 
         const socket = connectSocket(user.id);
         if (socket) {
-            socket.on('job_completed', handleJobUpdate); // For negotiation jobs completed by transcriber
-            socket.on('direct_job_completed', handleJobUpdate); // For direct upload jobs completed by transcriber
-            socket.on('negotiation_cancelled', handleJobUpdate); // For negotiation jobs cancelled
-            socket.on('direct_job_taken', handleJobUpdate); // For direct upload jobs taken by transcriber
-            socket.on('payment_successful', handleJobUpdate); // For successful payment
+            socket.on('job_completed', handleJobUpdate);
+            socket.on('direct_job_completed', handleJobUpdate);
+            socket.on('negotiation_cancelled', handleJobUpdate);
+            socket.on('direct_job_taken', handleJobUpdate);
+            socket.on('payment_successful', handleJobUpdate);
             socket.on('newChatMessage', handleNewChatMessageForActiveJobs);
-            // NEW: Add listeners for direct upload specific events
-            socket.on('direct_job_client_completed_client_side', handleJobUpdate); // When client marks DU job as complete
-            socket.on('direct_job_cancelled', handleJobUpdate); // When transcriber cancels a DU job
-            socket.on('direct_upload_job_available_again', handleJobUpdate); // When a DU job becomes available again after cancellation
+            socket.on('direct_job_client_completed_client_side', handleJobUpdate);
+            socket.on('direct_job_cancelled', handleJobUpdate);
+            socket.on('direct_upload_job_available_again', handleJobUpdate);
 
 
             console.log('ClientJobs: Socket listeners attached for active jobs.');
@@ -246,7 +244,6 @@ const ClientJobs = () => {
                 socket.off('direct_job_taken', handleJobUpdate);
                 socket.off('payment_successful', handleJobUpdate);
                 socket.off('newChatMessage', handleNewChatMessageForActiveJobs);
-                // NEW: Remove listeners for direct upload specific events
                 socket.off('direct_job_client_completed_client_side', handleJobUpdate);
                 socket.off('direct_job_cancelled', handleJobUpdate);
                 socket.off('direct_upload_job_available_again', handleJobUpdate);
@@ -347,19 +344,18 @@ const ClientJobs = () => {
 
 
     const openMarkJobCompleteModal = useCallback((job) => {
-        // Infer jobType from the job object itself
         const inferredJobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
 
         const isNegotiationJob = inferredJobType === 'negotiation';
         const isDirectUploadJob = inferredJobType === 'direct_upload';
 
         if (isNegotiationJob && job.status === 'hired') {
-            setJobToComplete({ ...job, jobType: inferredJobType }); // Ensure jobType is explicitly set
+            setJobToComplete({ ...job, jobType: inferredJobType });
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
             setShowCompleteJobModal(true);
         } else if (isDirectUploadJob && job.status === 'completed') {
-            setJobToComplete({ ...job, jobType: inferredJobType }); // Ensure jobType is explicitly set
+            setJobToComplete({ ...job, jobType: inferredJobType });
             setClientFeedbackComment('');
             setClientFeedbackRating(5);
             setShowCompleteJobModal(true);
@@ -400,7 +396,6 @@ const ClientJobs = () => {
 
         try {
             let apiUrl;
-            // Use jobToComplete.jobType which is now explicitly set in openMarkJobCompleteModal
             if (jobToComplete.jobType === 'negotiation') {
                 apiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToComplete.id}/complete`;
             } else if (jobToComplete.jobType === 'direct_upload') {
@@ -477,10 +472,10 @@ const ClientJobs = () => {
                             const verifyData = await verifyResponse.json();
                             if (verifyResponse.ok && verifyData.message.includes('Payment verified')) {
                                 showToast('Payment verified! Your job is now active.', 'success');
-                                await updateUser(); // Update AuthContext user state
-                                await checkAuth(); // Re-fetch auth status
+                                await updateUser();
+                                await checkAuth();
                                 setTimeout(() => {
-                                    navigate('/client-dashboard'); // Redirect to dashboard
+                                    navigate('/client-dashboard');
                                 }, 2000);
                             } else {
                                 showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
@@ -502,10 +497,9 @@ const ClientJobs = () => {
 
                             if (verifyResponse.ok && verifyData.message && verifyData.message.includes('Payment verified')) {
                                 showToast('Payment verified! Your job is now active.', 'success');
-                                // UPDATED: Instead of redirecting, just re-fetch jobs and close modal
-                                fetchClientJobs(); // Re-fetch jobs to update status on current page
+                                fetchClientJobs();
                                 setModalLoading(false);
-                                setShowPaymentSelectionModal(false); // Close payment modal
+                                setShowPaymentSelectionModal(false);
                             } else {
                                 showToast(verifyData.error || 'Payment verification failed. Please contact support.', 'error');
                                 setModalLoading(false);
@@ -537,7 +531,7 @@ const ClientJobs = () => {
             setModalLoading(false);
             setShowPaymentSelectionModal(false);
         }
-    }, [showToast, navigate, updateUser, checkAuth, fetchClientJobs]); // Added fetchClientJobs to dependencies
+    }, [showToast, navigate, updateUser, checkAuth, fetchClientJobs]);
 
 
     const handleProceedToPayment = useCallback(async (job) => {
@@ -546,12 +540,11 @@ const ClientJobs = () => {
             return;
         }
 
-        // Infer jobType from the job object itself
         const jobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
 
-        setJobToPayFor({ ...job, jobType: jobType }); // Explicitly set jobType
-        setSelectedPaymentMethod('paystack'); // Default to Paystack for the modal
-        setMobileNumber(''); // Clear mobile number
+        setJobToPayFor({ ...job, jobType: jobType });
+        setSelectedPaymentMethod('paystack');
+        setMobileNumber('');
         setShowPaymentSelectionModal(true);
     }, [showToast, user]);
 
@@ -560,7 +553,6 @@ const ClientJobs = () => {
             showToast('Job or payment method not selected.', 'error');
             return;
         }
-        // Validate mobile number if KoraPay is selected
         if (selectedPaymentMethod === 'korapay' && !mobileNumber.trim()) {
             showToast('Please enter your mobile number for KoraPay payment.ᐟ', 'error');
             return;
@@ -575,7 +567,7 @@ const ClientJobs = () => {
 
         let paymentApiUrl;
         let amountToSend;
-        const jobType = jobToPayFor.jobType; // Use the explicitly set jobType
+        const jobType = jobToPayFor.jobType;
 
         if (jobType === 'negotiation') {
             paymentApiUrl = `${BACKEND_API_URL}/api/negotiations/${jobToPayFor.id}/payment/initialize`;
@@ -595,9 +587,8 @@ const ClientJobs = () => {
                 amount: amountToSend,
                 email: user.email,
                 paymentMethod: selectedPaymentMethod,
-                fullName: user.full_name, // Include full name
+                fullName: user.full_name,
             };
-            // Conditionally add mobileNumber to payload for KoraPay
             if (selectedPaymentMethod === 'korapay' && mobileNumber.trim()) {
                 payload.mobileNumber = mobileNumber.trim();
             }
@@ -618,7 +609,7 @@ const ClientJobs = () => {
                     window.location.href = data.data.authorization_url;
                 } else if (selectedPaymentMethod === 'korapay' && data.korapayData) {
                     showToast('Opening KoraPay payment modal...ᐟ', 'info');
-                    await handleKorapayPayment(data.korapayData, jobToPayFor.id, jobType); // Pass job ID and type for verification
+                    await handleKorapayPayment(data.korapayData, jobToPayFor.id, jobType);
                 } else {
                     showToast(data.error || 'Failed to initiate KoraPay payment. Missing data or script not loaded.ᐟ', 'error');
                     setModalLoading(false);
@@ -633,7 +624,7 @@ const ClientJobs = () => {
         } finally {
             // Handled within callbacks
         }
-    }, [jobToPayFor, selectedPaymentMethod, mobileNumber, user, showToast, logout, handleKorapayPayment]); // Removed 'navigate' from dependency array
+    }, [jobToPayFor, selectedPaymentMethod, mobileNumber, user, showToast, logout, handleKorapayPayment]);
 
 
     if (authLoading || !isAuthenticated || !user || loading) {
@@ -683,7 +674,6 @@ const ClientJobs = () => {
                                 <p className="no-data-message">You currently have no active jobs.</p>
                             ) : (
                                 activeJobs.map((job) => {
-                                    // UPDATED: More robust jobType inference
                                     const jobType = job.jobType || (job.file_name ? 'direct_upload' : (job.id && !job.file_name ? 'negotiation' : 'unknown'));
                                     
                                     if (jobType === 'direct_upload') {
@@ -700,7 +690,7 @@ const ClientJobs = () => {
                                             <NegotiationCard
                                                 key={job.id}
                                                 job={job}
-                                                jobType={jobType} // Pass jobType explicitly
+                                                jobType={jobType}
                                                 onDelete={handleDeleteJob}
                                                 onPayment={handleProceedToPayment}
                                                 onLogout={logout}
@@ -720,7 +710,7 @@ const ClientJobs = () => {
                                             <DirectUploadJobCard
                                                 key={job.id}
                                                 job={job}
-                                                jobType={jobType} // Pass jobType explicitly
+                                                jobType={jobType}
                                                 onDelete={handleDeleteJob}
                                                 onPayment={handleProceedToPayment}
                                                 onLogout={logout}
