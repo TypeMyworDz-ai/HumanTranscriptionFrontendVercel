@@ -1,5 +1,4 @@
-// src/ClientJobs.js - UPDATED to fix modal dismissal and toast message logic,
-// add logging for missing transcriber_id, and enable 'Mark as Complete' for client on direct upload jobs.
+// src/ClientJobs.js
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -99,7 +98,7 @@ const ClientJobs = () => {
             'taken': 'Taken by Transcriber',
             'in_progress': 'In Progress',
             'cancelled': 'Cancelled',
-            'completed': 'Submitted For Review', // Changed text for clarity
+            'completed': 'Client Reviewed & Completed', // Changed text for clarity
             'client_completed': 'Completed By Client'
         };
         return texts[status] || status.replace(/_/g, ' ');
