@@ -5,6 +5,7 @@ import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService'; // Assuming ChatService is used for general socket management
 import { BACKEND_API_URL } from './config'; // Assuming you have a config for backend URL
 import './TraineeDashboard.css'; // You'll need to create this CSS file
+import './HumanDashboardShared.css';
 
 const TraineeDashboard = () => {
     const { user, isAuthenticated, authLoading, isAuthReady, logout } = useAuth();
@@ -127,71 +128,29 @@ const TraineeDashboard = () => {
     }
 
     return (
-        <div className="trainee-dashboard-container">
-            <header className="trainee-dashboard-header">
-                <div className="header-content">
-                    <h1>Trainee Dashboard</h1>
-                    <div className="user-profile-actions">
-                        <span className="welcome-text-badge">Welcome, {user.full_name}!</span>
-                        <button onClick={logout} className="logout-btn">
-                            Logout
-                        </button>
-                    </div>
-                </div>
+        <div className="trainee-dashboard-container tm-suite-dashboard tm-trainee-suite">
+            <header className="tm-suite-topbar">
+                <Link to="/trainee-dashboard" className="tm-suite-brand" aria-label="TypeMyworDz trainee dashboard">
+                    <img src="/logo192.png" alt="" />
+                    <span><b className="tm-brand-purple">Type</b><b className="tm-brand-green">My</b><b className="tm-brand-purple">worDz</b><small>Training workspace</small></span>
+                </Link>
+                <div className="tm-suite-account"><span className="tm-suite-profile"><span>{user.full_name?.charAt(0).toUpperCase() || 'T'}</span>{user.full_name}</span><button onClick={logout} className="tm-suite-logout">Log out</button></div>
             </header>
-
-            <main className="trainee-dashboard-main">
-                <div className="trainee-dashboard-content">
-                    <div className="dashboard-overview">
-                        <h2 className="dashboard-title">Welcome to Your Training Room!</h2>
-                        <p className="dashboard-description">
-                            Here you will gain the knowledge and skills to become a top-tier transcriber
-                            who will achieve the needed qualities of becoming a TypeMyworDz-approved transcriber.
-                            Dive into our materials and chat with your trainer to accelerate your learning.
-                        </p>
+            <main className="tm-suite-main">
+                <section className="tm-suite-intro">
+                    <div><span className="tm-suite-eyebrow">TRAINEE WORKSPACE</span><h1>Build the habits of a great transcriber.</h1><p>Use your materials and trainer conversations to move confidently toward approval.</p></div>
+                    <div className="tm-suite-live-mark"><span />Training access active</div>
+                </section>
+                <section className="tm-trainee-status"><div><span className="tm-suite-eyebrow">CURRENT LEVEL</span><strong>{traineeStatus?.user_level || 'Loading...'}</strong></div><p>{traineeStatus?.status === 'paid_training_fee' ? 'Your training access is ready. Start with the materials, then bring questions to your trainer.' : 'Your training status is being checked.'}</p></section>
+                <section className="tm-suite-section">
+                    <div className="tm-suite-section-head"><div><span className="tm-suite-eyebrow">TRAINING PATH</span><h2>Learn, practise and ask</h2></div></div>
+                    <div className="tm-suite-action-grid tm-trainee-grid">
+                        <Link to={`/trainee/training-room/${user.id}`}><span className="tm-suite-card-label">CONVERSATION</span><strong>Training room</strong><p>Ask your trainer questions and exchange files.</p><em>Open training room →</em></Link>
+                        <Link to="/trainee/materials"><span className="tm-suite-card-label">RESOURCES</span><strong>Training materials</strong><p>Read the guides and practical resources for your next assessment.</p><em>Browse materials →</em></Link>
                     </div>
-
-                    <div className="trainee-status-display">
-                        {/* Removed: Your Current Status: <strong>{traineeStatus?.status?.replace(/_/g, ' ') || 'Loading...'}</strong> */}
-                        <p>Your User Level: <strong>{traineeStatus?.user_level || 'Loading...'}</strong></p>
-                        {traineeStatus?.status === 'paid_training_fee' && (
-                            <p className="status-message">You have successfully paid for training access. Start learning!</p>
-                        )}
-                        {/* Add more status-based messages if needed */}
-                    </div>
-
-                    <div className="dashboard-sections-grid">
-                        <Link to={`/trainee/training-room/${user.id}`} className="dashboard-card">
-                            <div className="card-icon">💬</div>
-                            <h3>Training Room</h3>
-                            <p>Chat with your trainer and exchange files.</p>
-                        </Link>
-
-                        <Link to="/trainee/materials" className="dashboard-card">
-                            <div className="card-icon">📚</div>
-                            <h3>Training Materials</h3>
-                            <p>Access useful resources, guides, and tools.</p>
-                        </Link>
-
-                        {/* Future: Add a card for 'Complete Training' button, visible only to admin or specific conditions */}
-                        {user.user_type === 'admin' && ( // Example: Admin can see a button to complete training for this trainee
-                            <Link to={`/admin/complete-training/${user.id}`} className="dashboard-card admin-action-card">
-                                <div className="card-icon">✅</div>
-                                <h3>Complete Training (Admin)</h3>
-                                <p>Transition this trainee to an active transcriber.</p>
-                            </Link>
-                        )}
-                    </div>
-                </div>
+                </section>
             </main>
-
-            <Toast
-                message={toast.message}
-                type={toast.type}
-                isVisible={toast.isVisible}
-                onClose={hideToast}
-                duration={toast.type === 'error' ? 4000 : 3000}
-            />
+            <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} duration={toast.type === 'error' ? 4000 : 3000} />
             <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" />
         </div>
     );

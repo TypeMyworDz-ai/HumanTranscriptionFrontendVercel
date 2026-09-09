@@ -74,6 +74,7 @@ import GuidelinesPage from '../GuidelinesPage';
 
 // NEW: Import the WhatsAppButton component
 import WhatsAppButton from '../WhatsAppButton'; // NEW: Import WhatsAppButton
+import PreviewTestAccess from '../PreviewTestAccess';
 
 
 const AppRoutes = () => {
@@ -94,7 +95,8 @@ const AppRoutes = () => {
                 {/* NEW: Public Route for Training Payment */}
                 <Route path="/training-payment" element={<TrainingPayment />} />
                 {/* NEW: Public Route for Guidelines Page */}
-                <Route path="/guidelines" element={<GuidelinesPage />} /> 
+                <Route path="/guidelines" element={<GuidelinesPage />} />
+                <Route path="/preview-test" element={<PreviewTestAccess />} /> 
 
 
                 {/* Protected Routes (Authenticated Users) */}

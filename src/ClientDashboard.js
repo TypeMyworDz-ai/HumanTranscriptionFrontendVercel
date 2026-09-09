@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast'; // Assuming you have a Toast component
 import './ClientDashboard.css'; // Ensure this CSS file exists and has styles for .profile-link, .profile-avatar, .profile-icon
+import './HumanDashboardShared.css';
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService'; // Removed getSocketInstance
@@ -297,122 +298,50 @@ const ClientDashboard = () => {
 
 
   return (
-    <div className="client-dashboard-container">
-      <header className="client-dashboard-header">
-        <div className="header-content">
-          <h1>Client Dashboard</h1>
-          <div className="profile-section">
-            {/* UPDATED: Profile link with icon and text */}
-            <Link to={`/client-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
-                <div className="profile-avatar">
-                    {firstLetter}
-                </div>
-                <span className="welcome-text">Welcome, {user.full_name}!</span>
-                <span className="profile-icon">⚙️</span> {/* Added a small gear icon */}
-            </Link>
-            <button onClick={logout} className="logout-btn">
-              Logout
-            </button>
-          </div>
+    <div className="client-dashboard-container tm-suite-dashboard tm-client-suite">
+      <header className="tm-suite-topbar">
+        <Link to="/client-dashboard" className="tm-suite-brand" aria-label="TypeMyworDz client dashboard">
+          <img src="/logo192.png" alt="" />
+          <span><b className="tm-brand-purple">Type</b><b className="tm-brand-green">My</b><b className="tm-brand-purple">worDz</b><small>Human transcription</small></span>
+        </Link>
+        <div className="tm-suite-account">
+          <Link to={`/client-profile/${user.id}`} className="tm-suite-profile"><span>{firstLetter}</span>{user.full_name}</Link>
+          <button onClick={logout} className="tm-suite-logout">Log out</button>
         </div>
       </header>
 
-      <main className="client-dashboard-main">
-        <div className="client-dashboard-content">
-          <h2 className="dashboard-title">Your Hub for Transcription Services</h2>
-          <p className="dashboard-description">Manage your projects, track negotiations, and connect with transcribers.</p>
+      <main className="tm-suite-main">
+        <section className="tm-suite-intro">
+          <div><span className="tm-suite-eyebrow">CLIENT WORKSPACE</span><h1>Your projects, at a glance.</h1><p>Move from quote to completed transcript without losing the thread.</p></div>
+          <Link to="/client-direct-upload" className="tm-suite-primary-action">Start a transcription <span>→</span></Link>
+        </section>
 
-          <div className="dashboard-cards-grid">
-            {/* FIRST CARD: Browse Transcribers */}
-            <Link to="/transcriber-pool" className="dashboard-card">
-              <div className="card-icon">👥</div>
-              <h3>Browse Transcribers</h3>
-              <p>Find and negotiate with professional transcribers.</p>
-            </Link>
+        <section className="tm-suite-metrics" aria-label="Client summary">
+          <div><span>Pending negotiations</span><strong>{clientStats.pendingNegotiations}</strong><small>Offers waiting for your reply</small></div>
+          <div><span>Active jobs</span><strong>{clientStats.activeJobs}</strong><small>Projects currently in progress</small></div>
+          <div><span>Completed jobs</span><strong>{clientStats.completedJobs}</strong><small>Finished projects in your account</small></div>
+          <div><span>Payments</span><strong>USD {totalClientPayments.toLocaleString()}</strong><small>Total recorded payments</small></div>
+        </section>
 
-            {/* SECOND CARD: Negotiation Room */}
-            <Link to="/client-negotiations" className="dashboard-card">
-              <div className="card-icon">🤝</div>
-              <h3>Negotiation Room ({clientStats.pendingNegotiations})</h3>
-              <p>View all ongoing negotiation offers and statuses.</p>
-            </Link>
-
-            {/* THIRD CARD: Direct Upload & Quote */}
-            <Link to="/client-direct-upload" className="dashboard-card">
-              <div className="card-icon">⬆️</div>
-              <h3>Direct Upload & Quote</h3>
-              <p>Don't have time for negotiations, get instant quote.</p>
-            </Link>
-
-            <Link to="/client-jobs" className="dashboard-card">
-              <div className="card-icon">📝</div>
-              <h3>My Active Jobs ({clientStats.activeJobs})</h3>
-              <p>Track the progress of your active transcription jobs.</p>
-            </Link>
-
-            {/* NEW CARD: My Completed Jobs */}
-            <Link to="/client-completed-jobs" className="dashboard-card">
-              <div className="card-icon">✅</div>
-              <h3>My Completed Jobs ({clientStats.completedJobs})</h3> {/* NOW USES CALCULATED VALUE */}
-              <p>Review your finished projects and provide feedback.</p>
-            </Link>
-
-            <Link to="/client-payments" className="dashboard-card">
-              <div className="card-icon">💳</div>
-              <h3>Payment History (USD {totalClientPayments.toLocaleString()})</h3> {/* UPDATED: Changed KES to USD */}
-              <p>View your transaction history and payment details.</p>
-            </Link>
-
-            <Link to={`/client/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card"> {/* Assuming 'admin' is a fixed ID for chat with admin */}
-              <div className="card-icon">💬</div>
-              <h3>Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
-              <p>Chat with Support.</p>
-            </Link>
+        <section className="tm-suite-section">
+          <div className="tm-suite-section-head"><div><span className="tm-suite-eyebrow">WORKSPACE</span><h2>What would you like to do?</h2></div><span className="tm-suite-muted">Your support team is one message away</span></div>
+          <div className="tm-suite-action-grid">
+            <Link to="/transcriber-pool"><span className="tm-suite-card-label">DIRECTORY</span><strong>Browse transcribers</strong><p>Find and negotiate with vetted professionals.</p><em>Open directory →</em></Link>
+            <Link to="/client-negotiations"><span className="tm-suite-card-label">NEGOTIATIONS</span><strong>Negotiation room <b>{clientStats.pendingNegotiations}</b></strong><p>Review offers, deadlines and job status.</p><em>View negotiations →</em></Link>
+            <Link to="/client-direct-upload"><span className="tm-suite-card-label">FAST TRACK</span><strong>Direct upload and quote</strong><p>Send a file and get a clear quote without waiting.</p><em>Get a quote →</em></Link>
+            <Link to="/client-jobs"><span className="tm-suite-card-label">IN PROGRESS</span><strong>My active jobs <b>{clientStats.activeJobs}</b></strong><p>Track work currently moving through the queue.</p><em>Track jobs →</em></Link>
+            <Link to="/client-completed-jobs"><span className="tm-suite-card-label">ARCHIVE</span><strong>Completed jobs <b>{clientStats.completedJobs}</b></strong><p>Review finished projects and leave feedback.</p><em>Open archive →</em></Link>
+            <Link to={`/client/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`}><span className="tm-suite-card-label">SUPPORT</span><strong>Messages {unreadMessageCount > 0 && <b>{unreadMessageCount}</b>}</strong><p>Speak with the TypeMyworDz support team.</p><em>Open messages →</em></Link>
           </div>
+        </section>
 
-          {/* NEW: Combined Client Stats Card */}
-          <div className="combined-stats-card-wrapper">
-            <div className="combined-stats-card">
-              <h3>Your Performance Overview</h3>
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <h4>Client Rating</h4>
-                  <p className="stat-value rating-stars">
-                    {/* FIX: Use user.client_average_rating */}
-                    {'★'.repeat(Math.floor(user.client_average_rating || 5.0))}
-                    {'☆'.repeat(5 - Math.floor(user.client_average_rating || 5.0))}
-                    <span>({(user.client_average_rating || 5.0).toFixed(1)})</span>
-                  </p>
-                </div>
-                <div className="stat-item">
-                  <h4>Pending Negotiations</h4>
-                  <p className="stat-value">{clientStats.pendingNegotiations}</p>
-                </div>
-                <div className="stat-item">
-                  <h4>Active Jobs</h4>
-                  <p className="stat-value">{clientStats.activeJobs}</p>
-                </div>
-                <div className="stat-item">
-                  <h4>Completed Jobs</h4>
-                  {/* FIX: Use clientStats.completedJobs for consistency with the card above */}
-                  <p className="stat-value">{clientStats.completedJobs}</p> 
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
+        <section className="tm-suite-footer-panel">
+          <div><span className="tm-suite-eyebrow">ACCOUNT HEALTH</span><h2>A trusted workspace for your files.</h2><p>Your current client rating is <strong>{(user.client_average_rating || 5.0).toFixed(1)}</strong> out of 5. Keep your briefs clear and your feedback timely for the smoothest turnaround.</p></div>
+          <Link to={`/client-profile/${user.id}`}>View profile and settings →</Link>
+        </section>
       </main>
-
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        duration={toast.type === 'error' ? 4000 : 3000}
-      />
-      {/* Audio element for notifications, ensure path is correct */}
-      <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" /> 
+      <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} duration={toast.type === 'error' ? 4000 : 3000} />
+      <audio ref={audioRef} src="/audio/notification-sound.mp3" preload="auto" />
     </div>
   );
 };
