@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
 import './TranscriberDashboard.css';
+import './HumanDashboardShared.css';
 
 import { useAuth } from './contexts/AuthContext';
 import { connectSocket, disconnectSocket } from './ChatService';
@@ -390,112 +391,49 @@ const TranscriberDashboard = () => {
 
 
   return (
-    <div className="transcriber-dashboard-container">
-      <audio ref={audioRef} src="/notification.mp3" preload="auto" /> 
-      <header className="transcriber-dashboard-header">
-        <div className="header-content">
-          <h1>Transcriber Dashboard</h1>
-          <div className="user-profile-actions">
-                        <Link to={`/transcriber-profile/${user.id}`} className="profile-link" title="View/Edit Profile">
-                            <div className="profile-avatar">
-                                {firstLetter}
-                            </div>
-                            <span className="welcome-text">Welcome, {user.full_name}!</span>
-                            <span className="profile-icon">⚙️</span>
-                        </Link>
-                        <button onClick={handleLogout} className="logout-btn">
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <main className="transcriber-dashboard-main">
-                <div className="transcriber-dashboard-content">
-                    <div className="dashboard-overview">
-                        <h2>Your Work Hub</h2>
-                        <p>Manage your profile, view negotiation requests, and track your transcription jobs.</p>
-                    </div>
-
-                    <div className="dashboard-sections-grid">
-                        <Link to="/transcriber-negotiations" className="dashboard-card">
-                            <div className="card-icon">👋</div>
-                            <h3>Negotiation Room ({pendingNegotiationCount})</h3>
-                            <p>Review and manage all ongoing negotiation offers from clients.</p>
-                        </Link>
-
-                        <Link to={`/transcriber/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`} className="dashboard-card">
-                            <div className="card-icon">💬</div>
-                            <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
-                            <p>View and manage your direct messages.</p>
-                        </Link>
-
-                        {/* NEW: Link to separate active direct upload jobs */}
-                        <Link to="/transcriber-direct-upload-jobs" className="dashboard-card">
-                            <div className="card-icon">📝</div>
-                            <h3>DU In Progress ({activeDirectUploadJobsCount})</h3> 
-                            <p>See direct upload jobs you're currently working on.</p>
-                        </Link>
-
-                        {/* UPDATED: Link to active negotiation jobs */}
-                        <Link to="/transcriber-negotiations?status=active" className="dashboard-card">
-                            <div className="card-icon">📝</div>
-                            <h3>Negotiation Job In Progress ({activeNegotiationCount})</h3> 
-                            <p>See negotiation jobs you're currently working on.</p>
-                        </Link>
-
-                        {/* UPDATED: Link to separate completed direct upload jobs */}
-                        <Link to="/transcriber-completed-direct-upload-jobs" className="dashboard-card"> {/* CORRECTED LINK */}
-                            <div className="card-icon">✅</div>
-                            <h3>My Completed DU Jobs ({completedDirectUploadJobsCount})</h3> 
-                            <p>View your finished direct upload projects and earnings.</p>
-                        </Link>
-
-                        {/* UPDATED: Link to completed negotiation jobs */}
-                        <Link to="/transcriber-negotiations?status=completed" className="dashboard-card">
-                            <div className="card-icon">✅</div>
-                            <h3>My Completed Negotiation Jobs ({completedNegotiationJobsCount})</h3> 
-                            <p>View your finished negotiation projects and earnings.</p>
-                        </Link>
-
-                        <Link to={`/transcriber-profile/${user.id}`} className="dashboard-card">
-                            <div className="card-icon">⭐</div>
-                            <h3>Profile & Ratings</h3>
-                            <p>Update your profile and check client feedback.</p>
-                        </Link>
-
-                        <Link to="/transcriber-payments" className="dashboard-card">
-                            <div className="card-icon">💰</div>
-                            <h3>Payment History</h3>
-                            <p>Review your past transactions and earnings.</p>
-                        </Link>
-
-                        {transcriberRating >= 4 && (
-                            <Link to="/transcriber-other-jobs" className="dashboard-card">
-                            <div className="card-icon">💼</div>
-                            <h3>DU Jobs Available ({availableDirectJobsCount})</h3>
-                            <p>Browse and take direct upload jobs from clients.</p>
-                            </Link>
-                        )}
-                        
-                        <Link to="/trainee/materials" className="dashboard-card"> 
-                            <div className="card-icon">📚</div>
-                            <h3>Knowledge Base</h3>
-                            <p>Access training materials and helpful resources.</p>
-                        </Link>
-                    </div>
-                </div>
-            </main>
-
-            <Toast
-                message={toast.message}
-                type={toast.type}
-                isVisible={toast.isVisible}
-                onClose={hideToast}
-                duration={toast.type === 'error' ? 4000 : 3000}
-            />
+    <div className="transcriber-dashboard-container tm-suite-dashboard tm-worker-suite">
+      <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+      <header className="tm-suite-topbar">
+        <Link to="/transcriber-dashboard" className="tm-suite-brand" aria-label="TypeMyworDz worker dashboard">
+          <img src="/logo192.png" alt="" />
+          <span><b className="tm-brand-purple">Type</b><b className="tm-brand-green">My</b><b className="tm-brand-purple">worDz</b><small>Transcriber workspace</small></span>
+        </Link>
+        <div className="tm-suite-account">
+          <Link to={`/transcriber-profile/${user.id}`} className="tm-suite-profile"><span>{firstLetter}</span>{user.full_name}</Link>
+          <button onClick={handleLogout} className="tm-suite-logout">Log out</button>
         </div>
-    );
+      </header>
+
+      <main className="tm-suite-main">
+        <section className="tm-suite-intro">
+          <div><span className="tm-suite-eyebrow">WORKER WORKSPACE</span><h1>Keep your queue moving.</h1><p>See what needs your attention, what is in progress and what you have earned.</p></div>
+          <div className="tm-suite-live-mark"><span />Available for work</div>
+        </section>
+        <section className="tm-suite-metrics" aria-label="Worker summary">
+          <div><span>Offers to review</span><strong>{pendingNegotiationCount}</strong><small>Negotiations awaiting action</small></div>
+          <div><span>Active work</span><strong>{activeNegotiationCount + activeDirectUploadJobsCount}</strong><small>Jobs currently in progress</small></div>
+          <div><span>Completed</span><strong>{completedNegotiationJobsCount + completedDirectUploadJobsCount}</strong><small>Finished jobs in your history</small></div>
+          <div><span>Unread messages</span><strong>{unreadMessageCount}</strong><small>Updates from clients and admin</small></div>
+        </section>
+        <section className="tm-suite-section">
+          <div className="tm-suite-section-head"><div><span className="tm-suite-eyebrow">YOUR QUEUE</span><h2>Work and support</h2></div><span className="tm-suite-muted">Standard payout: 40 KES per minute · Rush: 50 KES</span></div>
+          <div className="tm-suite-action-grid">
+            <Link to="/transcriber-negotiations"><span className="tm-suite-card-label">OFFERS</span><strong>Negotiation room <b>{pendingNegotiationCount}</b></strong><p>Review client offers and agree on the right job terms.</p><em>Open negotiations →</em></Link>
+            <Link to={`/transcriber/chat/${'e3d38454-bd09-4922-b94e-9538daf41bcc'}`}><span className="tm-suite-card-label">MESSAGES</span><strong>My messages {unreadMessageCount > 0 && <b>{unreadMessageCount}</b>}</strong><p>Keep conversations and job questions in one place.</p><em>Open messages →</em></Link>
+            <Link to="/transcriber-direct-upload-jobs"><span className="tm-suite-card-label">ACTIVE</span><strong>Direct-upload jobs <b>{activeDirectUploadJobsCount}</b></strong><p>Continue direct jobs already assigned to you.</p><em>View active jobs →</em></Link>
+            <Link to="/transcriber-negotiations?status=active"><span className="tm-suite-card-label">ACTIVE</span><strong>Negotiated jobs <b>{activeNegotiationCount}</b></strong><p>Open the work you accepted from clients.</p><em>View active work →</em></Link>
+            <Link to="/transcriber-completed-direct-upload-jobs"><span className="tm-suite-card-label">HISTORY</span><strong>Completed direct jobs <b>{completedDirectUploadJobsCount}</b></strong><p>Review completed work and earnings.</p><em>Open history →</em></Link>
+            <Link to="/transcriber-negotiations?status=completed"><span className="tm-suite-card-label">HISTORY</span><strong>Completed negotiated jobs <b>{completedNegotiationJobsCount}</b></strong><p>See your finished negotiation projects.</p><em>Open history →</em></Link>
+            <Link to={`/transcriber-profile/${user.id}`}><span className="tm-suite-card-label">PROFILE</span><strong>Profile and ratings</strong><p>Update your details and check client feedback.</p><em>Open profile →</em></Link>
+            <Link to="/transcriber-payments"><span className="tm-suite-card-label">EARNINGS</span><strong>Payment history</strong><p>Review payouts and completed earnings.</p><em>View payments →</em></Link>
+            {transcriberRating >= 4 && <Link to="/transcriber-other-jobs"><span className="tm-suite-card-label">AVAILABLE</span><strong>Available direct jobs <b>{availableDirectJobsCount}</b></strong><p>Browse additional jobs you can take.</p><em>Find work →</em></Link>}
+            <Link to="/trainee/materials"><span className="tm-suite-card-label">LEARNING</span><strong>Knowledge base</strong><p>Refresh your skills with training materials.</p><em>Open resources →</em></Link>
+          </div>
+        </section>
+      </main>
+      <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} duration={toast.type === 'error' ? 4000 : 3000} />
+    </div>
+  );
 };
 
 export default TranscriberDashboard;

@@ -481,3 +481,6 @@
         padding: 8px 15px;
     }
 }
+
+/* Worker dashboard adopts the shared TypeMyworDz workspace system. */
+.tm-worker-suite .tm-suite-metrics > div:first-child { border-top: 4px solid #5b44cf; } .tm-worker-suite .tm-suite-metrics > div:nth-child(2) { border-top: 4px solid #2fa451; } .tm-worker-suite .tm-suite-metrics > div:nth-child(3) { border-top: 4px solid #d99a2b; } .tm-worker-suite .tm-suite-metrics > div:nth-child(4) { border-top: 4px solid #c85d7a; }

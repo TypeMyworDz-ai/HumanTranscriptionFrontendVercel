@@ -1,0 +1,46 @@
+/* Shared TypeMyworDz dashboard refresh. Existing data and routes remain intact. */
+.tm-suite-dashboard { background: #f8f8fb; color: #24232d; min-height: 100vh; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tm-suite-topbar { align-items: center; background: #fff; border-bottom: 1px solid #e9e8f1; display: flex; justify-content: space-between; min-height: 74px; padding: 0 5vw; position: sticky; top: 0; z-index: 10; }
+.tm-suite-brand { align-items: center; color: inherit; display: flex; gap: 10px; text-decoration: none; }
+.tm-suite-brand img { height: 34px; width: 34px; }
+.tm-suite-brand span { display: flex; flex-wrap: wrap; font-size: 1.2rem; letter-spacing: -.045em; max-width: 190px; }
+.tm-suite-brand b { font-weight: 800; }
+.tm-suite-brand small { color: #888895; flex-basis: 100%; font-size: .64rem; letter-spacing: .11em; margin-top: 2px; text-transform: uppercase; }
+.tm-brand-purple { color: #5b44cf; } .tm-brand-green { color: #2fa451; }
+.tm-suite-account { align-items: center; display: flex; gap: 16px; }
+.tm-suite-profile { align-items: center; color: #575766; display: flex; font-size: .86rem; gap: 8px; text-decoration: none; }
+.tm-suite-profile > span { align-items: center; background: #eeebff; border-radius: 50%; color: #5945c2; display: inline-flex; font-size: .8rem; font-weight: 800; height: 31px; justify-content: center; width: 31px; }
+.tm-suite-logout { background: transparent !important; border: 1px solid #d7d5e7 !important; border-radius: 999px !important; color: #5140b9 !important; font-size: .82rem !important; margin: 0 !important; padding: 8px 14px !important; }
+.tm-suite-logout:hover { background: #f3f1ff !important; box-shadow: none !important; transform: none !important; }
+.tm-suite-main { margin: 0 auto; max-width: 1280px; padding: 52px 5vw 80px; }
+.tm-suite-intro { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 32px; }
+.tm-suite-eyebrow { color: #7565c5; display: block; font-size: .69rem; font-weight: 800; letter-spacing: .14em; margin-bottom: 8px; }
+.tm-suite-intro h1 { color: #282633; font-size: clamp(2rem, 4vw, 3.35rem); letter-spacing: -.06em; line-height: 1.02; margin: 0 0 13px; max-width: 700px; }
+.tm-suite-intro p { color: #737382; font-size: 1rem; margin: 0; }
+.tm-suite-primary-action { background: #5b44cf; border-radius: 999px; color: #fff; font-size: .85rem; font-weight: 800; padding: 14px 18px; text-decoration: none; }
+.tm-suite-primary-action:hover { background: #4933b4; }
+.tm-suite-primary-action span { font-size: 1.1rem; margin-left: 12px; }
+.tm-suite-live-mark { align-items: center; color: #4c4d5b; display: flex; font-size: .82rem; gap: 9px; white-space: nowrap; }
+.tm-suite-live-mark span { background: #2fa451; border-radius: 50%; box-shadow: 0 0 0 5px #e8f7ed; height: 8px; width: 8px; }
+.tm-suite-metrics { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-bottom: 28px; }
+.tm-suite-metrics > div { background: #fff; border: 1px solid #e8e7f0; border-radius: 16px; padding: 20px; }
+.tm-suite-metrics span, .tm-suite-metrics small { color: #80808d; display: block; font-size: .76rem; }
+.tm-suite-metrics strong { color: #282633; display: block; font-size: 2.2rem; letter-spacing: -.06em; margin: 11px 0 7px; }
+.tm-suite-section { background: #fff; border: 1px solid #e8e7f0; border-radius: 18px; padding: 26px; }
+.tm-suite-section-head { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 20px; }
+.tm-suite-section h2, .tm-suite-footer-panel h2 { color: #2b2a38; font-size: 1.25rem; letter-spacing: -.035em; margin: 0; }
+.tm-suite-muted { color: #9998a5; font-size: .75rem; }
+.tm-suite-action-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+.tm-suite-action-grid a { border: 1px solid #eeedf4; border-radius: 13px; color: inherit; display: flex; flex-direction: column; min-height: 165px; padding: 17px; text-decoration: none; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.tm-suite-action-grid a:hover { background: #fbfaff; border-color: #d4cef2; transform: translateY(-2px); }
+.tm-suite-card-label { color: #7769c7; font-size: .65rem; font-weight: 800; letter-spacing: .12em; }
+.tm-suite-action-grid strong { color: #444351; font-size: .92rem; margin-top: 12px; }
+.tm-suite-action-grid strong b { background: #f0edff; border-radius: 999px; color: #5945c2; font-size: .72rem; margin-left: 4px; padding: 3px 7px; }
+.tm-suite-action-grid p { color: #898995; font-size: .78rem; line-height: 1.45; margin: 8px 0 12px; }
+.tm-suite-action-grid em { color: #5945c2; font-size: .74rem; font-style: normal; font-weight: 800; margin-top: auto; }
+.tm-suite-footer-panel { align-items: center; background: #f0edff; border-radius: 18px; display: flex; justify-content: space-between; margin-top: 24px; padding: 24px 26px; }
+.tm-suite-footer-panel p { color: #66647b; font-size: .82rem; line-height: 1.55; margin: 8px 0 0; max-width: 700px; }
+.tm-suite-footer-panel a { color: #5140b9; font-size: .8rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.tm-client-suite .tm-suite-metrics > div:first-child { border-top: 4px solid #5b44cf; } .tm-client-suite .tm-suite-metrics > div:nth-child(2) { border-top: 4px solid #2fa451; } .tm-client-suite .tm-suite-metrics > div:nth-child(3) { border-top: 4px solid #d99a2b; } .tm-client-suite .tm-suite-metrics > div:nth-child(4) { border-top: 4px solid #c85d7a; }
+@media (max-width: 900px) { .tm-suite-metrics { grid-template-columns: repeat(2, 1fr); } .tm-suite-action-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .tm-suite-topbar { align-items: flex-start; flex-direction: column; gap: 13px; padding: 16px 18px; } .tm-suite-account { justify-content: space-between; width: 100%; } .tm-suite-main { padding: 36px 18px 55px; } .tm-suite-intro, .tm-suite-footer-panel { align-items: flex-start; flex-direction: column; gap: 22px; } .tm-suite-metrics, .tm-suite-action-grid { grid-template-columns: 1fr; } .tm-suite-section { padding: 20px 16px; } .tm-suite-section-head { align-items: flex-start; flex-direction: column; gap: 9px; } }

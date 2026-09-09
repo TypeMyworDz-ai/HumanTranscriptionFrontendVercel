@@ -232,109 +232,117 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className="admin-dashboard-container">
-            <header className="admin-dashboard-header">
-                <div className="header-content">
-                    <h1>Admin Dashboard</h1>
-                    <div className="user-info">
-                        <span>Welcome, {user?.full_name || 'Admin'}!</span>
-                        <button onClick={logout} className="logout-btn">
-                            Logout
-                        </button>
-                    </div>
+        <div className="admin-dashboard-container tm-admin-shell">
+            <header className="tm-admin-topbar">
+                <div className="tm-admin-brand">
+                    <strong><span className="tm-admin-purple">Type</span><span className="tm-admin-green">My</span><span className="tm-admin-purple">worDz</span></strong>
+                    <span>Operations console</span>
+                </div>
+                <div className="tm-admin-user">
+                    <span>Welcome, {user?.full_name || 'Admin'}</span>
+                    <button onClick={logout} className="tm-admin-logout">Log out</button>
                 </div>
             </header>
 
-            <main className="admin-dashboard-main">
-                <div className="admin-dashboard-content">
-                    <h2>Admin Overview</h2>
-                    <p>Manage users, content, and system settings.</p>
-
-                    <div className="admin-stats-overview">
-                        <div className="stat-card">
-                            <h4>Pending Tests</h4>
-                            <p className="stat-value">{adminStats.pendingTranscriberTests}</p>
-                        </div>
-                        <div className="stat-card">
-                            <h4>Negotiation Jobs</h4> {/* UPDATED: Card title */}
-                            <p className="stat-value">{adminStats.negotiationJobsCount}</p> {/* UPDATED: Display negotiationJobsCount */}
-                        </div>
-                        <div className="stat-card">
-                            <h4>DU Jobs</h4> {/* UPDATED: Card title */}
-                            <p className="stat-value">{adminStats.directUploadJobsCount}</p> {/* UPDATED: Display directUploadJobsCount */}
-                        </div>
-                        <div className="stat-card">
-                            <h4>Open Disputes</h4>
-                            <p className="stat-value">{adminStats.disputes}</p>
-                        </div>
-                        <div className="stat-card">
-                            <h4>Total Users</h4>
-                            <p className="stat-value">{adminStats.totalUsers}</p>
+            <main className="tm-admin-main">
+                <section className="tm-admin-hero">
+                    <div>
+                        <span className="tm-admin-eyebrow">OPERATIONS</span>
+                        <h1>Admin dashboard</h1>
+                        <p>A calm, current view of the human transcription marketplace.</p>
+                    </div>
+                    <div className="tm-admin-status">
+                        <span className="tm-admin-status-dot" />
+                        <div>
+                            <strong>Workspace online</strong>
+                            <span>Live job and account monitoring</span>
                         </div>
                     </div>
+                </section>
 
-                    <div className="admin-sections-grid">
-                        <Link to="/admin/transcriber-tests" className="admin-card">
-                            <div className="card-icon">📝</div>
-                            <h3>Approve Transcriber Tests ({adminStats.pendingTranscriberTests})</h3>
-                            <p>Review and approve submitted transcriber tests.</p>
-                        </Link>
-
-                        <Link to="/admin/users" className="admin-card">
-                            <div className="card-icon">👤</div>
-                            <h3>Manage Users ({adminStats.totalUsers})</h3>
-                            <p>View, edit, or remove clients and transcribers.</p>
-                        </Link>
-
-                        <Link to="/admin/negotiation-jobs" className="admin-card">
-                            <div className="card-icon">🤝</div>
-                            <h3>Negotiation Jobs ({adminStats.negotiationJobsCount})</h3> {/* UPDATED: Card title and count */}
-                            <p>Monitor all ongoing and completed negotiation jobs.</p>
-                        </Link>
-
-                        <Link to="/admin/direct-upload-jobs" className="admin-card">
-                            <div className="card-icon">📤</div>
-                            <h3>DU Jobs ({adminStats.directUploadJobsCount})</h3> {/* UPDATED: Card title and count */}
-                            <p>Review and manage all client direct upload requests.</p>
-                        </Link>
-
-                        <Link to="/admin/payments" className="admin-card">
-                            <div className="card-icon">💳</div>
-                            <h3>Payment History</h3>
-                            <p>View all client payments and transcriber earnings.</p>
-                        </Link>
-
-                        <Link to="/admin/disputes" className="admin-card">
-                            <div className="card-icon">⚖️</div>
-                            <h3>Dispute Resolution ({adminStats.disputes})</h3>
-                            <p>Address conflicts between clients and transcribers.</p>
-                        </Link>
-
-                        <Link to="/admin/chat" className="admin-card">
-                            <div className="card-icon">💬</div>
-                            <h3>My Messages {unreadMessageCount > 0 && <span className="unread-badge">{unreadMessageCount}</span>}</h3>
-                            <p>View and respond to direct messages from users.</p>
-                        </Link>
-
-                        <Link to="/admin/training-materials" className="admin-card">
-                            <div className="card-icon">📚</div>
-                            <h3>Knowledge Base</h3>
-                            <p>Manage training materials and resources for trainees.</p>
-                        </Link>
-
-                        <Link to="/admin/training-rooms" className="admin-card">
-                            <div className="card-icon">🧑‍🏫</div>
-                            <h3>Manage Training Rooms</h3>
-                            <p>Oversee and participate in trainee communication channels.</p>
-                        </Link>
-
-                        <Link to="/admin/settings" className="admin-card">
-                            <div className="card-icon">⚙️</div>
-                            <h3>System Settings</h3>
-                            <p>Configure platform parameters and integrations.</p>
-                        </Link>
+                <section className="tm-admin-stats" aria-label="Platform summary">
+                    <div className="tm-admin-stat tm-admin-stat-purple">
+                        <span>People on the platform</span>
+                        <strong>{adminStats.totalUsers}</strong>
+                        <small>Clients, transcribers and trainees</small>
                     </div>
+                    <div className="tm-admin-stat tm-admin-stat-green">
+                        <span>Active work</span>
+                        <strong>{adminStats.totalActiveJobs}</strong>
+                        <small>{adminStats.negotiationJobsCount} negotiated · {adminStats.directUploadJobsCount} direct upload</small>
+                    </div>
+                    <div className="tm-admin-stat tm-admin-stat-amber">
+                        <span>Tests to review</span>
+                        <strong>{adminStats.pendingTranscriberTests}</strong>
+                        <small>Transcriber applications waiting</small>
+                    </div>
+                    <div className="tm-admin-stat tm-admin-stat-rose">
+                        <span>Open disputes</span>
+                        <strong>{adminStats.disputes}</strong>
+                        <small>Cases that may need a decision</small>
+                    </div>
+                </section>
+
+                <div className="tm-admin-dashboard-grid">
+                    <section className="tm-admin-panel">
+                        <div className="tm-admin-panel-head">
+                            <div>
+                                <span className="tm-admin-eyebrow">NEEDS ATTENTION</span>
+                                <h2>Work queues</h2>
+                            </div>
+                            <span className="tm-admin-panel-note">Open items</span>
+                        </div>
+                        <div className="tm-admin-queue-list">
+                            <Link to="/admin/transcriber-tests" className="tm-admin-queue-row">
+                                <span><strong>Transcriber tests</strong><small>Review new applications and assessments</small></span>
+                                <b>{adminStats.pendingTranscriberTests}</b><em>View</em>
+                            </Link>
+                            <Link to="/admin/negotiation-jobs" className="tm-admin-queue-row">
+                                <span><strong>Negotiated jobs</strong><small>Monitor client and transcriber agreements</small></span>
+                                <b>{adminStats.negotiationJobsCount}</b><em>View</em>
+                            </Link>
+                            <Link to="/admin/direct-upload-jobs" className="tm-admin-queue-row">
+                                <span><strong>Direct-upload jobs</strong><small>Track paid jobs moving through the queue</small></span>
+                                <b>{adminStats.directUploadJobsCount}</b><em>View</em>
+                            </Link>
+                            <Link to="/admin/disputes" className="tm-admin-queue-row">
+                                <span><strong>Disputes</strong><small>Resolve issues before they become delays</small></span>
+                                <b>{adminStats.disputes}</b><em>View</em>
+                            </Link>
+                        </div>
+                    </section>
+
+                    <aside className="tm-admin-panel tm-admin-quick-panel">
+                        <div className="tm-admin-panel-head">
+                            <div>
+                                <span className="tm-admin-eyebrow">SHORTCUTS</span>
+                                <h2>Quick access</h2>
+                            </div>
+                        </div>
+                        <div className="tm-admin-quick-list">
+                            <Link to="/admin/users">Manage people <span>→</span></Link>
+                            <Link to="/admin/payments">Review payments <span>→</span></Link>
+                            <Link to="/admin/chat">Open messages {unreadMessageCount > 0 && <b>{unreadMessageCount}</b>} <span>→</span></Link>
+                            <Link to="/admin/settings">System settings <span>→</span></Link>
+                        </div>
+                    </aside>
                 </div>
+
+                <section className="tm-admin-panel tm-admin-link-panel">
+                    <div className="tm-admin-panel-head">
+                        <div>
+                            <span className="tm-admin-eyebrow">PLATFORM MANAGEMENT</span>
+                            <h2>People, finance and training</h2>
+                        </div>
+                        <span className="tm-admin-panel-note">All admin tools</span>
+                    </div>
+                    <div className="tm-admin-link-grid">
+                        <Link to="/admin/users"><strong>People</strong><span>Search and manage clients, transcribers and trainees.</span></Link>
+                        <Link to="/admin/payments"><strong>Payments</strong><span>Review client payments and transcriber earnings.</span></Link>
+                        <Link to="/admin/training-materials"><strong>Knowledge base</strong><span>Keep training materials current and useful.</span></Link>
+                        <Link to="/admin/training-rooms"><strong>Training rooms</strong><span>Support conversations with new trainees.</span></Link>
+                    </div>
+                </section>
             </main>
             <Toast
                 message={toast.message}
