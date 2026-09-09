@@ -2,6 +2,8 @@ import React, { useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './PreviewTestAccess.css';
 
+// Preview-only access is enabled through a Vercel Preview environment variable.
+
 const DEMO_USERS = {
   admin: {
     id: 'preview-admin',
