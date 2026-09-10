@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { hasSupabaseConfig } from './supabaseClient';
 import './App.css';
 
 const jobs = [
@@ -119,7 +120,7 @@ function PortalShell({ role, title, subtitle, children, notice, aiCallout = fals
       <Link to="/" className="rail-exit">← Public site</Link>
     </aside>
     <main className="portal-main">
-      <div className="portal-topbar"><span>Preview foundation · no live orders or payments</span><span className="topbar-status"><i /> System ready</span></div>
+      <div className="portal-topbar"><span>Preview foundation · no live orders or payments</span><span className="topbar-status"><i /> {hasSupabaseConfig ? 'Database connected' : 'Database configuration pending'}</span></div>
       <section className="portal-heading"><div><p className="eyebrow">{role} workspace</p><h1>{title}</h1><p>{subtitle}</p></div><div className="portal-actions">{notice || <span className="quiet-chip">Admin-reviewed workflow</span>}</div></section>
       {children}
     </main>
