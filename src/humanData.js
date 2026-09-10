@@ -27,9 +27,14 @@ export async function createHumanOrder({ clientId, file, durationMinutes, servic
     quote_amount: quote.amount,
   }).select('*').single();
   if (inserted.error) throw inserted.error;
-  const submitted = await supabase.rpc('submit_client_order', { p_order_id: inserted.data.id });
-  if (submitted.error) throw submitted.error;
-  return submitted.data || inserted.data;
+  return inserted.data;
+}
+
+export async function recordPreviewPayment(orderId, provider) {
+  if (!supabase) throw new Error('Preview database is not configured.');
+  const result = await supabase.rpc('record_preview_payment', { p_order_id: orderId, p_provider: provider });
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function listClientOrders(clientId) {
