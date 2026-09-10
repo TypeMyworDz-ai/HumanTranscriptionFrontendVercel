@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { hasSupabaseConfig, supabase } from './supabaseClient';
 import { AuthProvider, useAuth } from './auth';
+import { approveHumanOrder, approveHumanSubmission, claimHumanJob, createHumanOrder, listAdminQueue, listClientOrders, listOpenJobs, listSubmittedTranscripts, submitHumanTranscript } from './humanData';
 import './App.css';
 
 const jobs = [
@@ -170,10 +171,17 @@ function ClientPortal({ session, profile, demo }) {
   const [saveState, setSaveState] = useState('');
   const [saving, setSaving] = useState(false);
   const [demoStatus, setDemoStatus] = useState(readDemoWorkflow);
+  const [realOrders, setRealOrders] = useState([]);
+  const [dataError, setDataError] = useState('');
   const isOrder = location.pathname.includes('/order');
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
   const currency = profile?.country_code === 'KE' || !profile?.country_code || timeZone.startsWith('Africa/') ? 'KES' : 'USD';
   const quote = calculatePreviewQuote({ durationMinutes, rush, difficulty, speakerCount, timestamps, currency });
+
+  useEffect(() => {
+    if (demo || isOrder || !session || !profile) return;
+    listClientOrders(profile.id).then(({ data, error }) => { if (error) setDataError(error.message); else setRealOrders(data || []); });
+  }, [demo, isOrder, session, profile]);
 
   const handleFileChange = (event) => {
     const selected = event.target.files?.[0];
@@ -182,10 +190,7 @@ function ClientPortal({ session, profile, demo }) {
     if (!selected) { setDurationMinutes(0); return; }
     const media = document.createElement(selected.type.startsWith('video/') ? 'video' : 'audio');
     media.preload = 'metadata';
-    media.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(media.src);
-      setDurationMinutes(Number.isFinite(media.duration) ? media.duration / 60 : 0);
-    };
+    media.onloadedmetadata = () => { window.URL.revokeObjectURL(media.src); setDurationMinutes(Number.isFinite(media.duration) ? media.duration / 60 : 0); };
     media.onerror = () => setDurationMinutes(0);
     media.src = window.URL.createObjectURL(selected);
   };
@@ -197,27 +202,20 @@ function ClientPortal({ session, profile, demo }) {
       setSaveState('Preview only: the order brief is ready and is now waiting for Admin review.');
       return;
     }
-    setSaving(true);
-    setSaveState('');
-    const { error } = await supabase.from('orders').insert({
-      client_id: profile.id,
-      status: 'draft',
-      service_type: serviceType,
-      turnaround: rush ? 'rush' : 'standard',
-      difficulty,
-      speaker_count: Number(speakerCount),
-      timestamps_requested: timestamps,
-      formatting_notes: formattingNotes,
-      quote_currency: quote.currency,
-      quote_amount: quote.amount,
-    });
-    setSaving(false);
-    setSaveState(error ? `Could not save the draft: ${error.message}` : 'Order brief saved. Payment and Admin approval come next in the next preview release.');
+    setSaving(true); setSaveState(''); setDataError('');
+    try {
+      await createHumanOrder({ clientId: profile.id, file, durationMinutes, serviceType, rush, difficulty, speakerCount, timestamps, formattingNotes, quote });
+      setSaveState('Order submitted to Admin review. No payment was taken in this preview release.');
+      const refreshed = await listClientOrders(profile.id);
+      setRealOrders(refreshed.data || []);
+    } catch (error) { setSaveState(`Could not submit the order: ${error.message}`); }
+    finally { setSaving(false); }
   };
 
+  const realRows = realOrders.length ? realOrders.map((order) => <Row key={order.id} title={order.service_type.replace(/_/g, ' ')} meta={`${order.status.replace(/_/g, ' ')} · ${order.quote_currency} ${order.quote_amount || '—'}`} status={order.status.replace(/_/g, ' ')} tone={order.status === 'client_ready' || order.status === 'delivered' ? 'green' : 'purple'} />) : null;
   return <PortalShell role="client" title={isOrder ? 'Start a human transcript' : 'Your work, in one place'} subtitle={isOrder ? 'Tell us what good looks like. We will manage the rest.' : 'Orders, files, payments and support without a maze of hand-offs.'} notice={<Link to="/client/order" className="button button-green small">New order +</Link>} session={session} profile={profile} demo={demo}>
-    {isOrder ? <section className="workspace-grid order-grid"><div className="form-card"><p className="eyebrow">01 · The recording</p><h2>Give the job a clear starting point.</h2><label className="upload-zone"><input type="file" accept="audio/*,video/*" onChange={handleFileChange} /><span className="upload-symbol">+</span><strong>{file?.name || 'Choose an audio or video file'}</strong><small>{file ? (durationMinutes ? `${durationMinutes.toFixed(1)} minutes detected · ready for estimate` : 'File selected · duration still loading') : 'MP3, WAV, M4A, MP4 and common formats'}</small></label><div className="form-row"><label>Service<select value={serviceType} onChange={(e) => setServiceType(e.target.value)}><option value="general">General transcription</option><option value="legal">Legal and compliance</option><option value="research">Research and interviews</option><option value="meeting">Meetings and panels</option></select></label><label>Speakers<select value={speakerCount} onChange={(e) => setSpeakerCount(e.target.value)}><option value="1">1 speaker</option><option value="2">2 speakers</option><option value="4">3–5 speakers</option><option value="6">6+ speakers</option></select></label></div><div className="form-row"><label>Audio difficulty<select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}><option value="standard">Clear / standard</option><option value="difficult">Difficult audio</option></select></label><label>Delivery<select value={rush ? 'rush' : 'standard'} onChange={(e) => setRush(e.target.value === 'rush')}><option value="standard">Standard</option><option value="rush">Rush</option></select></label></div><label className="check-row"><input type="checkbox" checked={timestamps} onChange={(e) => setTimestamps(e.target.checked)} /> Include timestamps in the finished transcript</label><label className="notes-field">Formatting or context notes<textarea value={formattingNotes} onChange={(e) => setFormattingNotes(e.target.value)} placeholder="Tell Admin anything that will help us prepare the job." rows="4" /></label><button className="button button-dark full" type="button" onClick={saveDraft} disabled={saving}>{saving ? 'Saving brief…' : demo ? 'Review estimate' : 'Save order brief'} <span>→</span></button>{saveState && <p className={`form-status ${saveState.startsWith('Could not') ? 'error' : 'success'}`}>{saveState}</p>}<p className="form-footnote">Admin reviews every order before it reaches workers. Payment is deliberately not connected in this foundation release.</p></div><QuoteCard quote={quote} currency={currency} rush={rush} difficulty={difficulty} timestamps={timestamps} durationMinutes={durationMinutes} /></section>
-      : <section className="dashboard-grid"><Metric label="Open orders" value={demoStatus === 'pending_admin_review' ? '01' : '02'} note={demoStatus === 'pending_admin_review' ? 'Preview order awaiting review' : 'One awaiting review'} /><Metric label="Ready files" value={demoStatus === 'client_ready' ? '08' : '07'} note={demoStatus === 'client_ready' ? 'Preview delivery is ready' : 'Last delivered yesterday'} /><Metric label="Support" value="01" note="Admin replied 12 min ago" /><div className="panel wide-panel"><PanelTitle title="Recent work" action="View all files" /><div className="table-list"><Row title="Community health interview" meta="TM-2041 · Admin review" status="In review" tone="purple" /><Row title="Quarterly board meeting" meta="TM-2038 · Delivered" status="Ready to download" tone="green" /><Row title="Field notes" meta="TM-2034 · Delivered" status="Ready to download" tone="green" /></div></div></section>}
+    {isOrder ? <section className="workspace-grid order-grid"><div className="form-card"><p className="eyebrow">01 · The recording</p><h2>Give the job a clear starting point.</h2><label className="upload-zone"><input type="file" accept="audio/*,video/*" onChange={handleFileChange} /><span className="upload-symbol">+</span><strong>{file?.name || 'Choose an audio or video file'}</strong><small>{file ? (durationMinutes ? `${durationMinutes.toFixed(1)} minutes detected · ready for estimate` : 'File selected · duration still loading') : 'MP3, WAV, M4A, MP4 and common formats'}</small></label><div className="form-row"><label>Service<select value={serviceType} onChange={(e) => setServiceType(e.target.value)}><option value="general">General transcription</option><option value="legal">Legal and compliance</option><option value="research">Research and interviews</option><option value="meeting">Meetings and panels</option></select></label><label>Speakers<select value={speakerCount} onChange={(e) => setSpeakerCount(e.target.value)}><option value="1">1 speaker</option><option value="2">2 speakers</option><option value="4">3–5 speakers</option><option value="6">6+ speakers</option></select></label></div><div className="form-row"><label>Audio difficulty<select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}><option value="standard">Clear / standard</option><option value="difficult">Difficult audio</option></select></label><label>Delivery<select value={rush ? 'rush' : 'standard'} onChange={(e) => setRush(e.target.value === 'rush')}><option value="standard">Standard</option><option value="rush">Rush</option></select></label></div><label className="check-row"><input type="checkbox" checked={timestamps} onChange={(e) => setTimestamps(e.target.checked)} /> Include timestamps in the finished transcript</label><label className="notes-field">Formatting or context notes<textarea value={formattingNotes} onChange={(e) => setFormattingNotes(e.target.value)} placeholder="Tell Admin anything that will help us prepare the job." rows="4" /></label><button className="button button-dark full" type="button" onClick={saveDraft} disabled={saving}>{saving ? 'Submitting brief…' : demo ? 'Review estimate' : 'Submit for Admin review'} <span>→</span></button>{saveState && <p className={`form-status ${saveState.startsWith('Could not') ? 'error' : 'success'}`}>{saveState}</p>}<p className="form-footnote">Admin reviews every order before it reaches workers. Payment is deliberately not connected in this preview release.</p></div><QuoteCard quote={quote} currency={currency} rush={rush} difficulty={difficulty} timestamps={timestamps} durationMinutes={durationMinutes} /></section>
+      : <section className="dashboard-grid"><Metric label="Open orders" value={demo ? (demoStatus === 'pending_admin_review' ? '01' : '02') : String(realOrders.filter((order) => !['client_ready', 'delivered'].includes(order.status)).length).padStart(2, '0')} note={demo ? (demoStatus === 'pending_admin_review' ? 'Preview order awaiting review' : 'One awaiting review') : 'Live preview database'} /><Metric label="Ready files" value={demo ? (demoStatus === 'client_ready' ? '08' : '07') : String(realOrders.filter((order) => ['client_ready', 'delivered'].includes(order.status)).length).padStart(2, '0')} note={demo ? (demoStatus === 'client_ready' ? 'Preview delivery is ready' : 'Last delivered yesterday') : 'Approved client files'} /><Metric label="Support" value="01" note="Admin communication" /><div className="panel wide-panel"><PanelTitle title="Recent work" action="View all files" /><div className="table-list">{dataError && <p className="form-status error">{dataError}</p>}{realRows || <><Row title="Community health interview" meta="TM-2041 · Admin review" status="In review" tone="purple" /><Row title="Quarterly board meeting" meta="TM-2038 · Delivered" status="Ready to download" tone="green" /><Row title="Field notes" meta="TM-2034 · Delivered" status="Ready to download" tone="green" /></>}</div></div></section>}
   </PortalShell>;
 }
 
@@ -230,12 +228,27 @@ function WorkerPortal({ session, profile, demo }) {
   const [claimed, setClaimed] = useState(null);
   const [demoStatus, setDemoStatus] = useState(readDemoWorkflow);
   const [workerNotice, setWorkerNotice] = useState('');
+  const [realJobs, setRealJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(!demo);
   const previewJob = { id: 'TM-DEMO', title: 'Preview field interview', length: '0.1 min', service: 'General transcription', due: 'Preview deadline', tags: ['Foundation order', 'Admin brief'] };
-  const availableJobs = demo && demoStatus === 'approved_open' ? [previewJob, ...jobs] : jobs;
-  const submitJob = () => { if (demo && claimed?.id === 'TM-DEMO') { setDemoStatus(writeDemoWorkflow('submitted')); setClaimed(null); setWorkerNotice('Preview submission sent to Admin quality review.'); } };
+  useEffect(() => {
+    if (demo || !session) return;
+    listOpenJobs().then(({ data }) => { setRealJobs(data || []); setLoadingJobs(false); });
+  }, [demo, session]);
+  const toJob = (order) => ({ ...order, id: order.id, title: `${order.service_type.replace(/_/g, ' ')} order`, length: order.audio_asset_id ? 'Audio attached' : 'Audio pending', service: order.difficulty === 'difficult' ? 'Difficult audio' : 'Standard', due: order.due_at ? new Date(order.due_at).toLocaleString() : 'Admin deadline pending', tags: [order.turnaround === 'rush' ? 'Rush' : 'Standard', order.timestamps_requested ? 'Timestamps' : 'No timestamps'] });
+  const availableJobs = demo ? (demoStatus === 'approved_open' ? [previewJob, jobs[0], jobs[1]] : jobs) : realJobs.map(toJob);
+  const claimJob = async (job) => {
+    if (demo) { setClaimed(job); return; }
+    try { await claimHumanJob(job.id); setClaimed(job); setRealJobs((current) => current.filter((item) => item.id !== job.id)); } catch (error) { setWorkerNotice(`Could not claim the job: ${error.message}`); }
+  };
+  const submitJob = async () => {
+    if (demo && claimed?.id === 'TM-DEMO') { setDemoStatus(writeDemoWorkflow('submitted')); setClaimed(null); setWorkerNotice('Preview submission sent to Admin quality review.'); return; }
+    if (!claimed) return;
+    try { await submitHumanTranscript(claimed.id, { title: claimed.title, lines: [] }, 'Submitted from the shared preview editor.'); setClaimed(null); setWorkerNotice('Transcript submitted to Admin quality review.'); } catch (error) { setWorkerNotice(`Could not submit the transcript: ${error.message}`); }
+  };
   return <PortalShell role="worker" title={claimed ? `Working on ${claimed.title}` : 'The work board'} subtitle={claimed ? 'The complete brief stays with the assignment. Submit when your transcript is ready for Admin review.' : 'Open jobs are visible to eligible workers. The first person to claim one owns the deadline.'} aiCallout session={session} profile={profile} demo={demo}>
     {workerNotice && <p className="form-status success" style={{ margin: '0 52px 20px' }}>{workerNotice}</p>}
-    {claimed ? <section className="editor-layout"><SharedEditor job={claimed} /><aside className="editor-side"><div className="brief-card"><p className="eyebrow">Assignment brief</p><h3>{claimed.title}</h3><div className="brief-meta"><span>{claimed.length}</span><span>{claimed.service}</span><span>Due {claimed.due}</span></div><ul>{claimed.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul><button className="button button-green full" type="button" onClick={submitJob}>Submit for Admin review</button><button className="text-button" type="button" onClick={() => setClaimed(null)}>Return to work board</button></div></aside></section> : <section className="dashboard-grid"><div className="board-intro wide-panel"><div><p className="eyebrow">First-come-first-served</p><h2>Claim the work you can finish well.</h2><p>Each open job includes the audio requirements, formatting brief and deadline before you claim it. There is no client contact and no hidden negotiation.</p></div><div className="board-rule"><span>OPEN BOARD</span><strong>{availableJobs.length}</strong><small>eligible jobs</small></div></div><div className="jobs-list wide-panel">{availableJobs.map((job) => <article className="job-card" key={job.id}><div className="job-card-main"><span className="job-id">{job.id}</span><h3>{job.title}</h3><div className="job-facts"><span>{job.length}</span><span>{job.service}</span><span>Due {job.due}</span></div><div className="tag-list">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><button className="button button-dark" type="button" onClick={() => setClaimed(job)}>Claim job <span>→</span></button></article>)}</div></section>}
+    {claimed ? <section className="editor-layout"><SharedEditor job={claimed} /><aside className="editor-side"><div className="brief-card"><p className="eyebrow">Assignment brief</p><h3>{claimed.title}</h3><div className="brief-meta"><span>{claimed.length}</span><span>{claimed.service}</span><span>Due {claimed.due}</span></div><ul>{claimed.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul><button className="button button-green full" type="button" onClick={submitJob}>Submit for Admin review</button><button className="text-button" type="button" onClick={() => setClaimed(null)}>Return to work board</button></div></aside></section> : <section className="dashboard-grid"><div className="board-intro wide-panel"><div><p className="eyebrow">First-come-first-served</p><h2>Claim the work you can finish well.</h2><p>Each open job includes the audio requirements, formatting brief and deadline before you claim it. There is no client contact and no hidden negotiation.</p></div><div className="board-rule"><span>OPEN BOARD</span><strong>{loadingJobs ? '…' : availableJobs.length}</strong><small>eligible jobs</small></div></div><div className="jobs-list wide-panel">{availableJobs.map((job) => <article className="job-card" key={job.id}><div className="job-card-main"><span className="job-id">{job.id.length > 12 ? job.id.slice(0, 8) : job.id}</span><h3>{job.title}</h3><div className="job-facts"><span>{job.length}</span><span>{job.service}</span><span>Due {job.due}</span></div><div className="tag-list">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><button className="button button-dark" type="button" onClick={() => claimJob(job)}>Claim job <span>→</span></button></article>)}</div></section>}
   </PortalShell>;
 }
 
@@ -246,9 +259,20 @@ function Module({ number, title, status, active }) { return <div className={`mod
 
 function AdminPortal({ session, profile, demo }) {
   const [demoStatus, setDemoStatus] = useState(readDemoWorkflow);
+  const [realOrders, setRealOrders] = useState([]);
+  const [realSubmissions, setRealSubmissions] = useState([]);
+  const [adminNotice, setAdminNotice] = useState('');
+  const loadAdminQueue = async () => { if (!session || demo) return; const [orders, submissions] = await Promise.all([listAdminQueue(), listSubmittedTranscripts()]); setRealOrders(orders.data || []); setRealSubmissions(submissions.data || []); };
+  // The queue loader is intentionally scoped to this portal instance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAdminQueue(); }, [session, demo]);
   const advance = (nextStatus) => setDemoStatus(writeDemoWorkflow(nextStatus));
-  const previewAction = demoStatus === 'pending_admin_review' ? <button className="button button-purple small" type="button" onClick={() => advance('approved_open')}>Approve order</button> : demoStatus === 'submitted' ? <button className="button button-green small" type="button" onClick={() => advance('client_ready')}>Approve delivery</button> : <span className={`status-pill ${demoStatus === 'client_ready' ? 'green' : 'purple'}`}>{demoStatus.replaceAll('_', ' ')}</span>;
-  return <PortalShell role="admin" session={session} profile={profile} demo={demo} title="Control room" subtitle="One view of orders, people, quality and the conversations that keep the marketplace healthy."><section className="dashboard-grid"><Metric label="Awaiting review" value={demo && demoStatus === 'pending_admin_review' ? '01' : '08'} note={demo && demoStatus === 'pending_admin_review' ? 'Preview order ready' : '3 new client orders'} /><Metric label="Open worker jobs" value={demo && demoStatus === 'approved_open' ? '15' : '14'} note="First-come-first-served" /><Metric label="Submitted today" value={demo && demoStatus === 'submitted' ? '07' : '06'} note="2 need correction" /><Metric label="Support threads" value="04" note="No overdue replies" /><div className="panel wide-panel"><PanelTitle title="Today’s operating queue" action="Open full queue" /><div className="table-list">{demo && demoStatus !== 'draft' && <div className="table-row"><div><strong>Preview field interview</strong><small>TM-DEMO · Demo workflow</small></div>{previewAction}</div>}<Row title="Research focus group" meta="Client order · Requirements ready" status="Approve order" tone="purple" /><Row title="Board meeting recording" meta="Worker submission · 68 minutes" status="Quality review" tone="amber" /><Row title="Community health interview" meta="Client support · Revision requested" status="Needs attention" tone="red" /></div></div><div className="panel"><PanelTitle title="Marketplace rules" /><ul className="plain-list"><li>Workers claim open jobs themselves.</li><li>Clients only communicate with Admin.</li><li>Only approved work becomes client-ready.</li></ul></div><div className="panel"><PanelTitle title="Financial snapshot" /><div className="finance-number">KES 84,600<small>pending worker earnings</small></div><span className="muted-note">Provider adapter ready for Kora or another approved rail.</span></div></section></PortalShell>;
+  const previewAction = demoStatus === 'pending_admin_review' ? <button className="button button-purple small" type="button" onClick={() => advance('approved_open')}>Approve order</button> : demoStatus === 'submitted' ? <button className="button button-green small" type="button" onClick={() => advance('client_ready')}>Approve delivery</button> : <span className={`status-pill ${demoStatus === 'client_ready' ? 'green' : 'purple'}`}>{demoStatus.replace(/_/g, ' ')}</span>;
+  const approveOrder = async (id) => { try { await approveHumanOrder(id); setAdminNotice('Order approved and opened to workers.'); await loadAdminQueue(); } catch (error) { setAdminNotice(`Could not approve order: ${error.message}`); } };
+  const approveSubmission = async (id) => { try { await approveHumanSubmission(id, 'Approved by Admin after quality review.'); setAdminNotice('Transcript approved for client delivery.'); await loadAdminQueue(); } catch (error) { setAdminNotice(`Could not approve delivery: ${error.message}`); } };
+  const realQueue = realOrders.map((order) => <div className="table-row" key={order.id}><div><strong>{order.service_type.replace(/_/g, ' ')} order</strong><small>{order.id.slice(0, 8)} · {order.quote_currency} {order.quote_amount || '—'}</small></div><button className="button button-purple small" type="button" onClick={() => approveOrder(order.id)}>Approve order</button></div>);
+  const realReviews = realSubmissions.map((submission) => <div className="table-row" key={submission.id}><div><strong>Transcript submission</strong><small>{submission.order_id.slice(0, 8)} · Worker quality review</small></div><button className="button button-green small" type="button" onClick={() => approveSubmission(submission.id)}>Approve delivery</button></div>);
+  return <PortalShell role="admin" session={session} profile={profile} demo={demo} title="Control room" subtitle="One view of orders, people, quality and the conversations that keep the marketplace healthy."><section className="dashboard-grid"><Metric label="Awaiting review" value={demo ? (demoStatus === 'pending_admin_review' ? '01' : '08') : String(realOrders.length).padStart(2, '0')} note={demo ? (demoStatus === 'pending_admin_review' ? 'Preview order ready' : '3 new client orders') : 'Preview database'} /><Metric label="Open worker jobs" value={demo && demoStatus === 'approved_open' ? '15' : '14'} note="First-come-first-served" /><Metric label="Submitted today" value={demo ? (demoStatus === 'submitted' ? '07' : '06') : String(realSubmissions.length).padStart(2, '0')} note="Quality review queue" /><Metric label="Support threads" value="04" note="No overdue replies" /><div className="panel wide-panel"><PanelTitle title="Today’s operating queue" action="Open full queue" /><div className="table-list">{adminNotice && <p className="form-status success">{adminNotice}</p>}{demo && demoStatus !== 'draft' && <div className="table-row"><div><strong>Preview field interview</strong><small>TM-DEMO · Demo workflow</small></div>{previewAction}</div>}{!demo && realQueue}{!demo && realReviews}<Row title="Research focus group" meta="Client order · Requirements ready" status="Approve order" tone="purple" /><Row title="Board meeting recording" meta="Worker submission · 68 minutes" status="Quality review" tone="amber" /><Row title="Community health interview" meta="Client support · Revision requested" status="Needs attention" tone="red" /></div></div><div className="panel"><PanelTitle title="Marketplace rules" /><ul className="plain-list"><li>Workers claim open jobs themselves.</li><li>Clients only communicate with Admin.</li><li>Only approved work becomes client-ready.</li></ul></div><div className="panel"><PanelTitle title="Financial snapshot" /><div className="finance-number">KES 84,600<small>pending worker earnings</small></div><span className="muted-note">Provider adapter ready for Kora or another approved rail.</span></div></section></PortalShell>;
 }
 
 function Login() {
