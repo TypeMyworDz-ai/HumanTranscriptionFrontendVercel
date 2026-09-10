@@ -159,6 +159,7 @@ function AdminPortal() { return <PortalShell role="admin" title="Control room" s
 
 function Login() { return <div className="login-page"><Link to="/" className="login-back">← Back to TypeMyworDz</Link><div className="login-card">{brand}<p className="eyebrow">Human transcription workspace</p><h1>Choose a preview workspace.</h1><p>This foundation preview uses local demo access only. No accounts, payments or live jobs are created.</p><div className="login-links"><Link to="/client" className="button button-dark full">Open client workspace</Link><Link to="/worker" className="button button-green full">Open worker workspace</Link><Link to="/trainee" className="button button-quiet full">Open trainee workspace</Link><Link to="/admin" className="text-link centered">Open Admin control room</Link></div></div></div>; }
 
+// Preview deployment refresh: Vercel Preview variables are intentionally scoped to this branch.
 export default function RootApp() {
   return <BrowserRouter><Routes><Route path="/login" element={<Login />} /><Route path="*" element={<HumanSystem />} /></Routes></BrowserRouter>;
 }
