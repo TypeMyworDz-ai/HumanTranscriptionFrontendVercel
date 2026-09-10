@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { hasSupabaseConfig } from './supabaseClient';
+import { hasSupabaseConfig, supabase } from './supabaseClient';
 import { AuthProvider, useAuth } from './auth';
 import './App.css';
 
@@ -11,6 +11,16 @@ const jobs = [
 ];
 
 const brand = <span className="brand"><span>Type</span><i>My</i><strong>worDz</strong></span>;
+
+function calculatePreviewQuote({ durationMinutes, rush, difficulty, speakerCount, timestamps, currency }) {
+  if (!durationMinutes) return null;
+  const base = currency === 'KES' ? (rush ? 260 : 180) : (rush ? 4.5 : 3.25);
+  const difficultyAdd = difficulty === 'difficult' ? (currency === 'KES' ? 55 : 0.85) : 0;
+  const timestampAdd = timestamps ? (currency === 'KES' ? 25 : 0.4) : 0;
+  const speakerAdd = Math.max(0, Number(speakerCount || 1) - 2) * (currency === 'KES' ? 18 : 0.3);
+  const amount = durationMinutes * (base + difficultyAdd + timestampAdd + speakerAdd);
+  return { amount: Number(amount.toFixed(2)), currency };
+}
 
 function HumanSystem() {
   const location = useLocation();
@@ -145,16 +155,67 @@ function PortalShell({ role, title, subtitle, children, notice, aiCallout = fals
 
 function ClientPortal({ session, profile, demo }) {
   const location = useLocation();
-  const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState(null);
+  const [durationMinutes, setDurationMinutes] = useState(0);
   const [rush, setRush] = useState(false);
+  const [serviceType, setServiceType] = useState('general');
+  const [difficulty, setDifficulty] = useState('standard');
+  const [speakerCount, setSpeakerCount] = useState(1);
+  const [timestamps, setTimestamps] = useState(false);
+  const [formattingNotes, setFormattingNotes] = useState('');
+  const [saveState, setSaveState] = useState('');
+  const [saving, setSaving] = useState(false);
   const isOrder = location.pathname.includes('/order');
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const currency = profile?.country_code === 'KE' || !profile?.country_code || timeZone.startsWith('Africa/') ? 'KES' : 'USD';
+  const quote = calculatePreviewQuote({ durationMinutes, rush, difficulty, speakerCount, timestamps, currency });
+
+  const handleFileChange = (event) => {
+    const selected = event.target.files?.[0];
+    setFile(selected || null);
+    setSaveState('');
+    if (!selected) { setDurationMinutes(0); return; }
+    const media = document.createElement(selected.type.startsWith('video/') ? 'video' : 'audio');
+    media.preload = 'metadata';
+    media.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(media.src);
+      setDurationMinutes(Number.isFinite(media.duration) ? media.duration / 60 : 0);
+    };
+    media.onerror = () => setDurationMinutes(0);
+    media.src = window.URL.createObjectURL(selected);
+  };
+
+  const saveDraft = async () => {
+    if (!quote) { setSaveState('Choose a recording first so we can calculate an estimate.'); return; }
+    if (!session || !profile || !supabase) {
+      setSaveState('Preview only: the order brief is ready, but no real order was submitted.');
+      return;
+    }
+    setSaving(true);
+    setSaveState('');
+    const { error } = await supabase.from('orders').insert({
+      client_id: profile.id,
+      status: 'draft',
+      service_type: serviceType,
+      turnaround: rush ? 'rush' : 'standard',
+      difficulty,
+      speaker_count: Number(speakerCount),
+      timestamps_requested: timestamps,
+      formatting_notes: formattingNotes,
+      quote_currency: quote.currency,
+      quote_amount: quote.amount,
+    });
+    setSaving(false);
+    setSaveState(error ? `Could not save the draft: ${error.message}` : 'Order brief saved. Payment and Admin approval come next in the next preview release.');
+  };
+
   return <PortalShell role="client" title={isOrder ? 'Start a human transcript' : 'Your work, in one place'} subtitle={isOrder ? 'Tell us what good looks like. We will manage the rest.' : 'Orders, files, payments and support without a maze of hand-offs.'} notice={<Link to="/client/order" className="button button-green small">New order +</Link>} session={session} profile={profile} demo={demo}>
-    {isOrder ? <section className="workspace-grid order-grid"><div className="form-card"><p className="eyebrow">01 · The recording</p><h2>Give the job a clear starting point.</h2><label className="upload-zone"><input type="file" accept="audio/*,video/*" onChange={(e) => setFileName(e.target.files?.[0]?.name || '')} /><span className="upload-symbol">+</span><strong>{fileName || 'Choose an audio or video file'}</strong><small>{fileName ? 'Ready for quote calculation' : 'MP3, WAV, M4A, MP4 and common formats'}</small></label><div className="form-row"><label>Speakers<select defaultValue="1"><option>1 speaker</option><option>2 speakers</option><option>3–5 speakers</option><option>6+ speakers</option></select></label><label>Delivery<select defaultValue="standard"><option value="standard">Standard</option><option value="rush">Rush</option></select></label></div><label className="check-row"><input type="checkbox" checked={rush} onChange={(e) => setRush(e.target.checked)} /> I need priority handling for a time-sensitive job</label><button className="button button-dark full" type="button">Calculate my quote <span>→</span></button><p className="form-footnote">Your order will be reviewed by Admin before it is made available to workers. No payment is taken in this foundation preview.</p></div><QuoteCard rush={rush} /></section>
+    {isOrder ? <section className="workspace-grid order-grid"><div className="form-card"><p className="eyebrow">01 · The recording</p><h2>Give the job a clear starting point.</h2><label className="upload-zone"><input type="file" accept="audio/*,video/*" onChange={handleFileChange} /><span className="upload-symbol">+</span><strong>{file?.name || 'Choose an audio or video file'}</strong><small>{file ? (durationMinutes ? `${durationMinutes.toFixed(1)} minutes detected · ready for estimate` : 'File selected · duration still loading') : 'MP3, WAV, M4A, MP4 and common formats'}</small></label><div className="form-row"><label>Service<select value={serviceType} onChange={(e) => setServiceType(e.target.value)}><option value="general">General transcription</option><option value="legal">Legal and compliance</option><option value="research">Research and interviews</option><option value="meeting">Meetings and panels</option></select></label><label>Speakers<select value={speakerCount} onChange={(e) => setSpeakerCount(e.target.value)}><option value="1">1 speaker</option><option value="2">2 speakers</option><option value="4">3–5 speakers</option><option value="6">6+ speakers</option></select></label></div><div className="form-row"><label>Audio difficulty<select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}><option value="standard">Clear / standard</option><option value="difficult">Difficult audio</option></select></label><label>Delivery<select value={rush ? 'rush' : 'standard'} onChange={(e) => setRush(e.target.value === 'rush')}><option value="standard">Standard</option><option value="rush">Rush</option></select></label></div><label className="check-row"><input type="checkbox" checked={timestamps} onChange={(e) => setTimestamps(e.target.checked)} /> Include timestamps in the finished transcript</label><label className="notes-field">Formatting or context notes<textarea value={formattingNotes} onChange={(e) => setFormattingNotes(e.target.value)} placeholder="Tell Admin anything that will help us prepare the job." rows="4" /></label><button className="button button-dark full" type="button" onClick={saveDraft} disabled={saving}>{saving ? 'Saving brief…' : demo ? 'Review estimate' : 'Save order brief'} <span>→</span></button>{saveState && <p className={`form-status ${saveState.startsWith('Could not') ? 'error' : 'success'}`}>{saveState}</p>}<p className="form-footnote">Admin reviews every order before it reaches workers. Payment is deliberately not connected in this foundation release.</p></div><QuoteCard quote={quote} currency={currency} rush={rush} difficulty={difficulty} timestamps={timestamps} durationMinutes={durationMinutes} /></section>
       : <section className="dashboard-grid"><Metric label="Open orders" value="02" note="One awaiting review" /><Metric label="Ready files" value="07" note="Last delivered yesterday" /><Metric label="Support" value="01" note="Admin replied 12 min ago" /><div className="panel wide-panel"><PanelTitle title="Recent work" action="View all files" /><div className="table-list"><Row title="Community health interview" meta="TM-2041 · Admin review" status="In review" tone="purple" /><Row title="Quarterly board meeting" meta="TM-2038 · Delivered" status="Ready to download" tone="green" /><Row title="Field notes" meta="TM-2034 · Delivered" status="Ready to download" tone="green" /></div></div></section>}
   </PortalShell>;
 }
 
-function QuoteCard({ rush }) { return <aside className="quote-card"><p className="eyebrow">Quote preview</p><h3>Your final price stays clear.</h3><div className="quote-line"><span>Audio length</span><strong>Calculated after upload</strong></div><div className="quote-line"><span>Service</span><strong>{rush ? 'Priority handling' : 'Standard delivery'}</strong></div><div className="quote-total"><span>Estimated total</span><strong>—</strong></div><p>Regional and international pricing will be shown before checkout. Payment is handled by a provider selected for this service, not by the AI subscription system.</p></aside>; }
+function QuoteCard({ quote, currency, rush, difficulty, timestamps, durationMinutes }) { return <aside className="quote-card"><p className="eyebrow">Preview estimate</p><h3>A clear quote before checkout.</h3><div className="quote-line"><span>Audio length</span><strong>{durationMinutes ? `${durationMinutes.toFixed(1)} min` : 'Calculated after upload'}</strong></div><div className="quote-line"><span>Delivery</span><strong>{rush ? 'Priority handling' : 'Standard delivery'}</strong></div><div className="quote-line"><span>Options</span><strong>{difficulty === 'difficult' ? 'Difficult audio' : 'Standard audio'}{timestamps ? ' · Timestamps' : ''}</strong></div><div className="quote-total"><span>Estimated total</span><strong>{quote ? `${currency === 'KES' ? 'KES ' : '$'}${quote.amount.toFixed(2)}` : '—'}</strong></div><p>Preview pricing is indicative. The final checkout will use the approved regional payment route: Kora for African clients and Paystack for international clients. Paddle is not part of this system.</p></aside>; }
 function Metric({ label, value, note }) { return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>; }
 function PanelTitle({ title, action }) { return <div className="panel-title"><h2>{title}</h2>{action && <span>{action} ↗</span>}</div>; }
 function Row({ title, meta, status, tone }) { return <div className="table-row"><div><strong>{title}</strong><small>{meta}</small></div><span className={`status-pill ${tone}`}>{status}</span></div>; }
